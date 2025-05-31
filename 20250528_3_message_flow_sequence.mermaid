@@ -1,0 +1,58 @@
+sequenceDiagram
+    participant User
+    participant PTT as PTT Button
+    participant Audio as Audio System
+    participant Chat as Chat Manager
+    participant Queue as Priority Queue
+    participant Protocol as OV Protocol
+    participant Network as UDP Transmitter
+
+    Note over User,Network: Voice Message Flow (Highest Priority)
+    User->>PTT: Press PTT
+    PTT->>Audio: Start Recording
+    PTT->>Chat: set_ptt_state(True)
+    PTT->>Queue: add_message(CONTROL, "PTT_START")
+    
+    loop Every 40ms during PTT
+        Audio->>Audio: Capture 40ms frame
+        Audio->>Audio: OPUS encode
+        Audio->>Protocol: create_audio_frame(opus_packet)
+        Protocol->>Network: send_frame() [IMMEDIATE]
+        Note right of Network: Bypasses queue for real-time
+    end
+
+    User->>PTT: Release PTT
+    PTT->>Chat: set_ptt_state(False)
+    PTT->>Queue: add_message(CONTROL, "PTT_STOP")
+    Chat->>Chat: flush_buffered_messages()
+
+    Note over User,Network: Text Message Flow (Queued)
+    User->>Chat: Type chat message
+    alt PTT Active
+        Chat->>Chat: Buffer message
+        Note right of Chat: Waits for PTT release
+    else PTT Inactive
+        Chat->>Queue: add_message(TEXT, utf8_bytes)
+    end
+
+    Note over User,Network: Background Processing Thread
+    loop Continuous Background
+        Queue->>Queue: get_next_message()
+        alt Voice Priority
+            Note right of Queue: Skip if PTT active
+        else Message Available
+            Queue->>Protocol: create_text_frame(data)
+            Protocol->>Network: send_frame()
+            Queue->>Queue: mark_sent()
+        end
+    end
+
+    Note over User,Network: Control Message Flow
+    PTT->>Queue: add_message(CONTROL, "PTT_START/STOP")
+    Queue->>Protocol: create_control_frame(data)
+    Protocol->>Network: send_frame()
+
+    Note over User,Network: Data Message Flow (Future)
+    User->>Queue: add_message(DATA, binary_data)
+    Queue->>Protocol: create_data_frame(data)
+    Protocol->>Network: send_frame()

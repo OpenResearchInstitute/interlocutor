@@ -1,0 +1,75 @@
+graph TB
+    subgraph "Hardware Layer"
+        PTT[PTT Button<br/>GPIO 23]
+        LED[Status LED<br/>GPIO 17]
+        MIC[Microphone<br/>PyAudio Input]
+    end
+
+    subgraph "Input Processing"
+        GPIO[GPIOZero<br/>PTT Handler]
+        AUDIO[Audio Callback<br/>40ms frames]
+        TERM[Terminal Input<br/>Chat Interface]
+    end
+
+    subgraph "Domain Logic"
+        CHAT[Chat Manager<br/>Buffering & State]
+        QUEUE[Priority Queue<br/>Message Routing]
+        STATION[Station Identifier<br/>Base-40 Encoding]
+    end
+
+    subgraph "Protocol Layer"
+        OPUS[OPUS Encoder<br/>16kbps CBR]
+        PROTO[Opulent Voice Protocol<br/>Frame Creation]
+    end
+
+    subgraph "Transport Layer"
+        NET[Network Transmitter<br/>UDP Socket]
+        RX[Message Receiver<br/>Frame Parsing]
+    end
+
+    subgraph "Network"
+        UDP[UDP Packets<br/>192.168.x.x:8080]
+    end
+
+    %% Hardware to Processing
+    PTT --> GPIO
+    LED <-- GPIO
+    MIC --> AUDIO
+
+    %% Processing to Domain
+    GPIO --> CHAT
+    AUDIO --> QUEUE
+    TERM --> CHAT
+
+    %% Domain Logic Flow
+    CHAT --> QUEUE
+    QUEUE --> PROTO
+    STATION --> PROTO
+
+    %% Protocol to Transport
+    AUDIO --> OPUS
+    OPUS --> PROTO
+    PROTO --> NET
+    NET --> UDP
+
+    %% Receive Path
+    UDP --> RX
+    RX --> TERM
+
+    %% Priority Flows
+    AUDIO -.->|Immediate| NET
+    QUEUE -.->|Background Thread| NET
+
+    classDef hardware fill:#ffcccb
+    classDef processing fill:#add8e6
+    classDef domain fill:#90ee90
+    classDef protocol fill:#dda0dd
+    classDef transport fill:#f0e68c
+    classDef network fill:#ffa500
+
+    class PTT,LED,MIC hardware
+    class GPIO,AUDIO,TERM processing
+    class CHAT,QUEUE,STATION domain
+    class OPUS,PROTO protocol
+    class NET,RX transport
+    class UDP network

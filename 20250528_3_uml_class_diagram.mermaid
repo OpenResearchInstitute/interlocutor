@@ -1,0 +1,145 @@
+classDiagram
+    class StationIdentifier {
+        -callsign: str
+        -encoded_value: int
+        +__init__(callsign)
+        +to_bytes() bytes
+        +from_bytes(station_bytes) StationIdentifier
+        +from_encoded(encoded_value) StationIdentifier
+        -_validate_callsign(callsign) str
+        +__str__() str
+    }
+
+    class MessageType {
+        <<enumeration>>
+        VOICE: (1, "VOICE")
+        CONTROL: (2, "CONTROL")
+        TEXT: (3, "TEXT")
+        DATA: (4, "DATA")
+        +priority: int
+        +message_name: str
+    }
+
+    class QueuedMessage {
+        +msg_type: MessageType
+        +data: bytes
+        +timestamp: float
+        +attempts: int
+        +max_attempts: int
+        +__init__(msg_type, data, timestamp)
+        +__lt__(other) bool
+    }
+
+    class MessagePriorityQueue {
+        -queue: PriorityQueue
+        -_stats: dict
+        -_lock: threading.Lock
+        +add_message(msg_type, data) QueuedMessage
+        +get_next_message(timeout) QueuedMessage
+        +clear_lower_priority(min_priority)
+        +get_stats() dict
+        +mark_sent()
+        +mark_dropped()
+    }
+
+    class OpulentVoiceProtocol {
+        +STREAM_SYNCH_WORD: bytes
+        +EOT_SYNCH_WORD: bytes
+        +FRAME_TYPE_AUDIO: int
+        +FRAME_TYPE_TEXT: int
+        +FRAME_TYPE_CONTROL: int
+        +FRAME_TYPE_DATA: int
+        +HEADER_SIZE: int
+        -station_id: StationIdentifier
+        -station_id_bytes: bytes
+        -sequence_counter: int
+        +__init__(station_identifier)
+        +create_frame(frame_type, payload) bytes
+        +create_audio_frame(opus_packet) bytes
+        +create_text_frame(text_data) bytes
+        +create_control_frame(control_data) bytes
+        +create_data_frame(data) bytes
+        +parse_frame(frame_data) dict
+        +station_id_to_string(station_id_bytes) str
+    }
+
+    class NetworkTransmitter {
+        -target_ip: str
+        -target_port: int
+        -socket: socket
+        -stats: dict
+        +__init__(target_ip, target_port)
+        +setup_socket()
+        +send_frame(frame_data) bool
+        +get_stats() dict
+        +close()
+    }
+
+    class ChatManager {
+        -station_id: StationIdentifier
+        -ptt_active: bool
+        -pending_messages: list
+        -message_queue: MessagePriorityQueue
+        +__init__(station_id)
+        +set_message_queue(queue)
+        +set_ptt_state(active)
+        +handle_message_input(message_text) dict
+        +send_message_immediately(message_text)
+        +flush_buffered_messages() list
+        +get_pending_count() int
+        +clear_pending() int
+    }
+
+    class GPIOZeroPTTHandler {
+        -station_id: StationIdentifier
+        -message_queue: MessagePriorityQueue
+        -chat_manager: ChatManager
+        -ptt_button: Button
+        -led: LED
+        -protocol: OpulentVoiceProtocol
+        -transmitter: NetworkTransmitter
+        -encoder: opuslib.Encoder
+        -audio: pyaudio.PyAudio
+        +__init__(station_identifier, ptt_pin, led_pin, target_ip, target_port)
+        +setup_gpio_callbacks()
+        +setup_audio()
+        +audio_callback(in_data, frame_count, time_info, status)
+        +ptt_pressed()
+        +ptt_released()
+        +start()
+        +stop()
+        +cleanup()
+    }
+
+    class TerminalChatInterface {
+        -station_id: StationIdentifier
+        -chat_manager: ChatManager
+        -running: bool
+        -input_thread: threading.Thread
+        +__init__(station_id, chat_manager)
+        +start()
+        +stop()
+        -_input_loop()
+        -_show_prompt()
+        -_display_result(result)
+        +display_received_message(from_station, message)
+    }
+
+    %% Relationships
+    GPIOZeroPTTHandler --> StationIdentifier : uses
+    GPIOZeroPTTHandler --> MessagePriorityQueue : owns
+    GPIOZeroPTTHandler --> ChatManager : owns
+    GPIOZeroPTTHandler --> OpulentVoiceProtocol : owns
+    GPIOZeroPTTHandler --> NetworkTransmitter : owns
+    GPIOZeroPTTHandler --> TerminalChatInterface : owns
+    
+    ChatManager --> StationIdentifier : uses
+    ChatManager --> MessagePriorityQueue : uses
+    
+    TerminalChatInterface --> StationIdentifier : uses
+    TerminalChatInterface --> ChatManager : uses
+    
+    MessagePriorityQueue --> QueuedMessage : contains
+    QueuedMessage --> MessageType : uses
+    
+    OpulentVoiceProtocol --> StationIdentifier : uses
