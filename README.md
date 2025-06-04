@@ -1,5 +1,49 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
+
+### 20250603_ptt_audio.py Documentation
+
+1. Component Architecture Diagram
+
+This shows the high-level system architecture with the following layers.
+
+- Hardware Layer: GPIO, PTT button, LED, microphone, audio hardware
+- Audio Processing: PyAudio streams, OPUS encoding, validation
+- Protocol Stack: Station identification, RTP headers, Opulent Voice protocol layers
+- Message Management: Priority queues, chat management, message typing
+- Network Layer: UDP transmission and reception
+- User Interface: Terminal chat interface and debug configuration
+
+2. UML Class Diagram
+   
+This details the object-oriented structure.
+
+- Core Domain Models: StationIdentifier, MessageType, QueuedMessage
+- Protocol Classes: RTPHeader, RTPAudioFrameBuilder, OpulentVoiceProtocol (with RTP extension)
+- System Management: GPIOZeroPTTHandler as the main orchestrator
+- Communication: NetworkTransmitter, MessageReceiver, ChatManager
+- User Interface: TerminalChatInterface, DebugConfig
+
+The inheritance relationship shows how OpulentVoiceProtocolWithRTP extends the base protocol.
+
+3. Message Flow Sequence Diagram
+
+This illustrates the dynamic behavior across several use cases. 
+
+- Voice Transmission: PTT press → audio processing → RTP framing → network transmission
+- Text Chat: Terminal input → buffering during PTT → priority queue management
+- Background Processing: Non-voice message transmission when PTT is inactive
+- Message Reception: Incoming packet parsing and routing based on frame type
+- Error Handling: Network failures, audio validation errors, statistics tracking
+
+The diagram shows how the following things are achieved. 
+
+- Priority-based message queuing (voice gets immediate transmission, chat waits respectfully)
+- RTP integration with the custom Opulent Voice Protocol frame headers
+- PTT-aware chat buffering (messages typed during transmission are held and sent after PTT release)
+- Domain-driven design with Base-40 callsign encoding in StationIdentifier
+  
+
 ### 20250528_3 Protocol Frame Structure
 All payloads follow the same underlying frame format in OpulentVoiceProtocol.create_frame():
 
@@ -74,4 +118,4 @@ class MessageType(Enum):
     TEXT = (3, "TEXT")         # Normal priority queue  
     DATA = (4, "DATA")         # Low priority queue
 ```
-   
+
