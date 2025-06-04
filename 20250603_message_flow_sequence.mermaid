@@ -1,0 +1,126 @@
+sequenceDiagram
+    participant User
+    participant PTT as PTT Button
+    participant GPIO as GPIOZeroPTTHandler
+    participant Chat as ChatManager
+    participant Queue as MessagePriorityQueue
+    participant Protocol as OVProtocolWithRTP
+    participant RTP as RTPAudioFrameBuilder
+    participant Audio as PyAudio
+    participant Encoder as OPUS Encoder
+    participant Network as NetworkTransmitter
+    participant Terminal as TerminalChatInterface
+    participant Receiver as MessageReceiver
+
+    Note over User, Receiver: Voice Transmission Flow
+
+    User->>PTT: Press PTT Button
+    PTT->>GPIO: ptt_pressed() callback
+    GPIO->>Chat: set_ptt_state(True)
+    GPIO->>Protocol: notify_ptt_pressed()
+    Protocol->>RTP: start_new_talk_spurt()
+    GPIO->>Queue: add_message(CONTROL, "PTT_START")
+    GPIO->>GPIO: LED on, ptt_active=True
+
+    loop Audio Processing (40ms frames)
+        Audio->>GPIO: audio_callback(audio_data)
+        GPIO->>GPIO: validate_audio_frame()
+        GPIO->>Encoder: encode(audio_data)
+        Encoder-->>GPIO: opus_packet (80 bytes)
+        GPIO->>GPIO: validate_opus_packet()
+        GPIO->>Protocol: create_audio_frame(opus_packet)
+        Protocol->>RTP: create_rtp_audio_frame()
+        RTP-->>Protocol: RTP frame (12B header + 80B opus)
+        Protocol-->>GPIO: OV frame (13B header + RTP frame)
+        GPIO->>Network: send_frame_immediate()
+        Network-->>GPIO: transmission success/failure
+    end
+
+    User->>PTT: Release PTT Button
+    PTT->>GPIO: ptt_released() callback
+    GPIO->>Chat: set_ptt_state(False)
+    GPIO->>Protocol: notify_ptt_released()
+    Protocol->>RTP: end_talk_spurt()
+    GPIO->>Queue: add_message(CONTROL, "PTT_STOP")
+    GPIO->>GPIO: LED off, ptt_active=False
+    Chat->>Chat: flush_buffered_messages()
+
+    Note over User, Receiver: Text Chat Flow
+
+    User->>Terminal: Type chat message
+    Terminal->>Chat: handle_message_input()
+    
+    alt PTT Active
+        Chat->>Chat: Buffer message in pending_messages[]
+        Terminal-->>User: Show "buffered" status
+    else PTT Inactive
+        Chat->>Queue: add_message(TEXT, message)
+        Terminal-->>User: Show "sent" status
+    end
+
+    Note over Queue, Network: Background Transmission Loop
+
+    loop Background Thread
+        Queue->>Queue: get_next_message(timeout=0.1)
+        alt Message available AND PTT inactive
+            Queue-->>GPIO: QueuedMessage
+            GPIO->>Protocol: create_text_frame() | create_control_frame()
+            Protocol-->>GPIO: OV frame
+            GPIO->>Network: send_frame()
+            Network-->>GPIO: success/failure
+            GPIO->>Queue: mark_sent() | mark_dropped()
+        else PTT active
+            Note over GPIO: Wait - voice has priority
+        end
+    end
+
+    Note over Network, Receiver: Message Reception Flow
+
+    Network->>Receiver: Incoming UDP packet
+    Receiver->>Protocol: parse_frame(data)
+    Protocol-->>Receiver: Parsed frame data
+    
+    alt Audio Frame
+        Receiver->>Terminal: Display voice indicator
+    else Text Frame
+        Receiver->>Terminal: display_received_message()
+        Terminal-->>User: Show incoming message
+    else Control Frame
+        Receiver->>Terminal: Display control message
+    end
+
+    Note over User, Receiver: PTT State Changes with Buffered Messages
+
+    User->>Terminal: Type message during PTT
+    Terminal->>Chat: handle_message_input()
+    Chat->>Chat: Add to pending_messages[]
+    Terminal-->>User: Show buffered count
+
+    User->>PTT: Release PTT
+    PTT->>GPIO: ptt_released()
+    GPIO->>Chat: set_ptt_state(False)
+    Chat->>Chat: flush_buffered_messages()
+    
+    loop For each buffered message
+        Chat->>Queue: add_message(TEXT, buffered_msg)
+        Chat->>Terminal: Show "sent buffered message"
+    end
+
+    Note over User, Receiver: Error Handling and Statistics
+
+    alt Network Error
+        Network-->>GPIO: send_frame() returns False
+        GPIO->>GPIO: Increment error stats
+        GPIO->>Terminal: Log error message
+    end
+
+    alt Audio Validation Error
+        GPIO->>GPIO: validate_audio_frame() fails
+        GPIO->>GPIO: Increment invalid_frames stat
+        GPIO->>GPIO: Skip frame processing
+    end
+
+    User->>Terminal: Type "status"
+    Terminal->>Chat: _show_status()
+    Chat-->>Terminal: PTT state, buffered count
+    Terminal-->>User: Display chat statistics

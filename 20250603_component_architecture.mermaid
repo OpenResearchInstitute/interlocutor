@@ -1,0 +1,108 @@
+graph TB
+    subgraph "Hardware Layer"
+        GPIO[GPIO Controller]
+        PTT[PTT Button]
+        LED[Status LED]
+        MIC[Microphone]
+        AUDIO[Audio Hardware]
+    end
+
+    subgraph "GPIO Management"
+        GPIOHandler[GPIOZeroPTTHandler]
+        Button[gpiozero.Button]
+        LEDCtrl[gpiozero.LED]
+    end
+
+    subgraph "Audio Processing"
+        PyAudio[PyAudio Stream]
+        OpusEnc[OPUS Encoder]
+        AudioVal[Audio Validator]
+    end
+
+    subgraph "Protocol Stack"
+        StationID[StationIdentifier]
+        RTPHeader[RTP Header Builder]
+        RTPFrame[RTP Audio Frame Builder]
+        OVProtocol[Opulent Voice Protocol]
+        OVProtocolRTP[OV Protocol with RTP]
+    end
+
+    subgraph "Message Management"
+        MsgQueue[Message Priority Queue]
+        MsgType[Message Type Enum]
+        QueuedMsg[Queued Message]
+        ChatMgr[Chat Manager]
+    end
+
+    subgraph "Network Layer"
+        NetTx[Network Transmitter]
+        MsgRx[Message Receiver]
+        UDP[UDP Socket]
+    end
+
+    subgraph "User Interface"
+        TermChat[Terminal Chat Interface]
+        DebugConfig[Debug Configuration]
+    end
+
+    subgraph "Application Control"
+        MainApp[Main Application]
+        ArgParser[Argument Parser]
+    end
+
+    %% Hardware connections
+    PTT --> Button
+    LED --> LEDCtrl
+    MIC --> PyAudio
+    AUDIO --> PyAudio
+
+    %% GPIO flow
+    Button --> GPIOHandler
+    LEDCtrl --> GPIOHandler
+    GPIO --> GPIOHandler
+
+    %% Audio processing flow
+    PyAudio --> OpusEnc
+    OpusEnc --> AudioVal
+    AudioVal --> RTPFrame
+
+    %% Protocol stack connections
+    StationID --> OVProtocol
+    StationID --> OVProtocolRTP
+    RTPHeader --> RTPFrame
+    RTPFrame --> OVProtocolRTP
+    OVProtocol --> NetTx
+    OVProtocolRTP --> NetTx
+
+    %% Message management
+    MsgType --> QueuedMsg
+    QueuedMsg --> MsgQueue
+    ChatMgr --> MsgQueue
+    GPIOHandler --> ChatMgr
+
+    %% Network connections
+    NetTx --> UDP
+    MsgRx --> UDP
+    UDP --> Network[(Network)]
+
+    %% User interface connections
+    TermChat --> ChatMgr
+    DebugConfig --> MainApp
+
+    %% Main application control
+    MainApp --> ArgParser
+    MainApp --> GPIOHandler
+    MainApp --> MsgRx
+    MainApp --> TermChat
+
+    %% Integration points
+    GPIOHandler --> MsgQueue
+    GPIOHandler --> NetTx
+    GPIOHandler --> OVProtocolRTP
+    ChatMgr --> TermChat
+
+    style GPIOHandler fill:#e1f5fe
+    style OVProtocolRTP fill:#f3e5f5
+    style MsgQueue fill:#e8f5e8
+    style NetTx fill:#fff3e0
+    style TermChat fill:#fce4ec

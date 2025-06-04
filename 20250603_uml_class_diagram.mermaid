@@ -1,0 +1,181 @@
+classDiagram
+    class StationIdentifier {
+        +string callsign
+        +int encoded_value
+        +__init__(callsign)
+        +validate_callsign(callsign)
+        +to_bytes() bytes
+        +from_bytes(station_bytes) StationIdentifier
+        +from_encoded(encoded_value) StationIdentifier
+    }
+
+    class MessageType {
+        <<enumeration>>
+        VOICE
+        CONTROL
+        TEXT
+        DATA
+        +int priority
+        +string message_name
+    }
+
+    class QueuedMessage {
+        +MessageType msg_type
+        +bytes data
+        +float timestamp
+        +int attempts
+        +int max_attempts
+        +__init__(msg_type, data, timestamp)
+        +__lt__(other) bool
+    }
+
+    class MessagePriorityQueue {
+        -PriorityQueue queue
+        -dict stats
+        -Lock lock
+        +add_message(msg_type, data) QueuedMessage
+        +get_next_message(timeout) QueuedMessage
+        +clear_lower_priority(min_priority)
+        +get_stats() dict
+        +mark_sent()
+        +mark_dropped()
+    }
+
+    class RTPHeader {
+        +int VERSION
+        +int PT_OPUS
+        +int HEADER_SIZE
+        +int version
+        +int sequence_number
+        +int ssrc
+        +int timestamp_base
+        +__init__(payload_type, ssrc)
+        +generate_ssrc() int
+        +create_header(is_first_packet, custom_timestamp) bytes
+        +parse_header(header_bytes) dict
+        +get_stats() dict
+    }
+
+    class RTPAudioFrameBuilder {
+        +StationIdentifier station_id
+        +RTPHeader rtp_header
+        +bool is_talk_spurt_start
+        +int expected_opus_size
+        +__init__(station_identifier, payload_type)
+        +create_rtp_audio_frame(opus_packet, is_start) bytes
+        +validate_opus_packet(opus_packet) bool
+        +start_new_talk_spurt()
+        +end_talk_spurt()
+        +get_rtp_stats() dict
+    }
+
+    class OpulentVoiceProtocol {
+        +bytes STREAM_SYNCH_WORD
+        +int FRAME_TYPE_AUDIO
+        +int FRAME_TYPE_TEXT
+        +int FRAME_TYPE_CONTROL
+        +int FRAME_TYPE_DATA
+        +bytes TOKEN
+        +int HEADER_SIZE
+        +StationIdentifier station_id
+        +bytes station_id_bytes
+        +__init__(station_identifier)
+        +create_frame(frame_type, payload) bytes
+        +create_audio_frame(opus_packet) bytes
+        +create_text_frame(text_data) bytes
+        +create_control_frame(control_data) bytes
+        +create_data_frame(data) bytes
+        +parse_frame(frame_data) dict
+        +station_id_to_string(station_id_bytes) string
+    }
+
+    class OpulentVoiceProtocolWithRTP {
+        +RTPAudioFrameBuilder rtp_builder
+        +__init__(station_identifier)
+        +create_audio_frame(opus_packet, is_start) bytes
+        +parse_audio_frame(frame_data) dict
+        +notify_ptt_pressed()
+        +notify_ptt_released()
+        +create_text_frame(text_data) bytes
+        +create_control_frame(control_data) bytes
+        +create_data_frame(data) bytes
+    }
+
+    class NetworkTransmitter {
+        +string target_ip
+        +int target_port
+        +socket socket
+        +dict stats
+        +__init__(target_ip, target_port)
+        +setup_socket()
+        +send_frame(frame_data) bool
+        +get_stats() dict
+        +close()
+    }
+
+    class ChatManager {
+        +StationIdentifier station_id
+        +bool ptt_active
+        +list pending_messages
+        +MessagePriorityQueue message_queue
+        +__init__(station_id)
+        +set_message_queue(queue)
+        +set_ptt_state(active)
+        +handle_message_input(message_text) dict
+        +send_message_immediately(message_text)
+        +flush_buffered_messages() list
+        +get_pending_count() int
+        +clear_pending() int
+    }
+
+    class GPIOZeroPTTHandler {
+        +StationIdentifier station_id
+        +MessagePriorityQueue message_queue
+        +ChatManager chat_manager
+        +Button ptt_button
+        +LED led
+        +bool ptt_active
+        +int sample_rate
+        +Encoder encoder
+        +OpulentVoiceProtocolWithRTP protocol
+        +NetworkTransmitter transmitter
+        +PyAudio audio
+        +dict audio_stats
+        +__init__(station_identifier, ptt_pin, led_pin, target_ip, target_port)
+        +setup_gpio_callbacks()
+        +setup_audio()
+        +validate_audio_frame(audio_data) bool
+        +validate_opus_packet(opus_packet) bool
+        +audio_callback(in_data, frame_count, time_info, status)
+        +send_voice_frame_immediate(opus_packet) bool
+        +start_background_transmission()
+        +ptt_pressed()
+        +ptt_released()
+        +print_stats()
+        +test_gpio()
+        +test_network()
+        +start()
+        +stop()
+        +cleanup()
+    }
+
+    StationIdentifier --> OpulentVoiceProtocol
+    StationIdentifier --> OpulentVoiceProtocolWithRTP
+    StationIdentifier --> RTPAudioFrameBuilder
+    StationIdentifier --> ChatManager
+    StationIdentifier --> GPIOZeroPTTHandler
+
+    MessageType --> QueuedMessage
+    QueuedMessage --> MessagePriorityQueue
+
+    RTPHeader --> RTPAudioFrameBuilder
+    RTPAudioFrameBuilder --> OpulentVoiceProtocolWithRTP
+
+    OpulentVoiceProtocol <|-- OpulentVoiceProtocolWithRTP
+
+    MessagePriorityQueue --> ChatManager
+    MessagePriorityQueue --> GPIOZeroPTTHandler
+
+    ChatManager --> GPIOZeroPTTHandler
+    OpulentVoiceProtocolWithRTP --> GPIOZeroPTTHandler
+    NetworkTransmitter --> GPIOZeroPTTHandler
