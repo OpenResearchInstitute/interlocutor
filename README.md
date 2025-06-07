@@ -1,6 +1,15 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
 
+### 20250607_ptt_audio.py Documentation
+
+UDP layer handles data types now. 
+
+- port 57372 is the default Network Transmitter port. This port can be set from the command line. This is the port (together with the target IP address) that lets you connect Interlocutor up to an SDR or talk to a computer on the internet or a repeater or any other type of equipment with IP:port that can receive Opulent Voice frames. 
+- port 57373 audio
+- port 57374 text
+- port 57375 control
+
 ### 20250605_ptt_audio.py Documentation
 
 ✅ Voice frames: 133 bytes (OV + IP + UDP + RTP + OPUS)
