@@ -4,9 +4,13 @@
 ### 20250605_ptt_audio.py Documentation
 
 ✅ Voice frames: 133 bytes (OV + IP + UDP + RTP + OPUS)
+
 ✅ Text frames: 41 bytes + text payload (OV + IP + UDP + text)
+
 ✅ Control frames: 41 bytes + control payload (OV + IP + UDP + control)
+
 ✅ Real IP headers with proper source/destination addresses
+
 ✅ Quality of Service IP "settings" for different traffic types
 
 ### 20250603_ptt_audio.py Documentation
