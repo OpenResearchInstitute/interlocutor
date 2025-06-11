@@ -1,6 +1,24 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
 
+### 20250610_queue_audio.py Documentation
+
+- Voice PTT with OPUS encoding (highest priority)
+- Terminal-based keyboard chat interface
+- Priority queue system for message handling
+- Background thread for non-voice transmission
+- Point-to-point testing while maintaining voice quality
+- Debug/verbose mode for development
+- Modify fields of custom headers 
+- (EOS unimplemented, sequence and length removed)
+- Low Priority To Do: make audio test message real audio
+- Added RTP Headers, Added UDP Headers, Added IP Headers
+- UDP ports indicate data types
+- Added COBS
+- All data now handled through priority queue
+- All data now in 40 ms frames
+- Improved timer - everything in audio callback
+
 ### 20250607_ptt_audio.py Documentation
 
 UDP layer handles data types now. 
