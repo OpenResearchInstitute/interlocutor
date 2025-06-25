@@ -12,8 +12,7 @@ network:
   listen_port: 57372
 
 audio:
-  sample_rate: 48000
-  bitrate: 16000
+  sample_rate: 48000           # Protocol requirement - do not change
   prefer_usb_device: true
   device_keywords: ["USB", "Samson", "Blue"]
 
@@ -76,8 +75,7 @@ network:
   target_port: 57372
 
 audio:
-  sample_rate: 48000
-  bitrate: 16000
+  sample_rate: 48000           # Protocol requirement - do not change
 
 protocol:
   target_type: "computer"       # Computer target for development
@@ -128,8 +126,7 @@ network:
   target_port: 57372
 
 audio:
-  sample_rate: 48000
-  bitrate: 16000
+  sample_rate: 48000           # Protocol requirement - do not change
   prefer_usb_device: true
 
 gpio:
@@ -160,8 +157,7 @@ network:
   target_port: 57372
 
 audio:
-  sample_rate: 44100            # Match USB device native rate
-  bitrate: 16000
+  sample_rate: 48000            # Protocol requirement - do not change
   prefer_usb_device: true
   device_keywords: ["Samson", "C01U", "USB"]
 
