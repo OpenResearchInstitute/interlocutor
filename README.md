@@ -1,6 +1,10 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
 
+### 20250625_queue_audio.py Documentation
+
+YAML configuration files can be loaded and edited. Sample configuration files created. 
+
 ### 20250610_queue_audio.py Documentation
 
 - Voice PTT with OPUS encoding (highest priority)
