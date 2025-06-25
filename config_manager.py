@@ -30,7 +30,6 @@ class NetworkConfig:
 class AudioConfig:
     """Audio system configuration"""
     sample_rate: int = 48000
-    bitrate: int = 16000
     channels: int = 1
     frame_duration_ms: int = 40
     
@@ -38,6 +37,9 @@ class AudioConfig:
     input_device: Optional[str] = None  # Auto-detect if None
     prefer_usb_device: bool = True
     device_keywords: list = field(default_factory=lambda: ["Samson", "C01U", "USB"])
+    
+    # Protocol constants (not user-configurable)
+    bitrate: int = field(default=16000, init=False)  # OPUS bitrate - protocol requirement
 
 @dataclass
 class GPIOConfig:
@@ -63,10 +65,7 @@ class ProtocolConfig:
 
 @dataclass
 class DebugConfig:
-    """
-    Debug and logging configuration:
-    DEBUG, INFO, WARNING, ERROR
-    """
+    """Debug and logging configuration"""
     verbose: bool = False
     quiet: bool = False
     log_level: str = "INFO"
@@ -324,10 +323,9 @@ network:
 
 # Audio system configuration
 audio:
-  sample_rate: 48000              # Audio sample rate (Hz)
-  bitrate: 16000                  # OPUS bitrate (bps)
+  sample_rate: 48000              # Audio sample rate (Hz) - protocol requirement
   channels: 1                     # Number of audio channels
-  frame_duration_ms: 40           # Audio frame duration (milliseconds)
+  frame_duration_ms: 40           # Audio frame duration (milliseconds) - protocol requirement
   
   # Audio device selection
   input_device: null              # Specific device name, or null for auto-detect
@@ -336,6 +334,8 @@ audio:
     - "Samson"
     - "C01U" 
     - "USB"
+    
+  # Note: OPUS bitrate is fixed at 16000 bps (protocol requirement)
 
 # GPIO pin configuration (Raspberry Pi)
 gpio:
