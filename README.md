@@ -5,6 +5,32 @@
 
 YAML configuration files can be loaded and edited. Sample configuration files created. 
 
+Thoughts on future bitrate changes. 
+
+```
+@dataclass
+class AudioConfig:
+    # Protocol constants (not user-configurable)
+    bitrate: int = field(default=32000, init=False)  # Simply changed from 16000 to 32000, not user configurable
+```
+
+Here's a version-aware way to do this:
+
+```
+@dataclass  
+class ProtocolConfig:
+    protocol_version: str = "2.0"
+    
+    def get_bitrate(self):
+        if self.protocol_version == "1.0":
+            return 16000
+        elif self.protocol_version == "2.0": 
+            return 32000
+        else:
+            raise ValueError(f"Unknown protocol version: {self.protocol_version}")
+```
+
+
 ### 20250610_queue_audio.py Documentation
 
 - Voice PTT with OPUS encoding (highest priority)
