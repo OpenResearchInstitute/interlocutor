@@ -1818,10 +1818,9 @@ class IPHeader:
 	def _get_local_ip(self):
 		"""Auto-detect local IP address"""
 		try:
-			# Connect to a remote address to determine local IP
-			# below method requires us to have Internet access!!!
+			# Connect to our target address to determine our IP address
 			with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-				s.connect(("8.8.8.8", 80))
+				s.connect((self.dest_ip, 80))
 				return s.getsockname()[0]
 		except:
 			return "127.0.0.1"  # Fallback to localhost if all else fails
@@ -2932,8 +2931,10 @@ class GPIOZeroPTTHandler:
 
 
 
-	# minimal audio_callback to see where the problem is
-	def audio_callback(self, in_data, frame_count, time_info, status):
+	# minimal audio_callback to see where audio overflow problem was
+	# swap in for audio_callback to test things
+	# results were: problem is not in our code
+	def audio_callback_minimal(self, in_data, frame_count, time_info, status):
 		if status:
 			print(f"⚠ Audio status flags: {status}")
     
@@ -2944,9 +2945,7 @@ class GPIOZeroPTTHandler:
 
 
 
-
-
-	def audio_callback_actual(self, in_data, frame_count, time_info, status):
+	def audio_callback(self, in_data, frame_count, time_info, status):
 		"""
 		MODIFIED audio callback that drives all transmission
 		This replaces the existing audio_callback method
