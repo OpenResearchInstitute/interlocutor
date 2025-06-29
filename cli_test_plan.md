@@ -1,9 +1,8 @@
-# Opulent Voice CLI Testing Plan
+# Interlocutor CLI Testing Plan
 
-## 🎯 **Testing Philosophy**
 Test like a radio operator: start simple, add complexity, verify every control works as expected.
 
-## 📋 **Pre-Test Setup**
+## **Pre-Test Setup**
 Before each test session, establish known states:
 
 ### Clean Slate Tests (simulate new user)
@@ -84,7 +83,7 @@ cp test_configs/good_audio.yaml audio_config.yaml
 | Long session | Run for 30+ minutes | Stable operation | ⬜ | |
 | Multiple restarts | Start/stop 10 times | Consistent behavior | ⬜ | |
 
-## 🤖 **Automated Test Script**
+## **Automated Test Script**
 
 Create `test_cli.sh` for systematic testing:
 
@@ -137,38 +136,40 @@ run_test "List audio devices" "python radio.py W1ABC --list-audio" 0
 echo "📊 Test Results: $PASSED/$TESTS passed ($FAILED failed)"
 ```
 
-## 📝 **Manual Test Checklist**
+## **Manual Test Checklist**
 
 For each test session:
 
-1. **📋 Document environment:**
+1. **Document environment:**
    - Python version: `python --version`
    - OS version: `uname -a` 
    - Hardware: Pi model, USB devices connected
 
-2. **🎯 Pick test phase** (start with Phase 1)
+2. **Pick test phase** (start with Phase 1)
 
-3. **📖 Follow test table** systematically
+3. **Follow test table** systematically
 
 4. **✅ Mark Pass/Fail** and note any issues
 
-5. **🐛 For failures:** Note exact error message, command used, environment
+5. **For failures:** Note exact error message, command used, environment
 
-## 🔧 **Test Tips**
+## **Test Tips**
 
-- **Test in virtual environment** AND outside it
-- **Test with different USB audio devices** if available
+- **Test in virtual environment** AND outside it - should fail if not in a virtual environment
+- **Test with different USB audio devices**
 - **Test network connectivity scenarios** (WiFi, Ethernet, offline)
-- **Test GPIO scenarios** (if on actual Pi vs development machine)
+- **Test GPIO scenarios** (if on actual Pi vs some other Pi)
 - **Save test configs** for repeatable testing
 
-## 📊 **Success Criteria**
+## **Success Criteria**
 
-- ✅ All Phase 1-4 tests pass (core functionality)
-- ✅ Error handling is graceful (no Python tracebacks for user errors)
-- ✅ Help text is clear and complete
-- ✅ Audio device selection works on different hardware
-- ✅ Network configuration applies correctly
-- ✅ Configuration files are created/updated properly
+mark with ✅ when complete
+
+- ⬜ All Phase 1-4 tests pass (core functionality)
+- ⬜ Error handling is graceful (no Python tracebacks for user errors)
+- ⬜ Help text is clear and complete?
+- ⬜ Audio device selection works on different hardware
+- ⬜ Network configuration applies correctly
+- ⬜ Configuration files are created/updated properly
 
 Would you like me to create any specific test scripts or expand on particular test scenarios?
