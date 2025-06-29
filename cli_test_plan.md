@@ -85,56 +85,22 @@ cp test_configs/good_audio.yaml audio_config.yaml
 
 ## **Automated Test Script**
 
-Create `test_cli.sh` for systematic testing:
+automated_test_suite.sh
 
-```bash
-#!/bin/bash
-# Opulent Voice CLI Test Runner
+### Run all tests
+./test_suite.sh
 
-echo "🧪 Starting CLI test suite..."
+### Run with verbose output to see what's happening
+./test_suite.sh --verbose
 
-# Test counter
-TESTS=0
-PASSED=0
-FAILED=0
+### Run only critical tests (faster)
+./test_suite.sh --quick
 
-# Function to run a test
-run_test() {
-    local test_name="$1"
-    local command="$2"
-    local expected_exit="$3"
-    
-    echo "Testing: $test_name"
-    echo "Command: $command"
-    
-    TESTS=$((TESTS + 1))
-    
-    # Run command with timeout
-    timeout 10s bash -c "$command" >/dev/null 2>&1
-    exit_code=$?
-    
-    if [ $exit_code -eq $expected_exit ]; then
-        echo "✅ PASS"
-        PASSED=$((PASSED + 1))
-    else
-        echo "❌ FAIL (exit code: $exit_code, expected: $expected_exit)"
-        FAILED=$((FAILED + 1))
-    fi
-    echo
-}
+### Run specific phase
+./test_suite.sh --phase 2  # Just audio tests
 
-# Clean slate
-rm -f *.yaml 2>/dev/null
-
-# Run basic tests
-run_test "Help display" "python radio.py --help" 0
-run_test "Bad callsign" "python radio.py 'BAD!'" 1
-run_test "List audio devices" "python radio.py W1ABC --list-audio" 0
-
-# Add more tests here...
-
-echo "📊 Test Results: $PASSED/$TESTS passed ($FAILED failed)"
-```
+### Get help
+./test_suite.sh --help
 
 ## **Manual Test Checklist**
 
