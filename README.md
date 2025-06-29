@@ -1,9 +1,13 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
 
-### 20250625_queue_audio.py Documentation
+### 28 June 2025 Documentation
 
-YAML configuration files can be loaded and edited. Sample configuration files created. 
+YAML audio device configuration file can be loaded and edited and saved. Audio devices manager added.  
+
+### 25 June 2025 Documentation
+
+YAML configuration files can be loaded and edited and saved. Sample configuration files created. 
 
 Thoughts on future bitrate changes. 
 
