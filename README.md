@@ -1,6 +1,20 @@
 # interlocutor
 ## Raspberry Pi Human Radio Interface for Opulent Voice
 
+### Getting Started
+
+1. Install dependencies
+
+pip3 install -r requirements.txt
+
+2. Or install manually
+
+pip3 install opuslib pyaudio gpiozero PyYAML numpy
+
+3. On Raspberry Pi, pyaudio might need:
+
+sudo apt install python3-pyaudio
+
 ### 28 June 2025 Documentation
 
 YAML audio device configuration file can be loaded and edited and saved. Audio devices manager added.  
