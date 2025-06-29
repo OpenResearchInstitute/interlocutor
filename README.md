@@ -5,6 +5,35 @@
 
 YAML audio device configuration file can be loaded and edited and saved. Audio devices manager added.  
 
+Opulent Voice Radio Operator UX Principles
+
+We are going to think like a ham radio operator setting up a new rig
+
+- Visual confirmation "Show me what's connected right now"
+- Test before commit "Let me hear it working before other people hear me"
+- Quick switching "I want to change headsets because the other ones are more comfortable"
+- Persistent settings "Remember my preferred setup for next time"
+
+Key Features
+
+- Visual Device Discovery shows USB vs built-in devices with clear indicators
+- Live Audio Testing shows microphone level meters and speaker test tones
+- Smart Recommendations prioritizes USB devices (better for radio use)
+- Persistent Preferences remembers your choices between sessions
+- Quick Re-selection enables easy device switching without restarting the program (untested as of 28 June 2025)
+
+Command line argument additions are
+
+```python radio.py W1ABC --setup-audio  # Force device selection```
+
+```python radio.py W1ABC --list-audio   # Just show devices```
+
+```python radio.py W1ABC --test-audio   # Test current audio devices```
+
+
+
+
+
 ### 25 June 2025 Documentation
 
 YAML configuration files can be loaded and edited and saved. Sample configuration files created. 
