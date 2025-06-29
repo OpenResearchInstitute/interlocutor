@@ -464,7 +464,7 @@ description: "Opulent Voice Protocol Configuration"
         setattr(obj, parts[-1], value)
 
 def create_enhanced_argument_parser() -> argparse.ArgumentParser:
-    """Create argument parser that works with configuration system"""
+    """Create argument parser that works with configuration system and audio device options"""
     parser = argparse.ArgumentParser(
         description='Opulent Voice Protocol PTT Radio Interface with Chat',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -517,6 +517,24 @@ def create_enhanced_argument_parser() -> argparse.ArgumentParser:
                             help='Enable verbose debug output')
     debug_group.add_argument('-q', '--quiet', action='store_true',
                             help='Quiet mode - minimal output')
+
+    # Audio device management
+    audio_group = parser.add_argument_group('Audio Device Options')
+    audio_group.add_argument(
+        '--setup-audio', 
+        action='store_true',
+        help='Interactive audio device selection and testing'
+    )
+    audio_group.add_argument(
+        '--list-audio',
+        action='store_true', 
+        help='List available audio devices and exit'
+    )
+    audio_group.add_argument(
+        '--test-audio',
+        action='store_true',
+        help='Test current audio devices and exit'
+    )
 
     return parser
 

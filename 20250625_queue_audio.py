@@ -17,6 +17,7 @@ GPIO PTT Audio, Terminal Chat, Control Messages, and Config Files
 - All data now in 40 ms frames
 - Improved timer - everything in audio callback
 - Configuration Files in YAML
+- Audio Device Configuration in YAML
 """
 
 import sys
@@ -41,6 +42,8 @@ from config_manager import (
     create_enhanced_argument_parser, 
     setup_configuration
 )
+
+from audio_device_manager import AudioDeviceManager
 
 
 # check for virtual environment
@@ -2819,7 +2822,69 @@ class GPIOZeroPTTHandler:
 			if info['maxInputChannels'] > 0:  # Has input capability
 				DebugConfig.debug_print(f"   Device {i}: {info['name']} (inputs: {info['maxInputChannels']}, rate: {info['defaultSampleRate']})")
 
-	def setup_audio(self):
+
+
+	def setup_audio(self, force_device_selection=False):
+		"""Setup audio input with optional device selection"""
+        
+		# Create device manager with our config
+		device_manager = AudioDeviceManager(
+		config_file="audio_config.yaml", 
+		radio_config=self.config
+		)
+        
+		try:
+			# Device selection based on force flag or first-time setup
+			input_device, output_device = device_manager.setup_audio_devices(
+				force_selection=force_device_selection
+			)
+            
+			# Use the SAME parameters for actual audio setup
+			params = device_manager.audio_params
+            
+			# Update our instance variables to match selected params
+			self.sample_rate = params['sample_rate']
+			self.samples_per_frame = params['frames_per_buffer']
+			self.bytes_per_frame = self.samples_per_frame * 2
+            
+			DebugConfig.debug_print(f"🎵 Audio config: {params['sample_rate']}Hz, {params['frame_duration_ms']}ms frames")
+			DebugConfig.debug_print(f"   Samples per frame: {params['frames_per_buffer']}")
+			DebugConfig.debug_print(f"   Selected input device: {input_device}")
+            
+			# Rest of previous audio setup here.
+			try:
+				self.audio_input_stream = self.audio.open(
+					format=pyaudio.paInt16,
+					channels=params['channels'],
+					rate=params['sample_rate'], 
+					input=True,
+					input_device_index=input_device,
+					frames_per_buffer=params['frames_per_buffer'],
+					stream_callback=self.audio_callback
+				)
+				DebugConfig.debug_print("✓ Audio input stream ready with selected device")
+				DebugConfig.debug_print(f"Buffer latency: {self.audio_input_stream.get_input_latency():.3f}s")
+			except Exception as e:
+				DebugConfig.debug_print(f"✗ Audio setup error: {e}")
+				raise
+                
+		finally:
+			device_manager.cleanup()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	def setup_audio_old(self):
 		"""Setup audio input"""
 		# Check device info first
 		device_info = self.audio.get_default_input_device_info()
