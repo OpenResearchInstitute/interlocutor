@@ -102,6 +102,91 @@ automated_test_suite.sh
 ### Get help
 ./test_suite.sh --help
 
+### Interpreting Test Results
+
+Test   1: help_display                 PASS
+
+Test   2: version_info                 PASS  
+
+Test   3: no_callsign                  FAIL (exit: 0, expected: 2)
+
+Test   4: invalid_callsign             PASS
+
+#### Test Summary
+
+Total tests:   15
+
+Passed:        14
+
+Failed:        1
+
+Skipped:       0
+
+❌ Some tests failed. Check test_results_20250129_143022.log for details.
+
+### Key Components
+
+- Test Runner: run_test() function executes each test
+- Environment Setup: Creates/cleans config files between tests
+- Phases: Logical groupings of related tests
+- Logging: Detailed logs for debugging failures
+- Cleanup: Automatically restores your original configs
+
+### Test Structure
+
+```
+   bashrun_test "test_name" \
+    "command_to_run" \
+    expected_exit_code \
+    phase_number \
+    "description"
+```
+
+### Add Your Own Test
+
+```
+run_test "setup_audio_interactive" \
+    "echo 'y' | timeout 10s $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --setup-audio" \
+    124 2 "Interactive audio setup with default choice"
+
+run_test "list_audio_verbose" \
+    "$PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --list-audio --verbose" \
+    0 2 "List audio devices with verbose output"
+```
+
+### Test When You Do Not Have Hardware
+
+- Test GPIO without actual Pi
+
+```
+export GPIOZERO_PIN_FACTORY=mock
+run_test "mock_gpio" \
+    "timeout 5s $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN" \
+    124 4 "Test with mocked GPIO"
+```
+
+### Environmental Testing
+
+- Test virtual environment detection
+
+```
+run_test "venv_detection" \
+    "deactivate && $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN" \
+    1 5 "Detect missing virtual environment"
+```
+
+### Integration Testing
+
+- Test actual network transmission
+
+```
+   run_test "network_integration" \
+    "timeout 10s $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --test-network" \
+    124 3 "Network transmission test"
+```
+
+
+
 ## **Manual Test Checklist**
 
 For each test session:
