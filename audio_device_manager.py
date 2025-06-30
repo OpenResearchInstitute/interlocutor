@@ -1,498 +1,861 @@
 #!/usr/bin/env python3
 """
-Audio Device Manager for Opulent Voice Radio
-Provides radio operator-friendly audio device selection and testing
+Enhanced AudioDeviceManager with CLI and Interactive modes
+This replaces your existing audio_device_manager.py
 """
 
-import pyaudio
-import wave
-import tempfile
-import threading
+import os
+import sys
 import time
-from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
-from pathlib import Path
 import yaml
+import numpy as np
+from enum import Enum
+from typing import Optional, List, Tuple, Dict, Any
+from pathlib import Path
+from dataclasses import dataclass
+import logging
 
+# Try to import pyaudio, handle gracefully if not available
+try:
+    import pyaudio
+    PYAUDIO_AVAILABLE = True
+except ImportError:
+    PYAUDIO_AVAILABLE = False
+    print("⚠️  PyAudio not available - running in mock mode")
+
+class AudioManagerMode(Enum):
+    """Operating modes for the audio device manager"""
+    CLI_DIAGNOSTIC = "cli_diagnostic"    # Non-interactive, for --list-audio, --test-audio
+    INTERACTIVE = "interactive"          # Interactive mode for runtime setup
+    AUTOMATED = "automated"              # Use saved config, minimal interaction
 
 @dataclass
 class AudioDevice:
-    """Represents an audio device with radio-relevant info"""
+    """Represents an audio device"""
     index: int
     name: str
+    can_record: bool
+    can_playback: bool
+    default_sample_rate: float
     max_input_channels: int
     max_output_channels: int
-    default_sample_rate: float
-    is_usb: bool
-    is_default_input: bool
-    is_default_output: bool
-    api_name: str
+    host_api: str = "Unknown"
     
     def __str__(self):
-        usb_indicator = "🎧" if self.is_usb else "🔌"
-        default_in = " [DEFAULT IN]" if self.is_default_input else ""
-        default_out = " [DEFAULT OUT]" if self.is_default_output else ""
-        return f"{usb_indicator} {self.name}{default_in}{default_out}"
-    
-    @property
-    def can_record(self) -> bool:
-        return self.max_input_channels > 0
-    
-    @property
-    def can_playback(self) -> bool:
-        return self.max_output_channels > 0
-    
-    @property
-    def supports_48khz(self) -> bool:
-        """Check if device likely supports 48kHz (our target rate)"""
-        return self.default_sample_rate >= 48000 or self.is_usb
-
+        capabilities = []
+        if self.can_record:
+            capabilities.append(f"{self.max_input_channels} in")
+        if self.can_playback:
+            capabilities.append(f"{self.max_output_channels} out")
+        cap_str = f"({', '.join(capabilities)})" if capabilities else "(no capabilities)"
+        return f"{self.name} [{self.host_api}] {cap_str}"
 
 class AudioDeviceManager:
-    """
-    Radio operator-friendly audio device manager
+    """Enhanced audio device manager with context-aware behavior"""
     
-    Like a radio's front panel - clear, simple, and reliable
-    """
-    
-    def __init__(self, config_file: str = "audio_config.yaml", radio_config=None):
-        self.config_file = Path(config_file)
-        self.audio = pyaudio.PyAudio()
+    def __init__(self, mode: AudioManagerMode = AudioManagerMode.AUTOMATED, 
+                 config_file="audio_config.yaml", radio_config=None):
+        self.mode = mode
+        self.config_file = config_file
+        self.radio_config = radio_config
         self.current_input_device = None
         self.current_output_device = None
-        self.test_tone_playing = False
+        self.logger = logging.getLogger(__name__)
         
-        # Get audio parameters - robust fallback chain
-        self.audio_params = self._get_audio_params(radio_config)
+        # Test mode detection
+        self.test_mode = os.environ.get('OPULENT_VOICE_TEST_MODE') == '1'
         
-        # Load saved preferences
-        self.load_config()
-    
-    def _get_audio_params(self, radio_config) -> Dict:
-        """
-        Get audio parameters with robust fallback chain
-        Ensures consistency between testing and actual radio operation
-        """
-        try:
-            if radio_config and hasattr(radio_config, 'audio'):
-                # Use actual radio config if available
-                return {
-                    'sample_rate': radio_config.audio.sample_rate,
-                    'channels': radio_config.audio.channels,
-                    'frame_duration_ms': radio_config.audio.frame_duration_ms,
-                    'frames_per_buffer': int(radio_config.audio.sample_rate * 
-                                           radio_config.audio.frame_duration_ms / 1000)
-                }
-        except (AttributeError, TypeError) as e:
-            print(f"⚠ Radio config issue ({e}), using Opulent Voice defaults")
-        
-        # Import defaults from your main config system if possible
-        try:
-            from config_manager import OpulentVoiceConfig
-            default_config = OpulentVoiceConfig()  # Get system defaults
-            return {
-                'sample_rate': default_config.audio.sample_rate,
-                'channels': default_config.audio.channels, 
-                'frame_duration_ms': default_config.audio.frame_duration_ms,
-                'frames_per_buffer': int(default_config.audio.sample_rate * 
-                                       default_config.audio.frame_duration_ms / 1000)
+        # Audio parameters from radio config or defaults
+        if radio_config and hasattr(radio_config, 'audio'):
+            self.audio_params = {
+                'sample_rate': radio_config.audio.sample_rate,
+                'channels': radio_config.audio.channels,
+                'frames_per_buffer': int(radio_config.audio.sample_rate * radio_config.audio.frame_duration_ms / 1000),
+                'frame_duration_ms': radio_config.audio.frame_duration_ms
             }
-        except ImportError:
-            print("⚠ Config manager not available, using hardcoded Opulent Voice defaults")
+        else:
+            # Fallback defaults
+            self.audio_params = {
+                'sample_rate': 48000,
+                'channels': 1,
+                'frames_per_buffer': 1920,  # 40ms at 48kHz
+                'frame_duration_ms': 40
+            }
         
-        # Final fallback - hardcoded Opulent Voice Protocol defaults
-        # These MUST match your protocol specification
-        return {
-            'sample_rate': 48000,      # Opulent Voice Protocol requirement
-            'channels': 1,             # Mono for radio
-            'frame_duration_ms': 40,   # Opulent Voice Protocol requirement  
-            'frames_per_buffer': 1920  # 48000 * 0.040 = 1920 samples
-        }
+        self.logger.debug(f"AudioDeviceManager initialized in {mode.value} mode")
     
     def discover_devices(self) -> List[AudioDevice]:
-        """Discover all audio devices with radio-relevant info"""
-        devices = []
-        default_input = self.audio.get_default_input_device_info()
-        default_output = self.audio.get_default_output_device_info()
+        """Discover audio devices - behavior depends on mode"""
+        if self.test_mode:
+            return self._create_mock_devices()
         
-        for i in range(self.audio.get_device_count()):
-            try:
-                info = self.audio.get_device_info_by_index(i)
-                
-                # Detect USB devices (common radio interfaces)
-                is_usb = self._is_usb_device(info['name'])
-                
-                device = AudioDevice(
-                    index=i,
-                    name=info['name'],
-                    max_input_channels=info['maxInputChannels'],
-                    max_output_channels=info['maxOutputChannels'],
-                    default_sample_rate=info['defaultSampleRate'],
-                    is_usb=is_usb,
-                    is_default_input=(i == default_input['index']),
-                    is_default_output=(i == default_output['index']),
-                    api_name=self.audio.get_host_api_info_by_index(info['hostApi'])['name']
-                )
-                devices.append(device)
-                
-            except Exception as e:
-                print(f"Warning: Could not query device {i}: {e}")
+        if not PYAUDIO_AVAILABLE:
+            self.logger.warning("PyAudio not available, using mock devices")
+            return self._create_mock_devices()
         
-        return devices
+        if self.mode == AudioManagerMode.CLI_DIAGNOSTIC:
+            # CLI mode: Just discover and return, no user interaction
+            return self._discover_devices_non_interactive()
+        else:
+            # Normal discovery
+            return self._discover_devices_full()
     
-    def _is_usb_device(self, device_name: str) -> bool:
-        """Detect if a device is likely USB-connected"""
-        usb_indicators = [
-            'usb', 'headset', 'webcam', 'logitech', 'plantronics', 
-            'jabra', 'sennheiser', 'audio-technica', 'blue', 'samson',
-            'focusrite', 'scarlett', 'behringer', 'zoom', 'tascam'
-        ]
-        name_lower = device_name.lower()
-        return any(indicator in name_lower for indicator in usb_indicators)
+    def setup_audio_devices(self, force_selection=False) -> Tuple[Optional[int], Optional[int]]:
+        """Setup audio devices with mode-aware behavior"""
+        
+        if self.test_mode:
+            return self._setup_mock_devices()
+        
+        if self.mode == AudioManagerMode.CLI_DIAGNOSTIC:
+            # CLI mode: Use defaults or saved config, no interaction
+            return self._setup_devices_non_interactive()
+        
+        elif self.mode == AudioManagerMode.INTERACTIVE:
+            # Interactive mode: Show menus, ask for input
+            return self._setup_devices_interactive(force_selection)
+        
+        else:  # AUTOMATED mode
+            # Try saved config first, fall back to smart defaults
+            return self._setup_devices_automated(force_selection)
     
-    def show_device_menu(self) -> None:
-        """Display radio operator-friendly device selection menu"""
+    def test_audio_devices(self, input_device: int = None, output_device: int = None) -> bool:
+        """Test audio devices - mode-aware"""
+        
+        if self.test_mode:
+            return self._test_mock_devices()
+        
+        if not PYAUDIO_AVAILABLE:
+            print("⚠️  PyAudio not available - cannot test real devices")
+            return False
+        
+        if self.mode == AudioManagerMode.CLI_DIAGNOSTIC:
+            # CLI mode: Quick test, minimal output
+            return self._test_devices_cli(input_device, output_device)
+        else:
+            # Interactive/automated: Full test with feedback
+            return self._test_devices_full(input_device, output_device)
+    
+    def list_devices_cli_format(self) -> None:
+        """List devices in CLI-friendly format (for --list-audio)"""
         devices = self.discover_devices()
         
-        print("\n" + "="*70)
-        print("🎧 AUDIO DEVICE SELECTION - Opulent Voice Radio")
-        print("="*70)
-        
-        # Separate by capability for easier selection
         input_devices = [d for d in devices if d.can_record]
         output_devices = [d for d in devices if d.can_playback]
         
+        print("🎧 Available Audio Devices:")
         print("\n📡 INPUT DEVICES (Microphones):")
-        print("   (Choose your microphone/headset input)")
-        for i, device in enumerate(input_devices):
-            rate_info = f"@{device.default_sample_rate:.0f}Hz"
-            selected = "👈 CURRENT" if self.current_input_device == device.index else ""
-            print(f"   {i+1:2d}. {device} {rate_info} {selected}")
+        
+        if not input_devices:
+            print("   No input devices found")
+        else:
+            for device in input_devices:
+                rate_info = f"@{device.default_sample_rate:.0f}Hz"
+                print(f"   {device.index:2d}. {device.name} {rate_info}")
+                if self.mode == AudioManagerMode.CLI_DIAGNOSTIC and hasattr(device, 'host_api'):
+                    print(f"       Host API: {device.host_api}")
         
         print("\n🔊 OUTPUT DEVICES (Speakers/Headphones):")
-        print("   (Choose your speaker/headset output)")
-        for i, device in enumerate(output_devices):
-            rate_info = f"@{device.default_sample_rate:.0f}Hz"
-            selected = "👈 CURRENT" if self.current_output_device == device.index else ""
-            print(f"   {i+1:2d}. {device} {rate_info} {selected}")
         
-        print("\n💡 RADIO OPERATOR TIPS:")
-        print("   🎧 USB devices are typically best for radio use")
-        print("   📻 48kHz sample rate is ideal for digital voice")
-        print("   🔌 Built-in audio works but may have more latency")
+        if not output_devices:
+            print("   No output devices found")
+        else:
+            for device in output_devices:
+                rate_info = f"@{device.default_sample_rate:.0f}Hz"
+                print(f"   {device.index:2d}. {device.name} {rate_info}")
+                if self.mode == AudioManagerMode.CLI_DIAGNOSTIC and hasattr(device, 'host_api'):
+                    print(f"       Host API: {device.host_api}")
         
-        return input_devices, output_devices
+        # Show current selection if available
+        self.load_config()
+        if self.current_input_device is not None or self.current_output_device is not None:
+            print(f"\n💾 Current Selection:")
+            print(f"   Input:  {self.current_input_device}")
+            print(f"   Output: {self.current_output_device}")
     
-    def select_devices_interactive(self) -> Tuple[Optional[int], Optional[int]]:
-        """Interactive device selection with testing"""
-        input_devices, output_devices = self.show_device_menu()
+    def test_audio_cli_format(self) -> bool:
+        """Test audio in CLI-friendly format (for --test-audio)"""
+        print("🎧 Testing Audio Devices:")
         
-        # Select input device
-        print(f"\n🎤 SELECT INPUT DEVICE:")
-        while True:
-            try:
-                choice = input("Enter input device number (1-{}, or 's' to skip): ".format(len(input_devices)))
-                if choice.lower() == 's':
-                    input_device = None
-                    break
-                
-                idx = int(choice) - 1
-                if 0 <= idx < len(input_devices):
-                    input_device = input_devices[idx].index
-                    print(f"✓ Selected: {input_devices[idx]}")
-                    
-                    # Test the input device
-                    if self.test_input_device(input_device):
-                        break
-                    else:
-                        print("❌ Device test failed. Try another device.")
-                else:
-                    print(f"Please enter 1-{len(input_devices)}")
-            except ValueError:
-                print("Please enter a valid number")
+        # Load or determine devices to test
+        self.load_config()
+        input_device = self.current_input_device
+        output_device = self.current_output_device
         
-        # Select output device
-        print(f"\n🔊 SELECT OUTPUT DEVICE:")
-        while True:
-            try:
-                choice = input("Enter output device number (1-{}, or 's' to skip): ".format(len(output_devices)))
-                if choice.lower() == 's':
-                    output_device = None
-                    break
-                
-                idx = int(choice) - 1
-                if 0 <= idx < len(output_devices):
-                    output_device = output_devices[idx].index
-                    print(f"✓ Selected: {output_devices[idx]}")
-                    
-                    # Test the output device
-                    print("🔊 Testing output device... (you should hear a tone)")
-                    if self.test_output_device(output_device):
-                        user_confirm = input("Did you hear the test tone? (y/n): ").lower()
-                        if user_confirm in ['y', 'yes']:
-                            break
-                        else:
-                            print("❌ Let's try another device.")
-                    else:
-                        print("❌ Device test failed. Try another device.")
-                else:
-                    print(f"Please enter 1-{len(output_devices)}")
-            except ValueError:
-                print("Please enter a valid number")
+        if input_device is None or output_device is None:
+            print("📝 No saved audio config found, using recommended devices...")
+            rec_input, rec_output = self.get_recommended_devices()
+            input_device = input_device or rec_input or 0
+            output_device = output_device or rec_output or 0
         
-        return input_device, output_device
-    
-    def test_input_device(self, device_index: int, duration: float = 2.0) -> bool:
-        """Test input device with EXACT radio system parameters"""
+        print(f"📋 Testing devices:")
+        print(f"   Input device: {input_device}")
+        print(f"   Output device: {output_device}")
+        print()
+        
+        success = True
+        
+        # Test input
+        print(f"🎤 Testing input device {input_device}...")
         try:
-            params = self.audio_params
-            print(f"🎤 Testing with Opulent Voice settings:")
-            print(f"   📊 {params['sample_rate']}Hz, {params['frame_duration_ms']}ms frames")
-            print(f"   📦 {params['frames_per_buffer']} samples per buffer")
-            print(f"   🎙️ Speak into microphone for {duration} seconds...")
+            input_result = self.test_input_device(input_device, duration=3.0, verbose=False)
+            if input_result:
+                print("✅ Input device test PASSED")
+            else:
+                print("❌ Input device test FAILED (low audio levels)")
+                success = False
+        except Exception as e:
+            print(f"❌ Input device test FAILED: {e}")
+            success = False
+        
+        print()
+        
+        # Test output
+        print(f"🔊 Testing output device {output_device}...")
+        try:
+            output_result = self.test_output_device(output_device, duration=2.0, verbose=False)
+            if output_result:
+                print("✅ Output device test PASSED (you should have heard a 1kHz tone)")
+            else:
+                print("❌ Output device test FAILED")
+                success = False
+        except Exception as e:
+            print(f"❌ Output device test FAILED: {e}")
+            success = False
+        
+        return success
+    
+    def test_input_device(self, device_index: int, duration: float = 3.0, verbose: bool = True) -> bool:
+        """Test an input device by recording audio"""
+        if self.test_mode or not PYAUDIO_AVAILABLE:
+            if verbose:
+                print(f"Mock input test for device {device_index}")
+            return True
+        
+        try:
+            audio = pyaudio.PyAudio()
             
-            stream = self.audio.open(
+            if verbose:
+                print(f"Recording from device {device_index} for {duration}s...")
+            
+            # Open stream
+            stream = audio.open(
                 format=pyaudio.paInt16,
-                channels=params['channels'],
-                rate=params['sample_rate'],
+                channels=self.audio_params['channels'],
+                rate=self.audio_params['sample_rate'],
                 input=True,
                 input_device_index=device_index,
-                frames_per_buffer=params['frames_per_buffer']  # EXACT radio settings
+                frames_per_buffer=self.audio_params['frames_per_buffer']
             )
             
-            # Monitor audio levels for visual feedback
-            max_level = 0
-            start_time = time.time()
+            # Record audio
+            frames = []
+            for i in range(int(self.audio_params['sample_rate'] / self.audio_params['frames_per_buffer'] * duration)):
+                data = stream.read(self.audio_params['frames_per_buffer'])
+                frames.append(data)
             
-            while time.time() - start_time < duration:
-                try:
-                    data = stream.read(params['frames_per_buffer'], exception_on_overflow=False)
-                    # Simple level detection (convert bytes to approximate dB)
-                    level = max(abs(int.from_bytes(data[i:i+2], 'little', signed=True)) 
-                               for i in range(0, len(data), 2))
-                    max_level = max(max_level, level)
-                    
-                    # Visual level meter (simplified)
-                    bars = int((level / 32768.0) * 20)
-                    meter = "█" * bars + "░" * (20 - bars)
-                    print(f"\r   Level: [{meter}] {level/32768.0:.1%}", end="", flush=True)
-                except Exception as e:
-                    print(f"\r   Audio read error: {e}", end="", flush=True)
-                    
-            print()  # New line after meter
+            stream.stop_stream()
             stream.close()
+            audio.terminate()
             
-            # Check if we got reasonable audio levels
-            if max_level > 1000:  # Arbitrary threshold
-                print(f"✓ Input test successful! Max level: {max_level/32768.0:.1%}")
-                return True
-            else:
-                print(f"⚠ Low audio levels detected. Check microphone connection.")
-                return False
-                
+            # Analyze audio level
+            audio_data = b''.join(frames)
+            audio_np = np.frombuffer(audio_data, dtype=np.int16)
+            rms = np.sqrt(np.mean(audio_np.astype(np.float32) ** 2))
+            
+            if verbose:
+                print(f"Audio level (RMS): {rms:.1f}")
+            
+            # Consider test passed if RMS > 100 (some audio detected)
+            return rms > 100
+            
         except Exception as e:
-            print(f"❌ Input test failed: {e}")
+            if verbose:
+                print(f"Input test error: {e}")
             return False
     
-    def test_output_device(self, device_index: int, duration: float = 1.0) -> bool:
-        """Test output device with 1kHz tone using exact radio parameters"""
+    def test_output_device(self, device_index: int, duration: float = 2.0, verbose: bool = True) -> bool:
+        """Test an output device by playing a tone"""
+        if self.test_mode or not PYAUDIO_AVAILABLE:
+            if verbose:
+                print(f"Mock output test for device {device_index}")
+            return True
+        
         try:
-            import numpy as np
+            audio = pyaudio.PyAudio()
             
-            params = self.audio_params
-            print(f"🔊 Testing output with radio settings: {params['sample_rate']}Hz")
+            if verbose:
+                print(f"Playing 1kHz tone on device {device_index} for {duration}s...")
             
-            # Generate 1kHz test tone
-            frames = int(params['sample_rate'] * duration)
-            tone = np.sin(2 * np.pi * 1000 * np.linspace(0, duration, frames))
-            tone = (tone * 16384).astype(np.int16)  # Scale to 16-bit
+            # Generate 1kHz sine wave
+            sample_rate = self.audio_params['sample_rate']
+            frames_per_buffer = self.audio_params['frames_per_buffer']
             
-            stream = self.audio.open(
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+            tone = np.sin(2 * np.pi * 1000 * t) * 0.3  # 1kHz at 30% volume
+            tone = (tone * 32767).astype(np.int16)
+            
+            # Open stream
+            stream = audio.open(
                 format=pyaudio.paInt16,
-                channels=params['channels'],
-                rate=params['sample_rate'],
+                channels=self.audio_params['channels'],
+                rate=sample_rate,
                 output=True,
                 output_device_index=device_index,
-                frames_per_buffer=params['frames_per_buffer']  # EXACT radio settings
+                frames_per_buffer=frames_per_buffer
             )
             
-            # Play the tone
-            stream.write(tone.tobytes())
+            # Play tone
+            for i in range(0, len(tone), frames_per_buffer):
+                chunk = tone[i:i+frames_per_buffer]
+                if len(chunk) < frames_per_buffer:
+                    # Pad the last chunk
+                    chunk = np.pad(chunk, (0, frames_per_buffer - len(chunk)), 'constant')
+                stream.write(chunk.tobytes())
+            
+            stream.stop_stream()
             stream.close()
+            audio.terminate()
             
             return True
             
-        except ImportError:
-            print("⚠ numpy not available for tone generation, skipping audio test")
-            return True  # Assume it works
         except Exception as e:
-            print(f"❌ Output test failed: {e}")
+            if verbose:
+                print(f"Output test error: {e}")
             return False
-    
-    def save_config(self, input_device: Optional[int], output_device: Optional[int]) -> None:
-        """Save device preferences to config file"""
-        config = {
-            'audio_devices': {
-                'input_device_index': input_device,
-                'output_device_index': output_device,
-                'last_updated': time.strftime('%Y-%m-%d %H:%M:%S')
-            }
-        }
-        
-        try:
-            with open(self.config_file, 'w') as f:
-                yaml.dump(config, f, default_flow_style=False)
-            print(f"✓ Audio preferences saved to {self.config_file}")
-        except Exception as e:
-            print(f"⚠ Could not save config: {e}")
-    
-    def load_config(self) -> None:
-        """Load device preferences from config file"""
-        try:
-            if self.config_file.exists():
-                with open(self.config_file, 'r') as f:
-                    config = yaml.safe_load(f)
-                
-                audio_config = config.get('audio_devices', {})
-                self.current_input_device = audio_config.get('input_device_index')
-                self.current_output_device = audio_config.get('output_device_index')
-                
-                print(f"✓ Loaded audio preferences from {self.config_file}")
-        except Exception as e:
-            print(f"⚠ Could not load config: {e}")
     
     def get_recommended_devices(self) -> Tuple[Optional[int], Optional[int]]:
-        """Get smart device recommendations for radio use"""
+        """Get recommended input and output devices"""
         devices = self.discover_devices()
         
-        # Prioritize USB devices for radio use
-        usb_input = None
-        usb_output = None
+        # Look for USB devices first (preference from config)
+        usb_keywords = ["USB", "Samson", "C01U"]
         
+        best_input = None
+        best_output = None
+        
+        # Find best input device
         for device in devices:
-            if device.is_usb and device.can_record and device.supports_48khz:
-                if usb_input is None:
-                    usb_input = device.index
-            
-            if device.is_usb and device.can_playback and device.supports_48khz:
-                if usb_output is None:
-                    usb_output = device.index
-        
-        # Fall back to defaults if no USB devices
-        if usb_input is None:
-            for device in devices:
-                if device.is_default_input and device.can_record:
-                    usb_input = device.index
+            if device.can_record:
+                # Prefer USB devices
+                if any(keyword.lower() in device.name.lower() for keyword in usb_keywords):
+                    best_input = device.index
                     break
+                # Fallback to first available input
+                elif best_input is None:
+                    best_input = device.index
         
-        if usb_output is None:
-            for device in devices:
-                if device.is_default_output and device.can_playback:
-                    usb_output = device.index
+        # Find best output device
+        for device in devices:
+            if device.can_playback:
+                # Prefer devices with "Speakers" or "Headphones" in name
+                if any(keyword.lower() in device.name.lower() for keyword in ["speakers", "headphones"]):
+                    best_output = device.index
                     break
+                # Fallback to first available output
+                elif best_output is None:
+                    best_output = device.index
         
-        return usb_input, usb_output
+        return best_input, best_output
     
-    def setup_audio_devices(self, force_selection: bool = False) -> Tuple[Optional[int], Optional[int]]:
-        """
-        Main entry point for audio device setup
-        
-        Returns: (input_device_index, output_device_index)
-        """
-        print("\n🎧 OPULENT VOICE AUDIO SETUP")
-        print("Setting up audio devices for radio operation...")
-        
-        # Check if we have saved preferences and they still exist
-        if not force_selection and self.current_input_device is not None:
-            if self._device_still_exists(self.current_input_device):
-                print(f"✓ Using saved input device: {self._get_device_name(self.current_input_device)}")
-                use_saved = input("Use saved audio settings? (y/n, or 'c' to change): ").lower()
-                
-                if use_saved in ['y', 'yes', '']:
-                    return self.current_input_device, self.current_output_device
-                elif use_saved == 'c':
-                    pass  # Continue to selection
-                else:
-                    # Show recommendations
-                    rec_input, rec_output = self.get_recommended_devices()
-                    if rec_input or rec_output:
-                        print("\n💡 RECOMMENDED DEVICES FOR RADIO:")
-                        if rec_input:
-                            print(f"   Input: {self._get_device_name(rec_input)}")
-                        if rec_output:
-                            print(f"   Output: {self._get_device_name(rec_output)}")
-                        
-                        use_rec = input("Use recommended devices? (y/n): ").lower()
-                        if use_rec in ['y', 'yes']:
-                            self.save_config(rec_input, rec_output)
-                            return rec_input, rec_output
-        
-        # Interactive selection
-        input_device, output_device = self.select_devices_interactive()
-        
-        # Save preferences
-        self.save_config(input_device, output_device)
-        
-        print(f"\n✅ Audio setup complete!")
-        if input_device:
-            print(f"   🎤 Input: {self._get_device_name(input_device)}")
-        if output_device:
-            print(f"   🔊 Output: {self._get_device_name(output_device)}")
-        
-        return input_device, output_device
-    
-    def _device_still_exists(self, device_index: int) -> bool:
-        """Check if a saved device index still exists"""
+    def load_config(self) -> bool:
+        """Load saved audio configuration"""
         try:
-            self.audio.get_device_info_by_index(device_index)
+            if Path(self.config_file).exists():
+                with open(self.config_file, 'r') as f:
+                    config = yaml.safe_load(f)
+                    
+                audio_devices = config.get('audio_devices', {})
+                self.current_input_device = audio_devices.get('input_device_index')
+                self.current_output_device = audio_devices.get('output_device_index')
+                
+                return True
+        except Exception as e:
+            self.logger.debug(f"Error loading audio config: {e}")
+        
+        return False
+    
+    def save_config(self) -> bool:
+        """Save current audio configuration"""
+        try:
+            config = {
+                'audio_devices': {
+                    'input_device_index': self.current_input_device,
+                    'output_device_index': self.current_output_device,
+                    'last_updated': time.strftime('%Y-%m-%d %H:%M:%S')
+                }
+            }
+            
+            with open(self.config_file, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
             return True
-        except:
+        except Exception as e:
+            self.logger.error(f"Error saving audio config: {e}")
             return False
     
-    def _get_device_name(self, device_index: int) -> str:
-        """Get device name by index"""
-        try:
-            return self.audio.get_device_info_by_index(device_index)['name']
-        except:
-            return "Unknown Device"
-    
     def cleanup(self):
-        """Clean up PyAudio resources"""
-        self.audio.terminate()
-
-
-# Integration example for your existing code
-class AudioDeviceIntegration:
-    """
-    Example of how to integrate this into your existing GPIOZeroPTTHandler
-    """
+        """Cleanup resources"""
+        pass
     
-    @staticmethod
-    def setup_audio_with_device_selection(config):
-        """
-        Replace the existing setup_audio method in GPIOZeroPTTHandler
-        """
-        device_manager = AudioDeviceManager()
-        
-        # Get device selection
-        input_device, output_device = device_manager.setup_audio_devices()
-        
-        # Update config with selected devices
-        if hasattr(config.audio, 'input_device_index'):
-            config.audio.input_device_index = input_device
-        if hasattr(config.audio, 'output_device_index'):
-            config.audio.output_device_index = output_device
-        
-        device_manager.cleanup()
-        return input_device, output_device
-
-
-if __name__ == "__main__":
-    # Demo/test the audio device manager
-    manager = AudioDeviceManager()
+    # Private implementation methods
     
-    try:
-        input_dev, output_dev = manager.setup_audio_devices()
-        print(f"\nSelected devices: Input={input_dev}, Output={output_dev}")
-    finally:
-        manager.cleanup()
+    def _discover_devices_non_interactive(self) -> List[AudioDevice]:
+        """Non-interactive device discovery for CLI mode"""
+        try:
+            audio = pyaudio.PyAudio()
+            devices = []
+            
+            for i in range(audio.get_device_count()):
+                try:
+                    info = audio.get_device_info_by_index(i)
+                    host_api_info = audio.get_host_api_info_by_index(info['hostApi'])
+                    
+                    device = AudioDevice(
+                        index=i,
+                        name=info['name'],
+                        can_record=info['maxInputChannels'] > 0,
+                        can_playback=info['maxOutputChannels'] > 0,
+                        default_sample_rate=info['defaultSampleRate'],
+                        max_input_channels=info['maxInputChannels'],
+                        max_output_channels=info['maxOutputChannels'],
+                        host_api=host_api_info['name']
+                    )
+                    devices.append(device)
+                except Exception:
+                    continue  # Skip problematic devices
+            
+            audio.terminate()
+            return devices
+            
+        except Exception as e:
+            self.logger.warning(f"Error discovering devices: {e}")
+            return self._create_mock_devices()
+    
+    def _discover_devices_full(self) -> List[AudioDevice]:
+        """Full device discovery with error handling"""
+        return self._discover_devices_non_interactive()  # Same implementation for now
+    
+    def _setup_devices_non_interactive(self) -> Tuple[Optional[int], Optional[int]]:
+        """Non-interactive device setup for CLI mode"""
+        # Try to load saved config
+        self.load_config()
+        
+        if self.current_input_device is not None and self.current_output_device is not None:
+            return self.current_input_device, self.current_output_device
+        
+        # Fall back to recommended devices
+        rec_input, rec_output = self.get_recommended_devices()
+        return rec_input or 0, rec_output or 0
+    
+    def _setup_devices_interactive(self, force_selection=False) -> Tuple[Optional[int], Optional[int]]:
+        """Interactive device setup with user prompts"""
+        # Load existing config
+        self.load_config()
+        
+        if not force_selection and self.current_input_device is not None and self.current_output_device is not None:
+            print(f"📱 Current audio devices:")
+            print(f"   Input:  {self.current_input_device}")
+            print(f"   Output: {self.current_output_device}")
+            
+            response = input("Do you want to change these? (y/N): ").strip().lower()
+            if response not in ['y', 'yes']:
+                return self.current_input_device, self.current_output_device
+        
+        # Interactive device selection
+        devices = self.discover_devices()
+        return self._interactive_device_selection(devices)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def _interactive_device_selection(self, devices: List[AudioDevice]) -> Tuple[Optional[int], Optional[int]]:
+        """Interactive device selection menu with level indicators and testing"""
+        input_devices = [d for d in devices if d.can_record]
+        output_devices = [d for d in devices if d.can_playback]
+    
+        # === INPUT DEVICE SELECTION ===
+        print("\n🎤 Select Input Device:")
+        for i, device in enumerate(input_devices):
+            print(f"   {i+1}. {device}")
+    
+        selected_input = None
+        while selected_input is None:
+            try:
+                choice = input(f"\nChoose input device to test (1-{len(input_devices)}): ").strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(input_devices):
+                    device_to_test = input_devices[int(choice)-1]
+                    print(f"\n🎤 Testing: {device_to_test.name}")
+                
+                    # Test the input device with level indicator
+                    if self._test_input_device_with_level_indicator(device_to_test.index):
+                        confirm = input(f"✅ Use this input device? (Y/n): ").strip().lower()
+                        if confirm in ['', 'y', 'yes']:
+                            selected_input = device_to_test.index
+                        else:
+                            print("👍 Try another device...")
+                            continue
+                    else:
+                        print("❌ Device test failed or no audio detected.")
+                        retry = input("Try this device again? (y/N): ").strip().lower()
+                        if retry not in ['y', 'yes']:
+                            print("👍 Try another device...")
+                            continue
+                else:
+                    print("Invalid choice. Please try again.")
+            except (ValueError, KeyboardInterrupt):
+                print("Selection cancelled.")
+                return None, None
+    
+        # === OUTPUT DEVICE SELECTION ===
+        print("\n🔊 Select Output Device:")
+        for i, device in enumerate(output_devices):
+            print(f"   {i+1}. {device}")
+    
+        selected_output = None
+        while selected_output is None:
+            try:
+                choice = input(f"\nChoose output device to test (1-{len(output_devices)}): ").strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(output_devices):
+                    device_to_test = output_devices[int(choice)-1]
+                    print(f"\n🔊 Testing: {device_to_test.name}")
+                
+                    # Test the output device
+                    if self._test_output_device_with_confirmation(device_to_test.index):
+                        confirm = input(f"✅ Use this output device? (Y/n): ").strip().lower()
+                        if confirm in ['', 'y', 'yes']:
+                            selected_output = device_to_test.index
+                        else:
+                            print("👍 Try another device...")
+                            continue
+                    else:
+                        print("❌ Device test failed.")
+                        retry = input("Try this device again? (y/N): ").strip().lower()
+                        if retry not in ['y', 'yes']:
+                            print("👍 Try another device...")
+                            continue
+                else:
+                    print("Invalid choice. Please try again.")
+            except (ValueError, KeyboardInterrupt):
+                print("Selection cancelled.")
+                return None, None
+    
+        # Save the selection
+        self.current_input_device = selected_input
+        self.current_output_device = selected_output
+        self.save_config()
+    
+        print(f"\n🎉 Audio setup complete!")
+        print(f"   Input device:  {selected_input}")
+        print(f"   Output device: {selected_output}")
+    
+        return selected_input, selected_output
+
+    def _test_input_device_with_level_indicator(self, device_index: int, duration: float = 4.0) -> bool:
+        """Test input device with real-time level indicator"""
+        if self.test_mode or not PYAUDIO_AVAILABLE:
+            print("🧪 Mock level test: ████████░░ (80%)")
+            return True
+    
+        try:
+            import threading
+            import sys
+        
+            audio = pyaudio.PyAudio()
+        
+            print(f"🎤 Speak into microphone for {duration:.0f} seconds...")
+            print("🔊 Level indicator:")
+        
+            # Open stream
+            stream = audio.open(
+                format=pyaudio.paInt16,
+                channels=self.audio_params['channels'],
+                rate=self.audio_params['sample_rate'],
+                input=True,
+                input_device_index=device_index,
+                frames_per_buffer=self.audio_params['frames_per_buffer']
+            )
+        
+            # Variables for level monitoring
+            max_level = 0
+            frame_count = int(self.audio_params['sample_rate'] / self.audio_params['frames_per_buffer'] * duration)
+            level_history = []
+        
+            print("", end="", flush=True)  # Prepare for level indicator updates
+          
+            # Record and show level in real-time
+            for i in range(frame_count):
+                try:
+                    data = stream.read(self.audio_params['frames_per_buffer'], exception_on_overflow=False)
+                
+                    # Calculate audio level
+                    audio_np = np.frombuffer(data, dtype=np.int16)
+                    rms = np.sqrt(np.mean(audio_np.astype(np.float32) ** 2))
+                    level_history.append(rms)
+                    max_level = max(max_level, rms)
+                
+                    # Create level indicator bar
+                    level_percent = min(100, int((rms / 1000) * 100))  # Scale for display
+                    bar_length = 20
+                    filled_length = int(bar_length * level_percent / 100)
+                    bar = "█" * filled_length + "░" * (bar_length - filled_length)
+                
+                    # Update level indicator on same line
+                    sys.stdout.write(f"\r🎤 Level: {bar} ({level_percent:3d}%)")
+                    sys.stdout.flush()
+                
+                except Exception as e:
+                    # Continue on overflow or other errors
+                    continue
+        
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+        
+            print()  # New line after level indicator
+        
+            # Analyze results
+            avg_level = np.mean(level_history) if level_history else 0
+        
+            print(f"📊 Test results:")
+            print(f"   Average level: {avg_level:.1f}")
+            print(f"   Peak level: {max_level:.1f}")
+        
+            # Consider test passed if we detected some audio
+            success = max_level > 100  # Threshold for "some audio detected"
+        
+            if success:
+                print("✅ Audio detected - microphone is working!")
+            else:
+                print("⚠️  Very low audio levels - check microphone connection")
+        
+            return success
+        
+        except Exception as e:
+            print(f"❌ Input test error: {e}")
+            return False
+
+    def _test_output_device_with_confirmation(self, device_index: int, duration: float = 2.0) -> bool:
+        """Test output device and ask user if they heard it"""
+        if self.test_mode or not PYAUDIO_AVAILABLE:
+            print("🧪 Mock output test - playing imaginary 1kHz tone")
+            heard = input("Did you hear the test tone? (Y/n): ").strip().lower()
+            return heard in ['', 'y', 'yes']
+    
+        try:
+            audio = pyaudio.PyAudio()
+        
+            print(f"🔊 Playing 1kHz test tone for {duration:.0f} seconds...")
+        
+            # Generate 1kHz sine wave
+            sample_rate = self.audio_params['sample_rate']
+            frames_per_buffer = self.audio_params['frames_per_buffer']
+        
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+            tone = np.sin(2 * np.pi * 1000 * t) * 0.3  # 1kHz at 30% volume
+            tone = (tone * 32767).astype(np.int16)
+        
+            # Open stream
+            stream = audio.open(
+                format=pyaudio.paInt16,
+                channels=self.audio_params['channels'],
+                rate=sample_rate,
+                output=True,
+                output_device_index=device_index,
+                frames_per_buffer=frames_per_buffer
+            )
+        
+            # Play tone with progress indicator
+            total_frames = len(tone)
+            for i in range(0, total_frames, frames_per_buffer):
+                chunk = tone[i:i+frames_per_buffer]
+                if len(chunk) < frames_per_buffer:
+                    chunk = np.pad(chunk, (0, frames_per_buffer - len(chunk)), 'constant')
+            
+                stream.write(chunk.tobytes())
+            
+                # Show progress
+                progress = int((i / total_frames) * 20)
+                bar = "█" * progress + "░" * (20 - progress)
+                percent = int((i / total_frames) * 100)
+                print(f"\r🔊 Playing: {bar} ({percent:3d}%)", end="", flush=True)
+        
+            print(f"\r🔊 Playing: {'█' * 20} (100%)")  # Complete the progress bar
+        
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+        
+            # Ask user if they heard it
+            heard = input("Did you hear the test tone? (Y/n): ").strip().lower()
+        
+            if heard in ['', 'y', 'yes']:
+                print("✅ Output device is working!")
+                return True
+            else:
+                print("❌ Test tone not heard")
+                return False
+            
+        except Exception as e:
+            print(f"❌ Output test error: {e}")
+            return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def _setup_devices_automated(self, force_selection=False) -> Tuple[Optional[int], Optional[int]]:
+        """Automated device setup for normal runtime"""
+        # Try saved config first
+        self.load_config()
+        
+        if self.current_input_device is not None and self.current_output_device is not None:
+            if self._validate_saved_devices():
+                return self.current_input_device, self.current_output_device
+        
+        # Fall back to recommended devices
+        print("📝 Auto-selecting recommended audio devices...")
+        rec_input, rec_output = self.get_recommended_devices()
+        
+        if rec_input is not None and rec_output is not None:
+            # Save the auto-selected devices
+            self.current_input_device = rec_input
+            self.current_output_device = rec_output
+            self.save_config()
+            print(f"✅ Selected: Input={rec_input}, Output={rec_output}")
+            return rec_input, rec_output
+        
+        # Last resort: use defaults
+        return 0, 0
+    
+    def _validate_saved_devices(self) -> bool:
+        """Validate that saved devices still exist"""
+        try:
+            devices = self.discover_devices()
+            device_indices = {d.index for d in devices}
+            
+            input_valid = self.current_input_device in device_indices
+            output_valid = self.current_output_device in device_indices
+            
+            return input_valid and output_valid
+        except Exception:
+            return False
+    
+    def _test_devices_cli(self, input_device=None, output_device=None) -> bool:
+        """Quick CLI test without verbose output"""
+        try:
+            input_device = input_device or self.current_input_device or 0
+            output_device = output_device or self.current_output_device or 0
+            
+            # Quick, non-verbose tests
+            input_ok = self.test_input_device(input_device, duration=2.0, verbose=False)
+            output_ok = self.test_output_device(output_device, duration=1.0, verbose=False)
+            
+            return input_ok and output_ok
+            
+        except Exception:
+            return False
+    
+    def _test_devices_full(self, input_device=None, output_device=None) -> bool:
+        """Full device test with verbose output"""
+        try:
+            input_device = input_device or self.current_input_device or 0
+            output_device = output_device or self.current_output_device or 0
+            
+            # Full tests with verbose output
+            input_ok = self.test_input_device(input_device, duration=3.0, verbose=True)
+            output_ok = self.test_output_device(output_device, duration=2.0, verbose=True)
+            
+            return input_ok and output_ok
+            
+        except Exception as e:
+            print(f"Device test error: {e}")
+            return False
+    
+    def _create_mock_devices(self) -> List[AudioDevice]:
+        """Create mock devices for testing"""
+        return [
+            AudioDevice(
+                index=0,
+                name='Default Input Device',
+                can_record=True,
+                can_playback=False,
+                default_sample_rate=48000.0,
+                max_input_channels=2,
+                max_output_channels=0,
+                host_api='Mock'
+            ),
+            AudioDevice(
+                index=1,
+                name='Default Output Device',
+                can_record=False,
+                can_playback=True,
+                default_sample_rate=48000.0,
+                max_input_channels=0,
+                max_output_channels=2,
+                host_api='Mock'
+            ),
+            AudioDevice(
+                index=2,
+                name='USB Audio Device (Mock)',
+                can_record=True,
+                can_playback=True,
+                default_sample_rate=48000.0,
+                max_input_channels=1,
+                max_output_channels=2,
+                host_api='Mock'
+            )
+        ]
+    
+    def _setup_mock_devices(self) -> Tuple[int, int]:
+        """Setup mock devices for testing"""
+        return 0, 1  # Mock input and output device indices
+    
+    def _test_mock_devices(self) -> bool:
+        """Mock device testing always succeeds"""
+        return True
+
+
+def create_audio_manager_for_cli():
+    return AudioDeviceManager(mode=AudioManagerMode.CLI_DIAGNOSTIC)
+
+def create_audio_manager_for_interactive():
+    return AudioDeviceManager(mode=AudioManagerMode.INTERACTIVE)
+
+def create_audio_manager_for_runtime(radio_config):
+    return AudioDeviceManager(mode=AudioManagerMode.AUTOMATED, radio_config=radio_config)

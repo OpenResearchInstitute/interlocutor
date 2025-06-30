@@ -34,6 +34,7 @@ import select
 import logging
 import traceback
 import random
+import sounddevice
 from dataclasses import dataclass
 
 from config_manager import (
@@ -43,7 +44,14 @@ from config_manager import (
     setup_configuration
 )
 
-from audio_device_manager import AudioDeviceManager
+
+from audio_device_manager import (
+	AudioDeviceManager, 
+	AudioManagerMode,
+	create_audio_manager_for_cli,
+	create_audio_manager_for_interactive
+)
+
 
 
 # check for virtual environment
@@ -2828,10 +2836,23 @@ class GPIOZeroPTTHandler:
 		"""Setup audio input with optional device selection"""
         
 		# Create device manager with our config
+		mode=AudioManagerMode.INTERACTIVE, # always interactive for normal operation
 		device_manager = AudioDeviceManager(
 		config_file="audio_config.yaml", 
 		radio_config=self.config
 		)
+
+
+		DebugConfig.debug_print(f"🔍 DEBUG: AudioDeviceManager mode = {device_manager.mode}")
+		DebugConfig.debug_print(f"🔍 DEBUG: About to call setup_audio_devices...")
+		DebugConfig.debug_print(f"🔍 DEBUG: Creating AudioDeviceManager with mode = {AudioManagerMode.INTERACTIVE}")
+		device_manager = AudioDeviceManager(
+			mode=AudioManagerMode.INTERACTIVE,
+			config_file="audio_config.yaml", 
+			radio_config=self.config
+		)
+		DebugConfig.debug_print(f"🔍 DEBUG: AudioDeviceManager created with mode = {device_manager.mode}")
+
         
 		try:
 			# Device selection based on force flag or first-time setup
@@ -3635,27 +3656,60 @@ def parse_arguments_old():
 
 # Usage
 
-# 5. REPLACE the entire main execution block at the bottom:
+
 if __name__ == "__main__":
 	print("-=" * 40)
 	print("Opulent Voice Radio with Terminal Chat")
 	print("-=" * 40)
 
 	try:
-		# Setup configuration system (replaces old argument parsing)
+		# Setup configuration system (your existing code)
 		config, should_exit = setup_configuration()
 		
 		if should_exit:
 			sys.exit(0)
 
-		# Set debug mode from configuration
+		# Set debug mode from configuration (your existing code)
 		DebugConfig.set_mode(verbose=config.debug.verbose, quiet=config.debug.quiet)
 
-		# Test the base-40 encoding first
+		# ADD: Handle audio CLI commands FIRST, before any hardware setup
+		# This prevents hanging on user input during automated tests
+		
+		# Quick check for audio commands in sys.argv (simple approach)
+		if '--list-audio' in sys.argv:
+			DebugConfig.system_print("🎧 Listing available audio devices...")
+			manager = create_audio_manager_for_cli()
+			manager.list_devices_cli_format()
+			sys.exit(0)
+		
+		if '--test-audio' in sys.argv:
+			DebugConfig.system_print("🎧 Testing audio devices...")
+			manager = AudioDeviceManager(mode=AudioManagerMode.CLI_DIAGNOSTIC, radio_config=config)
+			success = manager.test_audio_cli_format()
+			if success:
+				print("\n💡 Use --setup-audio to change audio devices")
+			sys.exit(0 if success else 1)
+		
+		if '--setup-audio' in sys.argv:
+			DebugConfig.system_print("🎧 Interactive audio device setup...")
+			manager = create_audio_manager_for_interactive()
+			input_dev, output_dev = manager.setup_audio_devices(force_selection=True)
+			if input_dev is not None and output_dev is not None:
+				print(f"\n✅ Audio setup complete!")
+				print(f"   Input device:  {input_dev}")
+				print(f"   Output device: {output_dev}")
+				print("🎧 Configuration saved. Run without --setup-audio to use these devices.")
+				sys.exit(0)
+			else:
+				print("❌ Audio setup cancelled or failed.")
+				sys.exit(1)
+
+		
+		# Test the base-40 encoding first (existing code)
 		if config.debug.verbose:
 			test_base40_encoding()
 
-		# Create station identifier from configuration
+		# Create station identifier from configuration (existing code)  
 		station_id = StationIdentifier(config.callsign)
 
 		DebugConfig.system_print(f"📡 Station: {station_id}")
@@ -3666,11 +3720,12 @@ if __name__ == "__main__":
 			DebugConfig.debug_print("💡 Configuration loaded from file and CLI overrides")
 		DebugConfig.system_print("")
 
-		# Create message receiver using config
+		# Create message receiver using config (existing code)
 		receiver = MessageReceiver(listen_port=config.network.listen_port)
 		receiver.start()
 
 		if config.ui.chat_only_mode:
+			# Your existing chat-only implementation continues unchanged...
 			print("💬 Chat-only mode (no GPIO/audio)")
 
 			# Simple chat-only implementation for testing
@@ -3706,9 +3761,10 @@ if __name__ == "__main__":
 
 		else:
 			# Full radio system with GPIO and audio using configuration
+			# Your existing radio initialization continues unchanged...
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
-				config=config  # Pass entire config object
+				config=config
 			)
 
 			# Connect receiver to chat interface
@@ -3738,7 +3794,6 @@ if __name__ == "__main__":
 		print(f"✗ Error: {e}")
 		sys.exit(1)
 	finally:
-		# Cleanup
 		if 'receiver' in locals():
 			receiver.stop()
 		if 'radio' in locals():
@@ -3747,6 +3802,7 @@ if __name__ == "__main__":
 			chat_interface.stop()
 
 		print("Thank you for using Opulent Voice!")
+
 
 
 
