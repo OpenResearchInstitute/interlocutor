@@ -399,11 +399,27 @@ run_phase_5_config_files() {
         "echo 'quit' | $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --chat-only" \
         0 5 "Handles corrupted config gracefully"
     
+    # Test 4: Good config file is properly loaded and used
+    backup_and_clean_configs
+    cp test_configs/good_config.yaml opulent_voice_config.yaml
+    run_test "good_config_loaded" \
+        "echo 'quit' | $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --chat-only" \
+        0 5 "Loads and uses valid configuration file"
 
-# Test 4: Program works without config files (doesn't require file creation)
-run_test "no_config_required" \
-    "echo 'quit' | $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN --chat-only" \
-    0 5 "Works without requiring config files"
+    # Test 5: Invalid command line arguments override config file
+    backup_and_clean_configs
+    cp test_configs/good_config.yaml opulent_voice_config.yaml
+    run_test "cli_overrides_config" \
+        "echo 'quit' | $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN -p 99999 --chat-only" \
+        2 5 "Command line arguments override config file"
+
+    # Test 6: Command line arguments override config file successfully  
+    backup_and_clean_configs
+    cp test_configs/good_config.yaml opulent_voice_config.yaml
+    run_test "cli_overrides_config" \
+        "echo 'quit' | $PYTHON_CMD $RADIO_SCRIPT $TEST_CALLSIGN -p 9999 --chat-only" \
+        0 5 "Command line arguments successfully override config file"
+
 }
 
 
