@@ -52,6 +52,11 @@ from audio_device_manager import (
 	create_audio_manager_for_interactive
 )
 
+import asyncio
+from web_interface import initialize_web_interface, run_web_server
+
+# global variable for GUI
+web_interface_instance = None
 
 
 # check for virtual environment
@@ -3587,71 +3592,55 @@ def parse_arguments():
 
 
 
-def parse_arguments_old():
-	"""Parse command line arguments"""
-	parser = argparse.ArgumentParser(
-		description='Opulent Voice Protocol PTT Radio Interface with Chat',
-		formatter_class=argparse.ArgumentDefaultsHelpFormatter
-	)
 
-	parser.add_argument(
-		'callsign',
-		help='Station callsign (supports A-Z, 0-9, -, /, . characters)'
-	)
 
-	parser.add_argument(
-		'-i', '--ip',
-		default="192.168.2.152",
-		help='Target IP address for transmission'
-	)
 
-	parser.add_argument(
-		'-p', '--port',
-		type=int,
-		default=57372,
-		help='Target port for transmission'
-	)
 
-	parser.add_argument(
-		'-l', '--listen-port',
-		type=int,
-		default=57372,
-		help='Local port for receiving messages'
-	)
 
-	parser.add_argument(
-		'--ptt-pin',
-		type=int,
-		default=23,
-		help='GPIO pin for PTT button input'
-	)
 
-	parser.add_argument(
-		'--led-pin',
-		type=int,
-		default=17,
-		help='GPIO pin for PTT LED output'
-	)
 
-	parser.add_argument(
-		'--chat-only',
-		action='store_true',
-		help='Run in chat-only mode (no GPIO/audio)'
-	)
+def setup_web_interface_callbacks(radio_system, web_interface):
+	"""Connect radio system callbacks to web interface for real-time updates"""
+    
+	# Store original PTT methods
+	original_ptt_pressed = radio_system.ptt_pressed
+	original_ptt_released = radio_system.ptt_released
+    
+	# Wrap PTT methods to notify web interface
+	async def ptt_pressed_with_web():
+		original_ptt_pressed()
+		await web_interface.on_ptt_state_changed(True)
+    
+	async def ptt_released_with_web():
+		original_ptt_released() 
+		await web_interface.on_ptt_state_changed(False)
+    
+	# Replace methods (note: this is simplified - you may need async handling)
+	radio_system.ptt_pressed = lambda: asyncio.create_task(ptt_pressed_with_web())
+	radio_system.ptt_released = lambda: asyncio.create_task(ptt_released_with_web())
+    
+    # TODO: Add other callbacks as needed
+    # - Message received callbacks
+    # - Status change callbacks
+    # - Audio message callbacks (Phase 2)
 
-	parser.add_argument(
-		'-v', '--verbose',
-		action='store_true',
-		help='Enable verbose debug output'
-	)
 
-	parser.add_argument(
-		'-q', '--quiet',
-		action='store_true',
-		help='Quiet mode - minimal output'
-	)
 
-	return parser.parse_args()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Usage
@@ -3668,6 +3657,9 @@ if __name__ == "__main__":
 		
 		if should_exit:
 			sys.exit(0)
+
+		# DEBUG CODE
+		print(f"DEBUG: config type = {type(config)}, config = {config}")
 
 		# Set debug mode from configuration (your existing code)
 		DebugConfig.set_mode(verbose=config.debug.verbose, quiet=config.debug.quiet)
@@ -3760,13 +3752,45 @@ if __name__ == "__main__":
 				pass
 
 		else:
-			# Full radio system with GPIO and audio using configuration
-			# Your existing radio initialization continues unchanged...
-			radio = GPIOZeroPTTHandler(
+			# Check for web interface mode
+			if hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
+				print("🌐 Starting in web interface mode...")
+
+				# Initialize radio system first
+				radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
-			)
+				)
+        
+				# Initialize web interface with radio system
+				# global web_interface_instance #it's at top of file
+				web_interface_instance = initialize_web_interface(radio, config)
+        
+				# Connect radio system callbacks to web interface
+				setup_web_interface_callbacks(radio, web_interface_instance)
+        
+				# Run web server (this blocks)
+				run_web_server(
+					host="localhost", 
+					port=8000, 
+					radio_system=radio, 
+					config=config
+				)
+				#return
 
+
+
+
+
+			else:
+				# Full radio system with GPIO and audio using configuration
+				radio = GPIOZeroPTTHandler(
+					station_identifier=station_id,
+					config=config
+				)
+
+
+			# drop through? AI!!!
 			# Connect receiver to chat interface
 			receiver.chat_interface = radio.chat_interface
 
