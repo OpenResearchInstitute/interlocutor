@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opulent Voice Radio Interface</title>
+    
+    <!-- Accessibility and SEO -->
+    <meta name="description" content="Amateur Radio Digital Voice and Chat Interface">
+    <meta name="theme-color" content="#1a1a2e">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/accessibility.css">
+    <link rel="stylesheet" href="/static/css/audio-player.css">
+    
+    <!-- Skip link for keyboard users -->
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+</head>
+<body>
+    <!-- Screen reader announcements -->
+    <div id="sr-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+    <div id="sr-status" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+    
+    <header role="banner" class="main-header">
+        <div class="header-content">
+            <h1 class="app-title">
+                <span class="app-icon" aria-hidden="true">📻</span>
+                Opulent Voice Radio
+            </h1>
+            
+            <div class="connection-status" id="connection-status" role="status" aria-live="polite">
+                <span class="status-indicator disconnected" aria-label="Connection status"></span>
+                <span class="status-text">Connecting...</span>
+            </div>
+            
+            <div class="header-controls">
+                <!-- Accessibility preferences -->
+                <button id="accessibility-menu-btn" 
+                        class="icon-btn" 
+                        aria-expanded="false"
+                        aria-controls="accessibility-menu"
+                        aria-label="Accessibility options">
+                    <span aria-hidden="true">♿</span>
+                </button>
+                
+                <!-- Settings -->
+                <button id="settings-btn" 
+                        class="icon-btn"
+                        aria-expanded="false" 
+                        aria-controls="settings-panel"
+                        aria-label="Open settings">
+                    <span aria-hidden="true">⚙️</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Accessibility menu (hidden by default) -->
+        <div id="accessibility-menu" class="accessibility-menu" hidden>
+            <h2>Accessibility Options</h2>
+            <div class="accessibility-controls">
+                <label>
+                    <input type="checkbox" id="high-contrast-toggle">
+                    High Contrast Mode
+                </label>
+                <label>
+                    <input type="checkbox" id="reduce-motion-toggle">
+                    Reduce Animations
+                </label>
+                <label>
+                    <input type="checkbox" id="screen-reader-mode">
+                    Screen Reader Optimized
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-content" role="main" class="main-container">
+        
+        <!-- Primary Controls Panel -->
+        <section class="control-panel" role="region" aria-labelledby="controls-heading">
+            <h2 id="controls-heading" class="panel-title">Radio Controls</h2>
+            
+            <div class="control-grid">
+                <!-- PTT Control -->
+                <div class="ptt-section">
+                    <button id="ptt-btn" 
+                            class="ptt-button" 
+                            aria-pressed="false"
+                            aria-describedby="ptt-status"
+                            disabled>
+                        <span class="ptt-icon" aria-hidden="true">🎤</span>
+                        <span class="ptt-text">PTT</span>
+                    </button>
+                    <div id="ptt-status" class="status-text">Ready</div>
+                </div>
+                
+                <!-- Quick Settings -->
+                <div class="quick-settings">
+                    <div class="setting-group">
+                        <label for="target-ip">Target IP:</label>
+                        <input id="target-ip" 
+                               type="text" 
+                               value="192.168.1.100" 
+                               aria-describedby="target-ip-status">
+                        <div id="target-ip-status" class="input-status"></div>
+                    </div>
+                    
+                    <div class="setting-group">
+                        <label for="target-port">Port:</label>
+                        <input id="target-port" 
+                               type="number" 
+                               value="57372" 
+                               min="1" 
+                               max="65535"
+                               aria-describedby="target-port-status">
+                        <div id="target-port-status" class="input-status"></div>
+                    </div>
+                </div>
+                
+                <!-- Connection Controls -->
+                <div class="connection-controls">
+                    <button id="connect-btn" class="action-btn primary" disabled>
+                        <span aria-hidden="true">🔌</span>
+                        Connect
+                    </button>
+                    <button id="disconnect-btn" class="action-btn secondary" disabled>
+                        <span aria-hidden="true">🔌</span>
+                        Disconnect
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Chat Panel -->
+        <section class="chat-panel" role="region" aria-labelledby="chat-heading">
+            <h2 id="chat-heading" class="panel-title">Communications</h2>
+            
+            <!-- Message History -->
+            <div class="message-container">
+                <div id="message-history" 
+                     class="message-history" 
+                     role="log" 
+                     aria-live="polite" 
+                     aria-label="Message history"
+                     tabindex="0">
+                    <!-- Messages will be populated here -->
+                    <div class="welcome-message">
+                        <p>Welcome to Opulent Voice Radio Interface</p>
+                        <p>Connect to start communications</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message Input -->
+            <form id="message-form" class="message-input-form">
+                <div class="input-container">
+                    <label for="message-input" class="sr-only">Message to send</label>
+                    <input id="message-input" 
+                           type="text" 
+                           placeholder="Type message..."
+                           autocomplete="off"
+                           aria-describedby="message-status"
+                           disabled>
+                    <button type="submit" 
+                            class="send-btn" 
+                            aria-label="Send message"
+                            disabled>
+                        <span aria-hidden="true">📤</span>
+                    </button>
+                </div>
+                <div id="message-status" class="input-status" aria-live="polite"></div>
+            </form>
+        </section>
+
+        <!-- Status and Statistics Panel -->
+        <section class="status-panel" role="region" aria-labelledby="status-heading">
+            <h2 id="status-heading" class="panel-title">System Status</h2>
+            
+            <div class="status-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Station:</span>
+                    <span id="station-id" class="stat-value">DISCONNECTED</span>
+                </div>
+                
+                <div class="stat-item">
+                    <span class="stat-label">Messages Sent:</span>
+                    <span id="messages-sent" class="stat-value">0</span>
+                </div>
+                
+                <div class="stat-item">
+                    <span class="stat-label">Messages Received:</span>
+                    <span id="messages-received" class="stat-value">0</span>
+                </div>
+                
+                <div class="stat-item">
+                    <span class="stat-label">Audio Messages:</span>
+                    <span id="audio-messages-count" class="stat-value">0</span>
+                </div>
+            </div>
+            
+            <!-- System Log -->
+            <div class="log-section">
+                <h3>System Log</h3>
+                <div class="log-controls">
+                    <select id="log-level" aria-label="Log level filter">
+                        <option value="all">All Messages</option>
+                        <option value="info">Info and Above</option>
+                        <option value="warning">Warnings and Errors</option>
+                        <option value="error">Errors Only</option>
+                    </select>
+                    
+                    <button id="clear-log-btn" class="action-btn secondary">
+                        Clear Log
+                    </button>
+                </div>
+                
+                <div id="system-log" 
+                     class="system-log" 
+                     role="log" 
+                     aria-live="polite"
+                     aria-label="System log messages"
+                     tabindex="0">
+                    <!-- Log messages will appear here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Settings Panel (slide-out) -->
+    <aside id="settings-panel" class="settings-panel" hidden role="dialog" aria-labelledby="settings-title">
+        <div class="settings-header">
+            <h2 id="settings-title">Settings</h2>
+            <button id="close-settings-btn" 
+                    class="close-btn" 
+                    aria-label="Close settings">
+                <span aria-hidden="true">✕</span>
+            </button>
+        </div>
+        
+        <div class="settings-content">
+            <!-- Debug Mode Settings -->
+            <fieldset class="setting-section">
+                <legend>Debug Output</legend>
+                <div class="radio-group" role="radiogroup">
+                    <label>
+                        <input type="radio" name="debug-mode" value="quiet">
+                        Quiet Mode
+                        <span class="help-text">Minimal output - errors only</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="debug-mode" value="normal" checked>
+                        Normal Mode
+                        <span class="help-text">Standard operational messages</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="debug-mode" value="verbose">
+                        Verbose Mode
+                        <span class="help-text">Detailed technical information</span>
+                    </label>
+                </div>
+            </fieldset>
+            
+            <!-- Audio Settings -->
+            <fieldset class="setting-section">
+                <legend>Audio Settings</legend>
+                <div class="setting-group">
+                    <button id="audio-setup-btn" class="action-btn">
+                        Configure Audio Devices
+                    </button>
+                    <div class="help-text">Select and test microphone and speakers</div>
+                </div>
+                
+                <div class="setting-group">
+                    <label>
+                        <input type="checkbox" id="audio-replay-enabled" checked>
+                        Enable Audio Message Replay
+                    </label>
+                    <div class="help-text">Store and replay received audio messages</div>
+                </div>
+            </fieldset>
+            
+            <!-- Future: Authentication Settings -->
+            <fieldset class="setting-section">
+                <legend>Security (Future)</legend>
+                <div class="setting-group">
+                    <button class="action-btn" disabled>
+                        Configure Authentication
+                    </button>
+                    <div class="help-text">A5 authentication setup (coming soon)</div>
+                </div>
+            </fieldset>
+        </div>
+    </aside>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" hidden>
+        <div class="loading-content">
+            <div class="spinner" aria-hidden="true"></div>
+            <div id="loading-message" class="loading-message">Connecting to radio system...</div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/static/js/accessibility.js"></script>
+    <script src="/static/js/websocket-client.js"></script>
+    <script src="/static/js/audio-manager.js"></script>
+    <script src="/static/js/radio-controller.js"></script>
+    
+    <!-- Initialize the application -->
+    <script>
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for modern browser features
+            if (!window.WebSocket) {
+                alert('Your browser does not support WebSocket. Please use a modern browser.');
+                return;
+            }
+            
+            // Initialize the radio controller
+            const radioController = new RadioController();
+            radioController.initialize();
+            
+            // Make globally available for debugging
+            window.radioController = radioController;
+        });
+    </script>
+</body>
+</html>
