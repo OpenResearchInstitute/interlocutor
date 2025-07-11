@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Web Interface for Opulent Voice Radio System
-FastAPI backend that bridges the HTML5 GUI with the existing radio system
+Enhanced Web Interface for Opulent Voice Radio System
+Integrates both configuration and chat functionality
 """
 
 import asyncio
@@ -22,29 +22,20 @@ import uvicorn
 # Import your existing radio system components
 from config_manager import OpulentVoiceConfig
 
-class RadioWebInterface:
-    """Bridge between web GUI and radio system"""
-    def __init__(self, radio_system=None, config: OpulentVoiceConfig = None, config_manager=None):
-
-        # DEBUG: Check what we're receiving in constructor
-        print(f"🔍 DEBUG RadioWebInterface.__init__:")
-        print(f"   config_manager = {config_manager is not None}")
-        if config_manager:
-            print(f"   config_manager type = {type(config_manager)}")
+class EnhancedRadioWebInterface:
+    """Enhanced bridge between web GUI and radio system with chat integration"""
     
+    def __init__(self, radio_system=None, config: OpulentVoiceConfig = None, config_manager=None):
         self.radio_system = radio_system
         self.config = config
-        self.config_manager = config_manager  # This should not be None!
-        #END DEBUG
-
-
-
-        self.radio_system = radio_system
-        self.config = config
-        self.config_manager = config_manager  # NEW: Keep reference to config manager
+        self.config_manager = config_manager
         self.websocket_clients: Set[WebSocket] = set()
         self.status_cache = {}
         self.message_history = []
+        
+        # Chat-specific state
+        self.chat_manager = None
+        self.ptt_state = False
         
         # Audio message storage for GUI
         self.audio_messages = {}
@@ -52,12 +43,16 @@ class RadioWebInterface:
         
         self.logger = logging.getLogger(__name__)
         
+        # Connect to existing chat system
+        if radio_system and hasattr(radio_system, 'chat_manager'):
+            self.chat_manager = radio_system.chat_manager
+            self.logger.info("Connected to existing chat manager")
+        
         # Log which config file we're using (if any)
         if self.config_manager and hasattr(self.config_manager, 'config_file_path'):
             self.logger.info(f"Web interface using config file: {self.config_manager.config_file_path}")
         else:
             self.logger.info("Web interface using default configuration")
-
 
     async def connect_websocket(self, websocket: WebSocket):
         """Handle new WebSocket connection"""
@@ -68,6 +63,12 @@ class RadioWebInterface:
         await self.send_to_client(websocket, {
             "type": "initial_status",
             "data": self.get_current_status()
+        })
+        
+        # Send recent message history
+        await self.send_to_client(websocket, {
+            "type": "message_history",
+            "data": self.message_history[-50:]  # Last 50 messages
         })
         
         self.logger.info(f"New WebSocket client connected. Total: {len(self.websocket_clients)}")
@@ -101,27 +102,15 @@ class RadioWebInterface:
         
         # Clean up disconnected clients
         self.websocket_clients -= disconnected
-    
-
-
-
-
-
-
-
-
-
-# Replace our handle_gui_command method with this:
 
     async def handle_gui_command(self, websocket: WebSocket, command_data: Dict):
-        """Process commands from GUI"""
+        """Process commands from GUI - Enhanced with chat commands"""
         try:
             command = command_data.get('action')
             data = command_data.get('data', {})
-		
-            if command == 'send_text_message':
-                await self.handle_send_text_message(data)
-            elif command == 'update_config':
+            
+            # Configuration commands (existing)
+            if command == 'update_config':
                 await self.handle_update_config(data)
             elif command == 'get_current_config':
                 await self.handle_get_current_config(websocket)
@@ -129,7 +118,7 @@ class RadioWebInterface:
                 await self.handle_save_config(data)
             elif command == 'load_config':
                 await self.handle_load_config(websocket, data)
-            elif command == 'create_config':  # NEW
+            elif command == 'create_config':
                 await self.handle_create_config(data)
             elif command == 'test_connection':
                 await self.handle_test_connection(websocket)
@@ -139,13 +128,26 @@ class RadioWebInterface:
                 await self.handle_test_audio(websocket, data)
             elif command == 'set_debug_mode':
                 await self.handle_debug_mode_change(data)
+            
+            # NEW: Chat commands
+            elif command == 'send_text_message':
+                await self.handle_send_text_message(data)
+            elif command == 'ptt_pressed':
+                await self.handle_ptt_pressed()
+            elif command == 'ptt_released':
+                await self.handle_ptt_released()
+            elif command == 'get_message_history':
+                await self.handle_get_message_history(websocket)
+            elif command == 'clear_message_history':
+                await self.handle_clear_message_history()
+                
             else:
                 self.logger.warning(f"Unknown command: {command}")
                 await self.send_to_client(websocket, {
                     "type": "error",
                     "message": f"Unknown command: {command}"
                 })
-			
+                
         except Exception as e:
             self.logger.error(f"Error handling GUI command: {e}")
             await self.send_to_client(websocket, {
@@ -153,99 +155,179 @@ class RadioWebInterface:
                 "message": str(e)
             })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
+    # NEW: Chat-specific handlers
     async def handle_send_text_message(self, data: Dict):
         """Handle text message from GUI"""
         message = data.get('message', '').strip()
         if not message:
             return
+        
+        try:
+            # Send through existing chat manager if available
+            if self.chat_manager:
+                result = self.chat_manager.handle_message_input(message)
+                
+                # Handle different result types
+                if result['status'] == 'sent':
+                    await self.on_message_sent(message)
+                elif result['status'] == 'buffered':
+                    await self.broadcast_to_all({
+                        "type": "message_buffered",
+                        "data": {
+                            "message": message,
+                            "count": result['count'],
+                            "reason": "PTT active"
+                        }
+                    })
+                elif result['status'] == 'queued_audio_driven':
+                    await self.on_message_sent(message)
             
-        # Send to radio system if available
-        if self.radio_system and hasattr(self.radio_system, 'audio_frame_manager'):
-            self.radio_system.audio_frame_manager.queue_text_message(message)
+            # Fallback: Send directly through radio system
+            elif self.radio_system and hasattr(self.radio_system, 'audio_frame_manager'):
+                self.radio_system.audio_frame_manager.queue_text_message(message)
+                await self.on_message_sent(message)
             
-        # Add to message history
-        self.message_history.append({
+            else:
+                # No radio system available - simulate for testing
+                await self.on_message_sent(message, simulated=True)
+                
+        except Exception as e:
+            self.logger.error(f"Error sending text message: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Failed to send message: {str(e)}"
+            })
+
+    async def handle_ptt_pressed(self):
+        """Handle PTT button press from GUI"""
+        try:
+            if self.radio_system:
+                # Call the radio system's PTT method
+                if hasattr(self.radio_system, 'ptt_pressed'):
+                    self.radio_system.ptt_pressed()
+                elif hasattr(self.radio_system, 'audio_frame_manager'):
+                    self.radio_system.audio_frame_manager.set_voice_active(True)
+            
+            self.ptt_state = True
+            
+            # Update chat manager state if available
+            if self.chat_manager:
+                self.chat_manager.set_ptt_state(True)
+            
+            await self.broadcast_to_all({
+                "type": "ptt_state_changed",
+                "data": {"active": True}
+            })
+            
+            self.logger.info("PTT activated via web interface")
+            
+        except Exception as e:
+            self.logger.error(f"Error activating PTT: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Failed to activate PTT: {str(e)}"
+            })
+
+    async def handle_ptt_released(self):
+        """Handle PTT button release from GUI"""
+        try:
+            if self.radio_system:
+                # Call the radio system's PTT release method
+                if hasattr(self.radio_system, 'ptt_released'):
+                    self.radio_system.ptt_released()
+                elif hasattr(self.radio_system, 'audio_frame_manager'):
+                    self.radio_system.audio_frame_manager.set_voice_active(False)
+            
+            self.ptt_state = False
+            
+            # Update chat manager state if available
+            if self.chat_manager:
+                self.chat_manager.set_ptt_state(False)
+            
+            await self.broadcast_to_all({
+                "type": "ptt_state_changed",
+                "data": {"active": False}
+            })
+            
+            self.logger.info("PTT released via web interface")
+            
+        except Exception as e:
+            self.logger.error(f"Error releasing PTT: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Failed to release PTT: {str(e)}"
+            })
+
+    async def handle_get_message_history(self, websocket: WebSocket):
+        """Send message history to client"""
+        await self.send_to_client(websocket, {
+            "type": "message_history",
+            "data": self.message_history
+        })
+
+    async def handle_clear_message_history(self):
+        """Clear message history"""
+        self.message_history.clear()
+        await self.broadcast_to_all({
+            "type": "message_history_cleared",
+            "data": {}
+        })
+
+    # Enhanced event handlers for chat integration
+    async def on_message_sent(self, message: str, simulated: bool = False):
+        """Called when a message is sent"""
+        message_data = {
             "type": "text",
             "direction": "outgoing",
             "content": message,
             "timestamp": datetime.now().isoformat(),
-            "from": str(self.radio_system.station_id) if self.radio_system else "LOCAL"
-        })
+            "from": str(self.radio_system.station_id) if self.radio_system else "LOCAL",
+            "simulated": simulated
+        }
+        
+        # Add to history
+        self.message_history.append(message_data)
         
         # Broadcast to all clients
         await self.broadcast_to_all({
             "type": "message_sent",
-            "data": {
-                "message": message,
-                "timestamp": datetime.now().isoformat()
-            }
+            "data": message_data
         })
-    
-    async def handle_config_update(self, data: Dict):
-        """Handle configuration updates from GUI"""
-        # Apply GUI overrides to configuration
-        if self.config:
-            for key, value in data.items():
-                # TODO: Implement safe config override system
-                self.logger.info(f"GUI config override: {key} = {value}")
+
+    async def on_message_received(self, message_data: Dict):
+        """Called when radio system receives a message - Enhanced"""
+        # Process the message data
+        processed_message = {
+            "type": message_data.get("type", "text"),
+            "direction": "incoming",
+            "content": message_data.get("content", ""),
+            "timestamp": datetime.now().isoformat(),
+            "from": message_data.get("from", "UNKNOWN"),
+            "metadata": message_data.get("metadata", {})
+        }
         
-        # Broadcast config change to all clients
+        # Add to history
+        self.message_history.append(processed_message)
+        
+        # Limit history size
+        if len(self.message_history) > 1000:
+            self.message_history = self.message_history[-500:]  # Keep last 500
+        
+        # Broadcast to all clients
         await self.broadcast_to_all({
-            "type": "config_updated",
-            "data": data
-        })
-    
-    async def handle_get_audio_devices(self, websocket: WebSocket):
-        """Get audio devices for GUI display"""
-        devices = {"input": [], "output": []}
-        
-        try:
-            if self.radio_system and hasattr(self.radio_system, 'list_audio_devices'):
-                # Get devices from radio system
-                # This is a simplified version - you'll need to adapt based on your audio system
-                devices = {
-                    "input": [
-                        {"index": 0, "name": "Default Input", "channels": 1},
-                        {"index": 2, "name": "USB Microphone", "channels": 1}
-                    ],
-                    "output": [
-                        {"index": 0, "name": "Default Output", "channels": 2},
-                        {"index": 1, "name": "Speakers", "channels": 2}
-                    ]
-                }
-        except Exception as e:
-            self.logger.error(f"Error getting audio devices: {e}")
-        
-        await self.send_to_client(websocket, {
-            "type": "audio_devices",
-            "data": devices
+            "type": "message_received",
+            "data": processed_message
         })
 
+    async def on_ptt_state_changed(self, active: bool):
+        """Called when PTT state changes from radio system"""
+        self.ptt_state = active
+        await self.broadcast_to_all({
+            "type": "ptt_state_changed",
+            "data": {"active": active}
+        })
 
-
-
-
-
-
-
-
-# Added these methods to the RadioWebInterface class in web_interface.py to get frontend working
-
+    # Existing configuration handlers (enhanced)
     async def handle_get_current_config(self, websocket: WebSocket):
         """Send current configuration to the web interface"""
         try:
@@ -311,7 +393,27 @@ class RadioWebInterface:
         try:
             # Apply updates to the current configuration
             if 'callsign' in data:
+                old_callsign = self.config.callsign
                 self.config.callsign = data['callsign']
+                
+                # Update radio system with new callsign
+                if self.radio_system and old_callsign != data['callsign']:
+                    try:
+                        from interlocutor import StationIdentifier
+                        new_station_id = StationIdentifier(data['callsign'])
+                        
+                        # Update the radio system's station ID
+                        self.radio_system.station_id = new_station_id
+                        
+                        # Update the protocol's station ID and bytes
+                        if hasattr(self.radio_system, 'protocol'):
+                            self.radio_system.protocol.station_id = new_station_id
+                            self.radio_system.protocol.station_id_bytes = new_station_id.to_bytes()
+                        
+                        self.logger.info(f"Updated radio system callsign to: {data['callsign']}")
+                        
+                    except Exception as e:
+                        self.logger.error(f"Error updating radio system callsign: {e}")
         
             if 'network' in data:
                 network = data['network']
@@ -379,33 +481,6 @@ class RadioWebInterface:
                     verbose=self.config.debug.verbose,
                     quiet=self.config.debug.quiet
                 )
-
-
-
-            # FIX 2: UPDATE RADIO SYSTEM WITH NEW CALLSIGN (ADD THIS SECTION)
-            if self.radio_system and 'callsign' in data:
-               try:
-                   # Create new station identifier and update radio system
-                   from interlocutor import StationIdentifier
-                   new_station_id = StationIdentifier(data['callsign'])
-				
-                   # Update the radio system's station ID
-                   self.radio_system.station_id = new_station_id
-				
-                   # Update the protocol's station ID and bytes
-                   if hasattr(self.radio_system, 'protocol'):
-                       self.radio_system.protocol.station_id = new_station_id
-                       self.radio_system.protocol.station_id_bytes = new_station_id.to_bytes()
-				
-                   self.logger.info(f"Updated radio system callsign to: {data['callsign']}")
-				
-               except Exception as e:
-                   self.logger.error(f"Error updating radio system callsign: {e}")
-		# END FIX 2
-
-
-
-
         
             # Broadcast the update to all connected clients
             await self.broadcast_to_all({
@@ -422,33 +497,12 @@ class RadioWebInterface:
                 "message": f"Error updating configuration: {str(e)}"
             })
 
-
-
-
-
-
-    # Add these methods to the RadioWebInterface class in web_interface.py:
-
     async def handle_save_config(self, data: Dict):
         """Save configuration to file using CLI-compatible logic"""
         try:
             # Get filename from request or use smart defaults
             requested_filename = data.get('filename')
-	
-#DEBUG SECTION
-
-            # DEBUG: Print what we have
-            print(f"🔍 DEBUG save_config:")
-            print(f"   requested_filename = {requested_filename}")
-            print(f"   config_manager exists = {self.config_manager is not None}")
-            if self.config_manager:
-                print(f"   has config_file_path = {hasattr(self.config_manager, 'config_file_path')}")
-                if hasattr(self.config_manager, 'config_file_path'):
-                    print(f"   config_file_path = {self.config_manager.config_file_path}")
-#END DEBUG SECTION
-
-
-	
+            
             if requested_filename:
                 # User specified a filename explicitly
                 filename = requested_filename
@@ -458,7 +512,7 @@ class RadioWebInterface:
             else:
                 # Fall back to CLI default discovery logic
                 filename = self._get_default_save_filename()
-		
+            
             # Use the existing configuration manager to save
             if self.config_manager:
                 # Update the config manager's current config
@@ -470,7 +524,7 @@ class RadioWebInterface:
                 config_manager = ConfigurationManager()
                 config_manager.config = self.config
                 success = config_manager.save_config(filename)
-		
+            
             if success:
                 await self.broadcast_to_all({
                     "type": "config_saved",
@@ -485,7 +539,7 @@ class RadioWebInterface:
                     "type": "error",
                     "message": f"Failed to save configuration to {filename}"
                 })
-			
+                
         except Exception as e:
             self.logger.error(f"Error saving config: {e}")
             await self.broadcast_to_all({
@@ -500,12 +554,12 @@ class RadioWebInterface:
             "opulent_voice.yaml",  # Current directory (most common)
             "config/opulent_voice.yaml",  # Config subdirectory
         ]
-	
+        
         for candidate in candidate_files:
             candidate_path = Path(candidate)
             if candidate_path.parent.exists():  # Can we write to this location?
                 return str(candidate_path)
-	
+        
         # Last resort: current directory
         return "opulent_voice.yaml"
 
@@ -513,7 +567,7 @@ class RadioWebInterface:
         """Load configuration from file using CLI logic"""
         try:
             specified_file = data.get('filename') if data else None
-		
+            
             if self.config_manager:
                 # Use existing config manager
                 if specified_file:
@@ -528,18 +582,18 @@ class RadioWebInterface:
                 config_manager = ConfigurationManager()
                 loaded_config = config_manager.load_config(specified_file)
                 self.config_manager = config_manager
-		
+            
             if loaded_config:
                 self.config = loaded_config
-			
+                
                 # Send the loaded config back to the client
                 await self.handle_get_current_config(websocket)
-			
+                
                 # Determine what file was actually loaded
                 loaded_file = "configuration file"
                 if self.config_manager and hasattr(self.config_manager, 'config_file_path'):
                     loaded_file = str(self.config_manager.config_file_path)
-			
+                
                 await self.send_to_client(websocket, {
                     "type": "config_loaded",
                     "data": {
@@ -547,12 +601,12 @@ class RadioWebInterface:
                         "filename": loaded_file
                     }
                 })
-			
+                
                 self.logger.info(f"Configuration loaded from {loaded_file}")
             else:
                 await self.send_to_client(websocket, {
                     "type": "error",
-                        "message": "No configuration file found. Use 'Create Configuration' to make one."
+                    "message": "No configuration file found. Use 'Create Configuration' to make one."
                 })
 
         except Exception as e:
@@ -566,17 +620,17 @@ class RadioWebInterface:
         """Create a new configuration file"""
         try:
             filename = data.get('filename', 'opulent_voice.yaml')
-		
+            
             from config_manager import ConfigurationManager
             config_manager = ConfigurationManager()
-		
+            
             success = config_manager.create_sample_config(filename)
-		
+            
             if success:
                 # Load the newly created config
                 self.config = config_manager.load_config(filename)
                 self.config_manager = config_manager
-			
+                
                 await self.broadcast_to_all({
                     "type": "config_created",
                     "data": {
@@ -584,40 +638,25 @@ class RadioWebInterface:
                         "filename": filename
                     }
                 })
-			
+                
                 # Also send the new config to populate the form
                 await self.broadcast_to_all({
                     "type": "config_loaded",
                     "data": self.config if hasattr(self.config, 'to_dict') else {}
                 })
-			
+                
             else:
                 await self.broadcast_to_all({
                     "type": "error", 
                     "message": f"Failed to create configuration file: {filename}"
                 })
-			
+                
         except Exception as e:
             self.logger.error(f"Error creating config: {e}")
             await self.broadcast_to_all({
                 "type": "error",
                 "message": f"Error creating configuration: {str(e)}"
             })
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     async def handle_test_connection(self, websocket: WebSocket):
         """Test network connection"""
@@ -656,25 +695,32 @@ class RadioWebInterface:
                 "message": f"Connection test failed: {str(e)}"
             })
 
+    async def handle_get_audio_devices(self, websocket: WebSocket):
+        """Get audio devices for GUI display"""
+        devices = {"input": [], "output": []}
+        
+        try:
+            if self.radio_system and hasattr(self.radio_system, 'list_audio_devices'):
+                # Get devices from radio system
+                # This is a simplified version - you'll need to adapt based on your audio system
+                devices = {
+                    "input": [
+                        {"index": 0, "name": "Default Input", "channels": 1},
+                        {"index": 2, "name": "USB Microphone", "channels": 1}
+                    ],
+                    "output": [
+                        {"index": 0, "name": "Default Output", "channels": 2},
+                        {"index": 1, "name": "Speakers", "channels": 2}
+                    ]
+                }
+        except Exception as e:
+            self.logger.error(f"Error getting audio devices: {e}")
+        
+        await self.send_to_client(websocket, {
+            "type": "audio_devices",
+            "data": devices
+        })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
     async def handle_test_audio(self, websocket: WebSocket, data: Dict):
         """Handle audio device testing"""
         device_type = data.get('type')  # 'input' or 'output'
@@ -692,10 +738,6 @@ class RadioWebInterface:
                 "message": "Audio test completed" if success else "Audio test failed"
             }
         })
-    
-
-
-
 
     def _get_debug_mode(self) -> str:
         """Get current debug mode from config"""
@@ -719,9 +761,6 @@ class RadioWebInterface:
             except ImportError:
                 return "normal"
 
-
-
-
     async def handle_debug_mode_change(self, data: Dict):
         """Handle debug mode changes from GUI"""
         mode = data.get('mode', 'normal')
@@ -742,16 +781,12 @@ class RadioWebInterface:
             "data": {"mode": mode}
         })
 
-
-
-
-    
     def get_current_status(self) -> Dict:
         """Get current radio system status"""
         status = {
             "connected": self.radio_system is not None,
             "station_id": str(self.radio_system.station_id) if self.radio_system else "DISCONNECTED",
-            "ptt_active": getattr(self.radio_system, 'ptt_active', False) if self.radio_system else False,
+            "ptt_active": self.ptt_state,
             "debug_mode": self._get_debug_mode(),
             "timestamp": datetime.now().isoformat(),
             "config": {
@@ -780,32 +815,7 @@ class RadioWebInterface:
             stats.update(radio_stats)
         
         return stats
-    
-    # Methods to be called by radio system for updates
-    
-    async def on_message_received(self, message_data: Dict):
-        """Called when radio system receives a message"""
-        self.message_history.append({
-            "type": message_data.get("type", "unknown"),
-            "direction": "incoming",
-            "content": message_data.get("content", ""),
-            "timestamp": datetime.now().isoformat(),
-            "from": message_data.get("from", "UNKNOWN"),
-            "metadata": message_data.get("metadata", {})
-        })
-        
-        await self.broadcast_to_all({
-            "type": "message_received",
-            "data": message_data
-        })
-    
-    async def on_ptt_state_changed(self, active: bool):
-        """Called when PTT state changes"""
-        await self.broadcast_to_all({
-            "type": "ptt_state_changed",
-            "data": {"active": active}
-        })
-    
+
     async def on_audio_message_captured(self, audio_data: bytes, metadata: Dict):
         """Called when audio message is captured for replay"""
         message_id = f"msg_{int(time.time())}_{metadata.get('from', 'unknown')}"
@@ -832,7 +842,7 @@ class RadioWebInterface:
                 "timestamp": datetime.now().isoformat()
             }
         })
-    
+
     async def on_system_status_changed(self, status_data: Dict):
         """Called when system status changes"""
         self.status_cache.update(status_data)
@@ -841,6 +851,7 @@ class RadioWebInterface:
             "type": "status_update",
             "data": status_data
         })
+
 
 # FastAPI application setup
 app = FastAPI(title="Opulent Voice Web Interface", version="1.0.0")
@@ -855,34 +866,45 @@ app.add_middleware(
 )
 
 # Global web interface instance
-web_interface: Optional[RadioWebInterface] = None
-
+web_interface: Optional[EnhancedRadioWebInterface] = None
 
 def initialize_web_interface(radio_system=None, config=None, config_manager=None):
-    """Initialize the web interface with radio system and config manager"""
+    """Initialize the enhanced web interface with radio system and config manager"""
     global web_interface
-
-
-    # DEBUG: Check what we're receiving
-    print(f"🔍 DEBUG initialize_web_interface:")
-    print(f"   radio_system = {radio_system is not None}")
-    print(f"   config = {config is not None}")
-    print(f"   config_manager = {config_manager is not None}")
-    if config_manager:
-        print(f"   config_manager type = {type(config_manager)}")
-        print(f"   config_manager has config_file_path = {hasattr(config_manager, 'config_file_path')}")
-        if hasattr(config_manager, 'config_file_path'):
-            print(f"   config_file_path = {config_manager.config_file_path}")
-    #END DEBUG:
-
-
-    web_interface = RadioWebInterface(radio_system, config, config_manager)
+    
+    web_interface = EnhancedRadioWebInterface(radio_system, config, config_manager)
+    
+    # Connect to existing chat system
+    if radio_system and hasattr(radio_system, 'chat_interface'):
+        # Hook into the existing chat interface to capture messages
+        setup_chat_integration(radio_system.chat_interface, web_interface)
+    
     return web_interface
 
+def setup_chat_integration(chat_interface, web_interface):
+    """Setup integration between existing chat interface and web interface"""
+    # Store original display method
+    if hasattr(chat_interface, 'display_received_message'):
+        original_display = chat_interface.display_received_message
+        
+        # Wrap the display method to also send to web interface
+        async def enhanced_display(from_station, message):
+            # Call original display for terminal
+            original_display(from_station, message)
+            
+            # Also send to web interface
+            await web_interface.on_message_received({
+                "content": message,
+                "from": from_station,
+                "type": "text"
+            })
+        
+        # Replace the method
+        chat_interface.display_received_message = enhanced_display
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
-    """WebSocket endpoint for real-time communication"""
+    """Enhanced WebSocket endpoint for real-time communication"""
     if not web_interface:
         await websocket.close(code=1000, reason="Radio system not initialized")
         return
@@ -907,9 +929,10 @@ async def websocket_endpoint(websocket: WebSocket):
         logging.error(f"WebSocket error: {e}")
         web_interface.disconnect_websocket(websocket)
 
+
 @app.get("/")
 async def get_index():
-    """Serve the main GUI page"""
+    """Serve the unified GUI page"""
     html_file = Path("html5_gui/index.html")
     if html_file.exists():
         return HTMLResponse(content=html_file.read_text(), status_code=200)
@@ -921,20 +944,15 @@ async def get_index():
         <body>
             <h1>Opulent Voice Web Interface</h1>
             <p>GUI files not found. Please create html5_gui/index.html</p>
+            <p>Expected location: html5_gui/index.html</p>
         </body>
         </html>
         """, status_code=200)
 
 
 
-@app.get("/config")
-async def get_config_page():
-    """Serve the configuration page"""
-    config_file = Path("html5_gui/config.html")
-    if config_file.exists():
-        return HTMLResponse(content=config_file.read_text(), status_code=200)
-    else:
-        return HTMLResponse(content="<h1>Configuration page not found</h1>", status_code=404)
+
+
 
 
 
@@ -950,7 +968,7 @@ async def get_status():
 
 @app.get("/api/messages")
 async def get_message_history():
-    """Get message history"""
+    """Get message history via REST API"""
     if not web_interface:
         raise HTTPException(status_code=503, detail="Radio system not initialized")
     
@@ -963,23 +981,18 @@ except RuntimeError:
     # Directory doesn't exist yet - will be created during setup
     pass
 
-
 def run_web_server(host="localhost", port=8000, radio_system=None, config=None):
-    """Run the web server"""
+    """Run the enhanced web server"""
     
-    # comment this out because we already initialize properly in interlocutor.py
-    #initialize_web_interface(radio_system, config, config_manager)
-    
-    print(f"🌐 Starting Opulent Voice Web Interface on http://{host}:{port}")
+    print(f"🌐 Starting Enhanced Opulent Voice Web Interface on http://{host}:{port}")
     print(f"📡 WebSocket endpoint: ws://{host}:{port}/ws")
+    print(f"💬 Unified chat and configuration interface available")
     
-    # Configure logging - fix the DebugConfig reference
-    # Use the config parameter instead of the global DebugConfig class
+    # Configure logging
     if config and hasattr(config, 'debug'):
         log_level = "debug" if config.debug.verbose else "info"
         access_log = not config.debug.quiet
     else:
-        # Fallback to reasonable defaults
         log_level = "info"
         access_log = True
     
@@ -991,18 +1004,6 @@ def run_web_server(host="localhost", port=8000, radio_system=None, config=None):
         access_log=access_log
     )
 
-
-
-
-
-
-
-
-
-
-
-
-
 if __name__ == "__main__":
-    # For testing the web interface standalone
+    # For testing the enhanced web interface standalone
     run_web_server()
