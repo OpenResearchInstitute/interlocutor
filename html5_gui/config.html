@@ -132,6 +132,7 @@
             gap: 15px;
             justify-content: center;
             margin-top: 30px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -170,6 +171,11 @@
 
         .btn-secondary:hover {
             background: linear-gradient(45deg, #43a047, #2e7d32);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50, #388e3c);
+            border-color: #4caf50;
         }
 
         .btn-warning {
@@ -364,6 +370,16 @@
 
         .collapsible-content.expanded {
             max-height: 500px;
+        }
+
+        .filename-display {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #64b5f6;
         }
 
         @media (max-width: 768px) {
@@ -602,6 +618,10 @@
                 Configuration File Management
             </div>
             
+            <div class="filename-display" id="currentConfigFile">
+                Current file: Loading...
+            </div>
+            
             <div class="button-group">
                 <button class="btn btn-secondary" onclick="loadConfig()">
                     📂 Load Configuration
@@ -609,6 +629,10 @@
                 
                 <button class="btn btn-primary" onclick="saveConfig()">
                     💾 Save Configuration
+                </button>
+                
+                <button class="btn btn-success" onclick="createNewConfig()">
+                    📄 Create New Configuration
                 </button>
                 
                 <button class="btn btn-warning" onclick="exportConfig()">
@@ -621,6 +645,11 @@
                 <label for="configFileInput" class="file-input-label">
                     📥 Import Config File
                 </label>
+            </div>
+
+            <div class="form-group">
+                <label for="saveFilename">Save as filename (optional):</label>
+                <input type="text" id="saveFilename" placeholder="Leave empty to save to original file">
             </div>
 
             <div class="progress-bar" id="progressBar" style="display: none;">
@@ -699,6 +728,23 @@
                 case 'initial_status':
                     populateConfigFromStatus(message.data);
                     break;
+                case 'current_config':
+                    populateFormFromConfig(message.data);
+                    break;
+                case 'config_saved':
+                    showNotification(message.data.message, 'success');
+                    if (message.data.filename) {
+                        document.getElementById('currentConfigFile').textContent = `Current file: ${message.data.filename}`;
+                    }
+                    break;
+                case 'config_loaded':
+                    showNotification(message.data.message, 'success');
+                    loadCurrentConfig(); // Refresh the form
+                    break;
+                case 'config_created':
+                    showNotification(message.data.message, 'success');
+                    loadCurrentConfig(); // Load the new config into form
+                    break;
                 case 'audio_devices':
                     audioDevices = message.data;
                     populateAudioDevices();
@@ -740,7 +786,48 @@
             document.getElementById('targetPort').value = currentConfig.target_port || '';
             document.getElementById('listenPort').value = status.config?.listen_port || '';
             
-            // Additional fields would be populated here based on the config structure
+            // Update current config file display
+            document.getElementById('currentConfigFile').textContent = `Current file: Loading...`;
+        }
+
+        function populateFormFromConfig(config) {
+            if (config.callsign) document.getElementById('callsign').value = config.callsign;
+            
+            if (config.network) {
+                if (config.network.target_ip) document.getElementById('targetIp').value = config.network.target_ip;
+                if (config.network.target_port) document.getElementById('targetPort').value = config.network.target_port;
+                if (config.network.listen_port) document.getElementById('listenPort').value = config.network.listen_port;
+                if (config.network.voice_port) document.getElementById('voicePort').value = config.network.voice_port;
+                if (config.network.text_port) document.getElementById('textPort').value = config.network.text_port;
+                if (config.network.control_port) document.getElementById('controlPort').value = config.network.control_port;
+            }
+            
+            if (config.audio) {
+                if (config.audio.sample_rate) document.getElementById('sampleRate').value = config.audio.sample_rate;
+                if (config.audio.frame_duration_ms) document.getElementById('frameDuration').value = config.audio.frame_duration_ms;
+                if (config.audio.prefer_usb_device !== undefined) document.getElementById('preferUsbDevice').checked = config.audio.prefer_usb_device;
+            }
+            
+            if (config.gpio) {
+                if (config.gpio.ptt_pin) document.getElementById('pttPin').value = config.gpio.ptt_pin;
+                if (config.gpio.led_pin) document.getElementById('ledPin').value = config.gpio.led_pin;
+                if (config.gpio.button_bounce_time) document.getElementById('buttonBounceTime').value = config.gpio.button_bounce_time;
+                if (config.gpio.led_brightness) document.getElementById('ledBrightness').value = config.gpio.led_brightness;
+            }
+            
+            if (config.protocol) {
+                if (config.protocol.target_type) document.getElementById('targetType').value = config.protocol.target_type;
+                if (config.protocol.keepalive_interval) document.getElementById('keepaliveInterval').value = config.protocol.keepalive_interval;
+                if (config.protocol.continuous_stream !== undefined) document.getElementById('continuousStream').checked = config.protocol.continuous_stream;
+            }
+            
+            if (config.debug) {
+                if (config.debug.verbose !== undefined) document.getElementById('verbose').checked = config.debug.verbose;
+                if (config.debug.quiet !== undefined) document.getElementById('quiet').checked = config.debug.quiet;
+                if (config.debug.log_level) document.getElementById('logLevel').value = config.debug.log_level;
+                if (config.debug.show_frame_details !== undefined) document.getElementById('showFrameDetails').checked = config.debug.show_frame_details;
+                if (config.debug.show_timing_info !== undefined) document.getElementById('showTimingInfo').checked = config.debug.show_timing_info;
+            }
         }
 
         function populateAudioDevices() {
@@ -770,6 +857,302 @@
                 `;
                 outputContainer.appendChild(deviceEl);
             });
+        }
+
+        function createNewConfig() {
+            const filename = prompt("Enter filename for new configuration:", "opulent_voice.yaml");
+            if (filename) {
+                sendWebSocketMessage('create_config', { filename });
+                showNotification('Creating new configuration file...', 'info');
+            }
+        }
+
+        function saveConfig() {
+            const config = gatherConfigData();
+            const errors = validateConfig(config);
+            
+            if (errors.length > 0) {
+                showValidationErrors(errors);
+                return;
+            }
+            
+            // Get optional custom filename
+            const customFilename = document.getElementById('saveFilename').value.trim();
+            const saveData = { config };
+            
+            if (customFilename) {
+                saveData.filename = customFilename;
+            }
+            
+            sendWebSocketMessage('save_config', saveData);
+            showNotification('Saving configuration...', 'info');
+        }
+
+        function loadConfig() {
+            const filename = prompt("Enter configuration filename to load (leave empty for auto-discovery):", "");
+            const loadData = {};
+            
+            if (filename) {
+                loadData.filename = filename;
+            }
+            
+            sendWebSocketMessage('load_config', loadData);
+            showNotification('Loading configuration...', 'info');
+        }
+
+        function gatherConfigData() {
+            return {
+                callsign: document.getElementById('callsign').value,
+                network: {
+                    target_ip: document.getElementById('targetIp').value,
+                    target_port: parseInt(document.getElementById('targetPort').value) || 57372,
+                    listen_port: parseInt(document.getElementById('listenPort').value) || 57372,
+                    voice_port: parseInt(document.getElementById('voicePort').value) || 57373,
+                    text_port: parseInt(document.getElementById('textPort').value) || 57374,
+                    control_port: parseInt(document.getElementById('controlPort').value) || 57375
+                },
+                audio: {
+                    sample_rate: parseInt(document.getElementById('sampleRate').value) || 48000,
+                    frame_duration_ms: parseInt(document.getElementById('frameDuration').value) || 40,
+                    input_device: document.querySelector('input[name="inputDevice"]:checked')?.value,
+                    prefer_usb_device: document.getElementById('preferUsbDevice').checked
+                },
+                gpio: {
+                    ptt_pin: parseInt(document.getElementById('pttPin').value) || 23,
+                    led_pin: parseInt(document.getElementById('ledPin').value) || 17,
+                    button_bounce_time: parseFloat(document.getElementById('buttonBounceTime').value) || 0.02,
+                    led_brightness: parseFloat(document.getElementById('ledBrightness').value) || 1.0
+                },
+                protocol: {
+                    target_type: document.getElementById('targetType').value || 'computer',
+                    keepalive_interval: parseFloat(document.getElementById('keepaliveInterval').value) || 2.0,
+                    continuous_stream: document.getElementById('continuousStream').checked
+                },
+                debug: {
+                    verbose: document.getElementById('verbose').checked,
+                    quiet: document.getElementById('quiet').checked,
+                    log_level: document.getElementById('logLevel').value || 'INFO',
+                    show_frame_details: document.getElementById('showFrameDetails').checked,
+                    show_timing_info: document.getElementById('showTimingInfo').checked
+                }
+            };
+        }
+
+        function validateConfig(config) {
+            const errors = [];
+            
+            // Validate callsign
+            if (!config.callsign || config.callsign.trim() === '') {
+                errors.push('Callsign is required');
+            } else if (!/^[A-Z0-9\-\/.]+$/.test(config.callsign.toUpperCase())) {
+                errors.push('Callsign contains invalid characters');
+            }
+            
+            return errors;
+        }
+
+        function showValidationErrors(errors) {
+            const callsignValidation = document.getElementById('callsignValidation');
+            if (errors.some(e => e.includes('Callsign'))) {
+                callsignValidation.textContent = errors.find(e => e.includes('Callsign'));
+            } else {
+                callsignValidation.textContent = '';
+            }
+            
+            // Show all errors as notifications
+            errors.forEach(error => {
+                showNotification(error, 'error');
+            });
+        }
+
+        function applyConfig() {
+            const config = gatherConfigData();
+            const errors = validateConfig(config);
+            
+            if (errors.length > 0) {
+                showValidationErrors(errors);
+                return;
+            }
+            
+            showNotification('Applying configuration...', 'info');
+            sendWebSocketMessage('update_config', config);
+        }
+
+        function testConnection() {
+            showNotification('Testing connection...', 'info');
+            sendWebSocketMessage('test_connection');
+        }
+
+        function resetToDefaults() {
+            if (confirm('Reset all settings to defaults? This will overwrite your current configuration.')) {
+                document.getElementById('callsign').value = 'NOCALL';
+                document.getElementById('targetIp').value = '192.168.2.152';
+                document.getElementById('targetPort').value = '57372';
+                document.getElementById('listenPort').value = '57372';
+                document.getElementById('voicePort').value = '57373';
+                document.getElementById('textPort').value = '57374';
+                document.getElementById('controlPort').value = '57375';
+                document.getElementById('sampleRate').value = '48000';
+                document.getElementById('frameDuration').value = '40';
+                document.getElementById('pttPin').value = '23';
+                document.getElementById('ledPin').value = '17';
+                document.getElementById('buttonBounceTime').value = '0.02';
+                document.getElementById('ledBrightness').value = '1.0';
+                document.getElementById('targetType').value = 'computer';
+                document.getElementById('keepaliveInterval').value = '2.0';
+                document.getElementById('continuousStream').checked = true;
+                document.getElementById('preferUsbDevice').checked = true;
+                document.getElementById('verbose').checked = false;
+                document.getElementById('quiet').checked = false;
+                document.getElementById('logLevel').value = 'INFO';
+                document.getElementById('showFrameDetails').checked = false;
+                document.getElementById('showTimingInfo').checked = false;
+                
+                showNotification('Configuration reset to defaults', 'info');
+            }
+        }
+
+        function exportConfig() {
+            const config = gatherConfigData();
+            const configYaml = convertToYaml(config);
+            
+            const blob = new Blob([configYaml], { type: 'text/yaml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'opulent_voice_config.yaml';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Configuration exported', 'success');
+        }
+
+        function importConfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // In a real implementation, you'd parse YAML here
+                    // For now, we'll assume it's JSON or convert from YAML
+                    const config = parseConfigFile(e.target.result);
+                    populateFormFromConfig(config);
+                    showNotification('Configuration imported successfully', 'success');
+                } catch (error) {
+                    showNotification('Error importing configuration: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function convertToYaml(config) {
+            return `# Opulent Voice Configuration
+# Generated: ${new Date().toISOString()}
+
+callsign: "${config.callsign}"
+
+network:
+  target_ip: "${config.network.target_ip}"
+  target_port: ${config.network.target_port}
+  listen_port: ${config.network.listen_port}
+  voice_port: ${config.network.voice_port}
+  text_port: ${config.network.text_port}
+  control_port: ${config.network.control_port}
+
+audio:
+  sample_rate: ${config.audio.sample_rate}
+  frame_duration_ms: ${config.audio.frame_duration_ms}
+  prefer_usb_device: ${config.audio.prefer_usb_device}
+
+gpio:
+  ptt_pin: ${config.gpio.ptt_pin}
+  led_pin: ${config.gpio.led_pin}
+  button_bounce_time: ${config.gpio.button_bounce_time}
+  led_brightness: ${config.gpio.led_brightness}
+
+protocol:
+  target_type: "${config.protocol.target_type}"
+  keepalive_interval: ${config.protocol.keepalive_interval}
+  continuous_stream: ${config.protocol.continuous_stream}
+
+debug:
+  verbose: ${config.debug.verbose}
+  quiet: ${config.debug.quiet}
+  log_level: "${config.debug.log_level}"
+  show_frame_details: ${config.debug.show_frame_details}
+  show_timing_info: ${config.debug.show_timing_info}
+`;
+        }
+
+        function parseConfigFile(content) {
+            // Simplified parser - in production, use js-yaml or similar
+            try {
+                // Try JSON first
+                return JSON.parse(content);
+            } catch {
+                // Basic YAML parsing for simple configs
+                const config = {};
+                const lines = content.split('\n');
+                let currentSection = config;
+                
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (line && !line.startsWith('#')) {
+                        if (line.endsWith(':') && !line.includes('"')) {
+                            // Section header
+                            const sectionName = line.slice(0, -1);
+                            currentSection[sectionName] = {};
+                            currentSection = currentSection[sectionName];
+                        } else if (line.includes(':')) {
+                            // Key-value pair
+                            const [key, ...valueParts] = line.split(':');
+                            let value = valueParts.join(':').trim();
+                            
+                            // Remove quotes
+                            if (value.startsWith('"') && value.endsWith('"')) {
+                                value = value.slice(1, -1);
+                            }
+                            
+                            // Convert types
+                            if (value === 'true') value = true;
+                            else if (value === 'false') value = false;
+                            else if (!isNaN(value) && value !== '') value = Number(value);
+                            
+                            currentSection[key.trim()] = value;
+                        }
+                    }
+                });
+                
+                return config;
+            }
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        function toggleAdvanced(section) {
+            const content = document.getElementById(section + 'Advanced');
+            const button = content.previousElementSibling;
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                button.textContent = button.textContent.replace('🔽', '⚙️');
+            } else {
+                content.classList.add('expanded');
+                button.textContent = button.textContent.replace('⚙️', '🔽');
+            }
         }
 
         function testInputDevice() {
@@ -834,436 +1217,9 @@
             setTimeout(() => testResult.remove(), 5000);
         }
 
-        function gatherConfigData() {
-            return {
-                callsign: document.getElementById('callsign').value,
-                network: {
-                    target_ip: document.getElementById('targetIp').value,
-                    target_port: parseInt(document.getElementById('targetPort').value) || 57372,
-                    listen_port: parseInt(document.getElementById('listenPort').value) || 57372,
-                    voice_port: parseInt(document.getElementById('voicePort').value) || 57373,
-                    text_port: parseInt(document.getElementById('textPort').value) || 57374,
-                    control_port: parseInt(document.getElementById('controlPort').value) || 57375
-                },
-                audio: {
-                    sample_rate: parseInt(document.getElementById('sampleRate').value) || 48000,
-                    frame_duration_ms: parseInt(document.getElementById('frameDuration').value) || 40,
-                    input_device: document.querySelector('input[name="inputDevice"]:checked')?.value,
-                    prefer_usb_device: document.getElementById('preferUsbDevice').checked
-                },
-                gpio: {
-                    ptt_pin: parseInt(document.getElementById('pttPin').value) || 23,
-                    led_pin: parseInt(document.getElementById('ledPin').value) || 17,
-                    button_bounce_time: parseFloat(document.getElementById('buttonBounceTime').value) || 0.02,
-                    led_brightness: parseFloat(document.getElementById('ledBrightness').value) || 1.0
-                },
-                protocol: {
-                    target_type: document.getElementById('targetType').value || 'computer',
-                    keepalive_interval: parseFloat(document.getElementById('keepaliveInterval').value) || 2.0,
-                    continuous_stream: document.getElementById('continuousStream').checked
-                },
-                debug: {
-                    verbose: document.getElementById('verbose').checked,
-                    quiet: document.getElementById('quiet').checked,
-                    log_level: document.getElementById('logLevel').value || 'INFO',
-                    show_frame_details: document.getElementById('showFrameDetails').checked,
-                    show_timing_info: document.getElementById('showTimingInfo').checked
-                }
-            };
-        }
-
-        function validateConfig(config) {
-            const errors = [];
-            
-            // Validate callsign
-            if (!config.callsign || config.callsign.trim() === '') {
-                errors.push('Callsign is required');
-            } else if (!/^[A-Z0-9\-\/.]+$/.test(config.callsign.toUpperCase())) {
-                errors.push('Callsign contains invalid characters');
-            }
-            
-            // Validate network ports
-            if (config.network.target_port < 1 || config.network.target_port > 65535) {
-                errors.push('Target port must be between 1 and 65535');
-            }
-            
-            if (config.network.listen_port < 1 || config.network.listen_port > 65535) {
-                errors.push('Listen port must be between 1 and 65535');
-            }
-            
-            // Validate GPIO pins
-            if (config.gpio.ptt_pin < 2 || config.gpio.ptt_pin > 27) {
-                errors.push('PTT pin must be between 2 and 27');
-            }
-            
-            if (config.gpio.led_pin < 2 || config.gpio.led_pin > 27) {
-                errors.push('LED pin must be between 2 and 27');
-            }
-            
-            if (config.gpio.ptt_pin === config.gpio.led_pin) {
-                errors.push('PTT pin and LED pin cannot be the same');
-            }
-            
-            return errors;
-        }
-
-        function showValidationErrors(errors) {
-            const callsignValidation = document.getElementById('callsignValidation');
-            if (errors.some(e => e.includes('Callsign'))) {
-                callsignValidation.textContent = errors.find(e => e.includes('Callsign'));
-            } else {
-                callsignValidation.textContent = '';
-            }
-            
-            // Show all errors as notifications
-            errors.forEach(error => {
-                showNotification(error, 'error');
-            });
-        }
-
-        function applyConfig() {
-            const config = gatherConfigData();
-            const errors = validateConfig(config);
-            
-            if (errors.length > 0) {
-                showValidationErrors(errors);
-                return;
-            }
-            
-            showProgress(0);
-            showNotification('Applying configuration...', 'info');
-            
-            sendWebSocketMessage('update_config', config);
-            
-            // Simulate progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                progress += 20;
-                showProgress(progress);
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-                    hideProgress();
-                    showNotification('Configuration applied successfully!', 'success');
-                }
-            }, 200);
-        }
-
-        function saveConfig() {
-            const config = gatherConfigData();
-            const errors = validateConfig(config);
-            
-            if (errors.length > 0) {
-                showValidationErrors(errors);
-                return;
-            }
-            
-            sendWebSocketMessage('save_config', { config, filename: 'opulent_voice.yaml' });
-            showNotification('Configuration saved to file', 'success');
-        }
-
-        function loadConfig() {
-            sendWebSocketMessage('load_config');
-            showNotification('Loading configuration...', 'info');
-        }
-
-        function exportConfig() {
-            const config = gatherConfigData();
-            const configYaml = convertToYaml(config);
-            
-            const blob = new Blob([configYaml], { type: 'text/yaml' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'opulent_voice_config.yaml';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showNotification('Configuration exported', 'success');
-        }
-
-        function importConfig(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    // In a real implementation, you'd parse YAML here
-                    // For now, we'll assume it's JSON or convert from YAML
-                    const config = parseConfigFile(e.target.result);
-                    populateFormFromConfig(config);
-                    showNotification('Configuration imported successfully', 'success');
-                } catch (error) {
-                    showNotification('Error importing configuration: ' + error.message, 'error');
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function convertToYaml(config) {
-            // Simple YAML conversion - in production, use a proper YAML library
-            let yaml = `# Opulent Voice Configuration
-# Generated: ${new Date().toISOString()}
-
-callsign: "${config.callsign}"
-
-network:
-  target_ip: "${config.network.target_ip}"
-  target_port: ${config.network.target_port}
-  listen_port: ${config.network.listen_port}
-  voice_port: ${config.network.voice_port}
-  text_port: ${config.network.text_port}
-  control_port: ${config.network.control_port}
-
-audio:
-  sample_rate: ${config.audio.sample_rate}
-  frame_duration_ms: ${config.audio.frame_duration_ms}
-  prefer_usb_device: ${config.audio.prefer_usb_device}
-
-gpio:
-  ptt_pin: ${config.gpio.ptt_pin}
-  led_pin: ${config.gpio.led_pin}
-  button_bounce_time: ${config.gpio.button_bounce_time}
-  led_brightness: ${config.gpio.led_brightness}
-
-protocol:
-  target_type: "${config.protocol.target_type}"
-  keepalive_interval: ${config.protocol.keepalive_interval}
-  continuous_stream: ${config.protocol.continuous_stream}
-
-debug:
-  verbose: ${config.debug.verbose}
-  quiet: ${config.debug.quiet}
-  log_level: "${config.debug.log_level}"
-  show_frame_details: ${config.debug.show_frame_details}
-  show_timing_info: ${config.debug.show_timing_info}
-`;
-            return yaml;
-        }
-
-        function parseConfigFile(content) {
-            // Simplified parser - in production, use js-yaml or similar
-            try {
-                // Try JSON first
-                return JSON.parse(content);
-            } catch {
-                // Basic YAML parsing for simple configs
-                const config = {};
-                const lines = content.split('\n');
-                let currentSection = config;
-                let sectionStack = [config];
-                
-                lines.forEach(line => {
-                    line = line.trim();
-                    if (line && !line.startsWith('#')) {
-                        if (line.endsWith(':') && !line.includes('"')) {
-                            // Section header
-                            const sectionName = line.slice(0, -1);
-                            currentSection[sectionName] = {};
-                            sectionStack.push(currentSection[sectionName]);
-                            currentSection = currentSection[sectionName];
-                        } else if (line.includes(':')) {
-                            // Key-value pair
-                            const [key, ...valueParts] = line.split(':');
-                            let value = valueParts.join(':').trim();
-                            
-                            // Remove quotes
-                            if (value.startsWith('"') && value.endsWith('"')) {
-                                value = value.slice(1, -1);
-                            }
-                            
-                            // Convert types
-                            if (value === 'true') value = true;
-                            else if (value === 'false') value = false;
-                            else if (!isNaN(value) && value !== '') value = Number(value);
-                            
-                            currentSection[key.trim()] = value;
-                        }
-                    }
-                });
-                
-                return config;
-            }
-        }
-
-        function populateFormFromConfig(config) {
-            if (config.callsign) document.getElementById('callsign').value = config.callsign;
-            
-            if (config.network) {
-                if (config.network.target_ip) document.getElementById('targetIp').value = config.network.target_ip;
-                if (config.network.target_port) document.getElementById('targetPort').value = config.network.target_port;
-                if (config.network.listen_port) document.getElementById('listenPort').value = config.network.listen_port;
-                if (config.network.voice_port) document.getElementById('voicePort').value = config.network.voice_port;
-                if (config.network.text_port) document.getElementById('textPort').value = config.network.text_port;
-                if (config.network.control_port) document.getElementById('controlPort').value = config.network.control_port;
-            }
-            
-            if (config.audio) {
-                if (config.audio.sample_rate) document.getElementById('sampleRate').value = config.audio.sample_rate;
-                if (config.audio.frame_duration_ms) document.getElementById('frameDuration').value = config.audio.frame_duration_ms;
-                if (config.audio.prefer_usb_device !== undefined) document.getElementById('preferUsbDevice').checked = config.audio.prefer_usb_device;
-            }
-            
-            if (config.gpio) {
-                if (config.gpio.ptt_pin) document.getElementById('pttPin').value = config.gpio.ptt_pin;
-                if (config.gpio.led_pin) document.getElementById('ledPin').value = config.gpio.led_pin;
-                if (config.gpio.button_bounce_time) document.getElementById('buttonBounceTime').value = config.gpio.button_bounce_time;
-                if (config.gpio.led_brightness) document.getElementById('ledBrightness').value = config.gpio.led_brightness;
-            }
-            
-            if (config.protocol) {
-                if (config.protocol.target_type) document.getElementById('targetType').value = config.protocol.target_type;
-                if (config.protocol.keepalive_interval) document.getElementById('keepaliveInterval').value = config.protocol.keepalive_interval;
-                if (config.protocol.continuous_stream !== undefined) document.getElementById('continuousStream').checked = config.protocol.continuous_stream;
-            }
-            
-            if (config.debug) {
-                if (config.debug.verbose !== undefined) document.getElementById('verbose').checked = config.debug.verbose;
-                if (config.debug.quiet !== undefined) document.getElementById('quiet').checked = config.debug.quiet;
-                if (config.debug.log_level) document.getElementById('logLevel').value = config.debug.log_level;
-                if (config.debug.show_frame_details !== undefined) document.getElementById('showFrameDetails').checked = config.debug.show_frame_details;
-                if (config.debug.show_timing_info !== undefined) document.getElementById('showTimingInfo').checked = config.debug.show_timing_info;
-            }
-        }
-
-        function testConnection() {
-            showNotification('Testing connection...', 'info');
-            sendWebSocketMessage('test_connection');
-        }
-
-        function resetToDefaults() {
-            if (confirm('Reset all settings to defaults? This will overwrite your current configuration.')) {
-                document.getElementById('callsign').value = 'NOCALL';
-                document.getElementById('targetIp').value = '192.168.2.152';
-                document.getElementById('targetPort').value = '57372';
-                document.getElementById('listenPort').value = '57372';
-                document.getElementById('voicePort').value = '57373';
-                document.getElementById('textPort').value = '57374';
-                document.getElementById('controlPort').value = '57375';
-                document.getElementById('sampleRate').value = '48000';
-                document.getElementById('frameDuration').value = '40';
-                document.getElementById('pttPin').value = '23';
-                document.getElementById('ledPin').value = '17';
-                document.getElementById('buttonBounceTime').value = '0.02';
-                document.getElementById('ledBrightness').value = '1.0';
-                document.getElementById('targetType').value = 'computer';
-                document.getElementById('keepaliveInterval').value = '2.0';
-                document.getElementById('continuousStream').checked = true;
-                document.getElementById('preferUsbDevice').checked = true;
-                document.getElementById('verbose').checked = false;
-                document.getElementById('quiet').checked = false;
-                document.getElementById('logLevel').value = 'INFO';
-                document.getElementById('showFrameDetails').checked = false;
-                document.getElementById('showTimingInfo').checked = false;
-                
-                showNotification('Configuration reset to defaults', 'info');
-            }
-        }
-
-        function toggleAdvanced(section) {
-            const content = document.getElementById(section + 'Advanced');
-            const button = content.previousElementSibling;
-            
-            if (content.classList.contains('expanded')) {
-                content.classList.remove('expanded');
-                button.textContent = button.textContent.replace('🔽', '⚙️');
-            } else {
-                content.classList.add('expanded');
-                button.textContent = button.textContent.replace('⚙️', '🔽');
-            }
-        }
-
-        function showNotification(message, type = 'info') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type}`;
-            
-            setTimeout(() => notification.classList.add('show'), 100);
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 4000);
-        }
-
-        function showProgress(percent) {
-            const progressBar = document.getElementById('progressBar');
-            const progressFill = document.getElementById('progressFill');
-            
-            progressBar.style.display = 'block';
-            progressFill.style.width = percent + '%';
-        }
-
-        function hideProgress() {
-            setTimeout(() => {
-                document.getElementById('progressBar').style.display = 'none';
-            }, 500);
-        }
-
-        // Validation helpers
-        document.getElementById('callsign').addEventListener('input', function(e) {
-            const value = e.target.value.toUpperCase();
-            e.target.value = value;
-            
-            const validation = document.getElementById('callsignValidation');
-            if (value && !/^[A-Z0-9\-\/.]+$/.test(value)) {
-                validation.textContent = 'Only letters, numbers, hyphens, slashes, and periods allowed';
-            } else {
-                validation.textContent = '';
-            }
-        });
-
-        // Prevent GPIO pin conflicts
-        function checkGpioPinConflict() {
-            const pttPin = parseInt(document.getElementById('pttPin').value);
-            const ledPin = parseInt(document.getElementById('ledPin').value);
-            
-            if (pttPin && ledPin && pttPin === ledPin) {
-                showNotification('PTT pin and LED pin cannot be the same', 'error');
-                return false;
-            }
-            return true;
-        }
-
-        document.getElementById('pttPin').addEventListener('change', checkGpioPinConflict);
-        document.getElementById('ledPin').addEventListener('change', checkGpioPinConflict);
-
-        // Auto-save draft periodically
-        let autoSaveTimer;
-        function setupAutoSave() {
-            const inputs = document.querySelectorAll('input, select');
-            inputs.forEach(input => {
-                input.addEventListener('change', () => {
-                    clearTimeout(autoSaveTimer);
-                    autoSaveTimer = setTimeout(() => {
-                        const config = gatherConfigData();
-                        localStorage.setItem('opulent_voice_draft_config', JSON.stringify(config));
-                    }, 1000);
-                });
-            });
-        }
-
-        function loadDraftConfig() {
-            const draft = localStorage.getItem('opulent_voice_draft_config');
-            if (draft) {
-                try {
-                    const config = JSON.parse(draft);
-                    populateFormFromConfig(config);
-                    showNotification('Draft configuration loaded', 'info');
-                } catch (e) {
-                    console.warn('Could not load draft config:', e);
-                }
-            }
-        }
-
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             connectWebSocket();
-            setupAutoSave();
-            loadDraftConfig();
-            
-            // Set focus to callsign field
             document.getElementById('callsign').focus();
         });
 
@@ -1276,4 +1232,3 @@ debug:
     </script>
 </body>
 </html>
-                    
