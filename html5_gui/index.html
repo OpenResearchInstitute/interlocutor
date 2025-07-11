@@ -761,11 +761,60 @@
 			</div>
 		</div>
 
+
+
 		<!-- Configuration Panel -->
 		<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
 			<div class="panel-title">
 				<span class="panel-icon">⚙️</span>
-				Configuration
+				Configuration Management
+			</div>
+			
+			<!-- Configuration File Management Section -->
+			<div class="config-section">
+				<div class="section-header">
+					<span aria-hidden="true">📁</span>
+					Configuration Files
+				</div>
+				
+				<div class="config-file-info" id="config-file-info">
+					<div class="current-file">
+						<label>Current Configuration File:</label>
+						<span id="current-config-file">No file loaded</span>
+					</div>
+				</div>
+				
+				<div class="config-file-actions">
+					<div class="file-action-group">
+						<label for="config-filename">File Name (optional):</label>
+						<input type="text" 
+							   id="config-filename" 
+							   placeholder="Leave empty for auto-discovery"
+							   class="config-filename-input">
+					</div>
+					
+					<div class="button-group config-file-buttons">
+						<button class="btn btn-primary" onclick="loadConfigFile()">
+							<span aria-hidden="true">📂</span>
+							Load Config
+						</button>
+						
+						<button class="btn btn-success" onclick="saveConfigFile()">
+							<span aria-hidden="true">💾</span>
+							Save Config
+						</button>
+						
+						<button class="btn" onclick="createConfigFile()">
+							<span aria-hidden="true">📄</span>
+							Create New
+						</button>
+						
+						<button class="btn" onclick="testConnection()">
+							<span aria-hidden="true">🧪</span>
+							Test System
+						</button>
+					</div>
+				</div>
 			</div>
 			
 			<div class="config-grid">
@@ -820,13 +869,158 @@
 							UDP port for radio communication
 						</div>
 					</div>
+					
+					<div class="form-group">
+						<label for="listen-port">Listen Port</label>
+						<input type="number" 
+							   id="listen-port" 
+							   placeholder="57372" 
+							   min="1" 
+							   max="65535"
+							   aria-describedby="listen-port-help">
+						<div id="listen-port-help" class="help-text">
+							Local port for receiving messages
+						</div>
+					</div>
 				</div>
 
-				<!-- Quick Actions -->
+				<!-- Audio Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🎵</span>
+						Audio Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="sample-rate">Sample Rate (Hz)</label>
+						<select id="sample-rate" aria-describedby="sample-rate-help">
+							<option value="48000">48000 Hz (Recommended)</option>
+							<option value="44100">44100 Hz</option>
+							<option value="96000">96000 Hz</option>
+						</select>
+						<div id="sample-rate-help" class="help-text">
+							Audio sampling frequency
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="frame-duration">Frame Duration (ms)</label>
+						<select id="frame-duration" aria-describedby="frame-duration-help">
+							<option value="40">40 ms (Recommended)</option>
+							<option value="20">20 ms</option>
+							<option value="60">60 ms</option>
+						</select>
+						<div id="frame-duration-help" class="help-text">
+							Audio frame timing
+						</div>
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="prefer-usb" checked>
+						<label for="prefer-usb">Prefer USB Audio Devices</label>
+					</div>
+				</div>
+
+				<!-- Protocol Configuration -->
 				<div class="config-section">
 					<div class="section-header">
 						<span aria-hidden="true">🔧</span>
-						Quick Actions
+						Protocol Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="target-type">Target Type</label>
+						<select id="target-type" aria-describedby="target-type-help">
+							<option value="computer">Computer (LAN/Internet)</option>
+							<option value="modem">Modem (SDR/Radio)</option>
+						</select>
+						<div id="target-type-help" class="help-text">
+							Affects keepalive and timeout behavior
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="keepalive-interval">Keepalive Interval (seconds)</label>
+						<input type="number" 
+							   id="keepalive-interval" 
+							   placeholder="2.0" 
+							   min="0.5" 
+							   max="60"
+							   step="0.1"
+							   aria-describedby="keepalive-help">
+						<div id="keepalive-help" class="help-text">
+							Keepalive timing for computer targets
+						</div>
+					</div>
+				</div>
+
+				<!-- GPIO Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🔌</span>
+						GPIO Settings (Raspberry Pi)
+					</div>
+					
+					<div class="form-group">
+						<label for="ptt-pin">PTT GPIO Pin</label>
+						<input type="number" 
+							   id="ptt-pin" 
+							   placeholder="23" 
+							   min="2" 
+							   max="27"
+							   aria-describedby="ptt-pin-help">
+						<div id="ptt-pin-help" class="help-text">
+							GPIO pin for PTT button
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="led-pin">LED GPIO Pin</label>
+						<input type="number" 
+							   id="led-pin" 
+							   placeholder="17" 
+							   min="2" 
+							   max="27"
+							   aria-describedby="led-pin-help">
+						<div id="led-pin-help" class="help-text">
+							GPIO pin for PTT LED indicator
+						</div>
+					</div>
+				</div>
+
+				<!-- Debug Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🐛</span>
+						Debug Settings
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="verbose-mode">
+						<label for="verbose-mode">Verbose Debug Output</label>
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="quiet-mode">
+						<label for="quiet-mode">Quiet Mode (Minimal Output)</label>
+					</div>
+					
+					<div class="form-group">
+						<label for="log-level">Log Level</label>
+						<select id="log-level-config">
+							<option value="DEBUG">Debug (All Messages)</option>
+							<option value="INFO" selected>Info (Normal)</option>
+							<option value="WARNING">Warning (Important Only)</option>
+							<option value="ERROR">Error (Problems Only)</option>
+						</select>
+					</div>
+				</div>
+
+				<!-- Apply/Save Actions -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">💫</span>
+						Apply Changes
 					</div>
 					
 					<div class="button-group">
@@ -835,14 +1029,41 @@
 							Apply Changes
 						</button>
 						
-						<button class="btn btn-success" onclick="saveConfig()">
+						<button class="btn btn-success" onclick="saveCurrentConfig()">
 							<span aria-hidden="true">💾</span>
-							Save Config
+							Save Current Config
 						</button>
+						
+						<button class="btn" onclick="resetToDefaults()">
+							<span aria-hidden="true">🔄</span>
+							Reset to Defaults
+						</button>
+					</div>
+					
+					<div class="config-status" id="config-status">
+						Ready to configure system settings
 					</div>
 				</div>
 			</div>
 		</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		<!-- Status Panel (Always Visible) -->
 		<div class="panel">
@@ -1060,6 +1281,8 @@
 					updateSystemStatus(message.data);
 					break;
 					
+
+
 				case 'config_saved':
 				case 'config_loaded':
 				case 'config_updated':
@@ -1074,6 +1297,22 @@
 					addLogEntry(`Error: ${message.message}`, 'error');
 					break;
 					
+
+
+
+
+				case 'config_loaded':
+				case 'config_saved': 
+				case 'config_created':
+				case 'config_not_found':
+				case 'config_validation_warning':
+				case 'connection_test_result':
+					handleEnhancedConfigMessage(message);
+					break;
+
+
+
+
 				default:
 					addLogEntry(`Unknown message type: ${message.type}`, 'warning');
 			}
@@ -1595,6 +1834,327 @@
 			addLogEntry,
 			attemptReconnect
 		};
+
+
+
+
+
+
+// Enhanced Configuration Management Functions - ADD TO YOUR index.html <script> section
+
+		// Configuration file management
+		function loadConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim();
+			const data = filename ? { filename } : {};
+			
+			addLogEntry(`Loading configuration${filename ? ` from ${filename}` : ' (auto-discovery)'}...`, 'info');
+			sendWebSocketMessage('load_config', data);
+		}
+
+		function saveConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim();
+			const data = filename ? { filename } : {};
+			
+			addLogEntry(`Saving configuration${filename ? ` to ${filename}` : ' (auto-location)'}...`, 'info');
+			sendWebSocketMessage('save_config', data);
+		}
+
+		function createConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim() || 'opulent_voice.yaml';
+			
+			const templateChoice = confirm(
+				"Create configuration file:\n\n" +
+				"OK = Create sample template\n" + 
+				"Cancel = Save current settings as new file"
+			);
+			
+			const data = {
+				filename: filename,
+				template_type: templateChoice ? 'full' : 'current'
+			};
+			
+			addLogEntry(`Creating new configuration file: ${filename}`, 'info');
+			sendWebSocketMessage('create_config', data);
+		}
+
+		function testConnection() {
+			addLogEntry('Testing system connection...', 'info');
+			sendWebSocketMessage('test_connection');
+		}
+
+		function resetToDefaults() {
+			if (confirm('Reset all configuration to defaults? This will clear the current form.')) {
+				// Reset form to default values
+				document.getElementById('callsign').value = '';
+				document.getElementById('target-ip').value = '192.168.2.152';
+				document.getElementById('target-port').value = '57372';
+				document.getElementById('listen-port').value = '57372';
+				document.getElementById('sample-rate').value = '48000';
+				document.getElementById('frame-duration').value = '40';
+				document.getElementById('prefer-usb').checked = true;
+				document.getElementById('target-type').value = 'computer';
+				document.getElementById('keepalive-interval').value = '2.0';
+				document.getElementById('ptt-pin').value = '23';
+				document.getElementById('led-pin').value = '17';
+				document.getElementById('verbose-mode').checked = false;
+				document.getElementById('quiet-mode').checked = false;
+				document.getElementById('log-level-config').value = 'INFO';
+				
+				updateConfigStatus('Configuration reset to defaults');
+				addLogEntry('Configuration form reset to defaults', 'info');
+			}
+		}
+
+		function saveCurrentConfig() {
+			// Same as the existing saveConfig but with better messaging
+			const config = gatherEnhancedConfigData();
+			if (validateEnhancedConfig(config)) {
+				sendWebSocketMessage('save_config', config);
+				showNotification('Saving current configuration...', 'info');
+			}
+		}
+
+		// Enhanced config data gathering
+		function gatherEnhancedConfigData() {
+			return {
+				callsign: document.getElementById('callsign').value.trim(),
+				network: {
+					target_ip: document.getElementById('target-ip').value.trim(),
+					target_port: parseInt(document.getElementById('target-port').value) || 57372,
+					listen_port: parseInt(document.getElementById('listen-port').value) || 57372
+				},
+				audio: {
+					sample_rate: parseInt(document.getElementById('sample-rate').value) || 48000,
+					frame_duration_ms: parseInt(document.getElementById('frame-duration').value) || 40,
+					prefer_usb_device: document.getElementById('prefer-usb').checked,
+					device_keywords: ["Samson", "C01U", "USB"]  // Default keywords
+				},
+				protocol: {
+					target_type: document.getElementById('target-type').value || 'computer',
+					keepalive_interval: parseFloat(document.getElementById('keepalive-interval').value) || 2.0
+				},
+				gpio: {
+					ptt_pin: parseInt(document.getElementById('ptt-pin').value) || 23,
+					led_pin: parseInt(document.getElementById('led-pin').value) || 17,
+					button_bounce_time: 0.02,  // Default
+					led_brightness: 1.0        // Default
+				},
+				debug: {
+					verbose: document.getElementById('verbose-mode').checked,
+					quiet: document.getElementById('quiet-mode').checked,
+					log_level: document.getElementById('log-level-config').value || 'INFO'
+				}
+			};
+		}
+
+		// Enhanced config validation
+		function validateEnhancedConfig(config) {
+			const errors = [];
+			
+			// Callsign validation
+			if (!config.callsign) {
+				errors.push('Callsign is required');
+			} else if (!/^[A-Z0-9\-\/.]+$/i.test(config.callsign)) {
+				errors.push('Callsign contains invalid characters');
+			}
+			
+			// Network validation
+			if (!config.network.target_ip) {
+				errors.push('Target IP is required');
+			}
+			
+			if (config.network.target_port < 1 || config.network.target_port > 65535) {
+				errors.push('Target port must be between 1 and 65535');
+			}
+			
+			if (config.network.listen_port < 1 || config.network.listen_port > 65535) {
+				errors.push('Listen port must be between 1 and 65535');
+			}
+			
+			// Audio validation
+			const validSampleRates = [8000, 16000, 24000, 44100, 48000, 96000];
+			if (!validSampleRates.includes(config.audio.sample_rate)) {
+				errors.push('Invalid sample rate selected');
+			}
+			
+			const validFrameDurations = [20, 40, 60];
+			if (!validFrameDurations.includes(config.audio.frame_duration_ms)) {
+				errors.push('Invalid frame duration selected');
+			}
+			
+			// GPIO validation
+			if (config.gpio.ptt_pin < 2 || config.gpio.ptt_pin > 27) {
+				errors.push('PTT pin must be between 2 and 27');
+			}
+			
+			if (config.gpio.led_pin < 2 || config.gpio.led_pin > 27) {
+				errors.push('LED pin must be between 2 and 27');
+			}
+			
+			if (config.gpio.ptt_pin === config.gpio.led_pin) {
+				errors.push('PTT pin and LED pin cannot be the same');
+			}
+			
+			// Protocol validation
+			if (!['computer', 'modem'].includes(config.protocol.target_type)) {
+				errors.push('Target type must be computer or modem');
+			}
+			
+			if (config.protocol.keepalive_interval < 0.5 || config.protocol.keepalive_interval > 60) {
+				errors.push('Keepalive interval must be between 0.5 and 60 seconds');
+			}
+			
+			// Debug validation
+			if (config.debug.verbose && config.debug.quiet) {
+				errors.push('Cannot enable both verbose and quiet modes');
+			}
+			
+			if (errors.length > 0) {
+				showNotification(errors.join('; '), 'error');
+				updateConfigStatus('Configuration has errors: ' + errors.join(', '));
+				return false;
+			}
+			
+			updateConfigStatus('Configuration is valid');
+			return true;
+		}
+
+		// Enhanced config population from server data
+		function populateEnhancedConfigFromData(config) {
+			currentConfig = config;
+			
+			// Update current file display
+			if (config._metadata && config._metadata.config_file_path) {
+				document.getElementById('current-config-file').textContent = config._metadata.config_file_path;
+			} else {
+				document.getElementById('current-config-file').textContent = 'Default configuration';
+			}
+			
+			// Station settings
+			if (config.callsign) {
+				document.getElementById('callsign').value = config.callsign;
+				currentStation = config.callsign;
+				document.getElementById('current-station').textContent = currentStation;
+			}
+			
+			// Network settings
+			if (config.network) {
+				if (config.network.target_ip) document.getElementById('target-ip').value = config.network.target_ip;
+				if (config.network.target_port) document.getElementById('target-port').value = config.network.target_port;
+				if (config.network.listen_port) document.getElementById('listen-port').value = config.network.listen_port;
+			}
+			
+			// Audio settings
+			if (config.audio) {
+				if (config.audio.sample_rate) document.getElementById('sample-rate').value = config.audio.sample_rate;
+				if (config.audio.frame_duration_ms) document.getElementById('frame-duration').value = config.audio.frame_duration_ms;
+				if (config.audio.prefer_usb_device !== undefined) document.getElementById('prefer-usb').checked = config.audio.prefer_usb_device;
+			}
+			
+			// Protocol settings
+			if (config.protocol) {
+				if (config.protocol.target_type) document.getElementById('target-type').value = config.protocol.target_type;
+				if (config.protocol.keepalive_interval) document.getElementById('keepalive-interval').value = config.protocol.keepalive_interval;
+			}
+			
+			// GPIO settings
+			if (config.gpio) {
+				if (config.gpio.ptt_pin) document.getElementById('ptt-pin').value = config.gpio.ptt_pin;
+				if (config.gpio.led_pin) document.getElementById('led-pin').value = config.gpio.led_pin;
+			}
+			
+			// Debug settings
+			if (config.debug) {
+				if (config.debug.verbose !== undefined) document.getElementById('verbose-mode').checked = config.debug.verbose;
+				if (config.debug.quiet !== undefined) document.getElementById('quiet-mode').checked = config.debug.quiet;
+				if (config.debug.log_level) document.getElementById('log-level-config').value = config.debug.log_level;
+			}
+			
+			updateConfigStatus('Configuration loaded successfully');
+		}
+
+		// Configuration status updates
+		function updateConfigStatus(message) {
+			const statusElement = document.getElementById('config-status');
+			if (statusElement) {
+				statusElement.textContent = message;
+				// Add some visual feedback
+				statusElement.style.opacity = '0.7';
+				setTimeout(() => {
+					if (statusElement.style) statusElement.style.opacity = '1';
+				}, 100);
+			}
+		}
+
+		// Enhanced WebSocket message handling for new config features
+		function handleEnhancedConfigMessage(message) {
+			switch (message.type) {
+				case 'current_config':
+					populateEnhancedConfigFromData(message.data);
+					break;
+					
+				case 'config_loaded':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Loaded: ${message.data.filename}`);
+					// Refresh the config display
+					loadCurrentConfig();
+					break;
+					
+				case 'config_saved':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Saved: ${message.data.filename}`);
+					break;
+					
+				case 'config_created':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Created: ${message.data.filename}`);
+					// Load the newly created config
+					loadCurrentConfig();
+					break;
+					
+				case 'config_not_found':
+					showNotification('No configuration file found in standard locations', 'warning');
+					updateConfigStatus('No config file found - use Create New');
+					addLogEntry(`Searched paths: ${message.data.searched_paths.join(', ')}`, 'info');
+					break;
+					
+				case 'config_validation_warning':
+					showNotification('Configuration loaded with warnings', 'warning');
+					updateConfigStatus(`Warnings: ${message.data.errors.join(', ')}`);
+					addLogEntry(`Config warnings: ${message.data.errors.join(', ')}`, 'warning');
+					break;
+					
+				case 'connection_test_result':
+					const result = message.data;
+					if (result.success) {
+						showNotification('System test passed', 'success');
+						updateConfigStatus('System test: All components OK');
+					} else {
+						showNotification('System test found issues', 'warning');
+						updateConfigStatus(`System test: ${result.message}`);
+					}
+					
+					// Log detailed results
+					if (result.results) {
+						Object.entries(result.results).forEach(([test, passed]) => {
+							const status = passed ? 'PASS' : 'FAIL';
+							addLogEntry(`Test ${test}: ${status}`, passed ? 'success' : 'warning');
+						});
+					}
+					break;
+			}
+		}
+
+		// Replace the existing populateConfigFromData function with populateEnhancedConfigFromData
+		// Replace the existing gatherConfigData function with gatherEnhancedConfigData
+		// Replace the existing validateConfig function with validateEnhancedConfig
+
+
+
+
+
+
+
 	</script>
 </body>
 </html>
