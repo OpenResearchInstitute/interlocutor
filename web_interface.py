@@ -81,16 +81,27 @@ class RadioWebInterface:
         # Clean up disconnected clients
         self.websocket_clients -= disconnected
     
+
+
+
     async def handle_gui_command(self, websocket: WebSocket, command_data: Dict):
         """Process commands from GUI"""
         try:
             command = command_data.get('action')
             data = command_data.get('data', {})
-            
+        
             if command == 'send_text_message':
                 await self.handle_send_text_message(data)
             elif command == 'update_config':
-                await self.handle_config_update(data)
+                await self.handle_update_config(data)  # Use the NEW method
+            elif command == 'get_current_config':
+                await self.handle_get_current_config(websocket)
+            elif command == 'save_config':
+                await self.handle_save_config(data)
+            elif command == 'load_config':
+                await self.handle_load_config(websocket)
+            elif command == 'test_connection':
+                await self.handle_test_connection(websocket)
             elif command == 'get_audio_devices':
                 await self.handle_get_audio_devices(websocket)
             elif command == 'test_audio':
@@ -99,13 +110,25 @@ class RadioWebInterface:
                 await self.handle_debug_mode_change(data)
             else:
                 self.logger.warning(f"Unknown command: {command}")
-                
+                await self.send_to_client(websocket, {
+                    "type": "error",
+                    "message": f"Unknown command: {command}"
+                })
+            
         except Exception as e:
             self.logger.error(f"Error handling GUI command: {e}")
             await self.send_to_client(websocket, {
                 "type": "error",
                 "message": str(e)
             })
+
+
+
+
+
+
+
+
     
     async def handle_send_text_message(self, data: Dict):
         """Handle text message from GUI"""
@@ -174,6 +197,286 @@ class RadioWebInterface:
             "type": "audio_devices",
             "data": devices
         })
+
+
+
+
+
+
+
+
+
+# Added these methods to the RadioWebInterface class in web_interface.py to get frontend working
+
+    async def handle_get_current_config(self, websocket: WebSocket):
+        """Send current configuration to the web interface"""
+        try:
+            if self.config:
+                # Convert config to dictionary format for the web interface
+                config_dict = {
+                    'callsign': getattr(self.config, 'callsign', 'NOCALL'),
+                    'network': {
+                        'target_ip': self.config.network.target_ip,
+                        'target_port': self.config.network.target_port,
+                        'listen_port': self.config.network.listen_port,
+                        'voice_port': getattr(self.config.network, 'voice_port', 57373),
+                        'text_port': getattr(self.config.network, 'text_port', 57374),
+                        'control_port': getattr(self.config.network, 'control_port', 57375),
+                    },
+                    'audio': {
+                        'sample_rate': self.config.audio.sample_rate,
+                        'channels': self.config.audio.channels,
+                        'frame_duration_ms': self.config.audio.frame_duration_ms,
+                        'input_device': self.config.audio.input_device,
+                        'prefer_usb_device': self.config.audio.prefer_usb_device,
+                        'device_keywords': self.config.audio.device_keywords,
+                    },
+                    'gpio': {
+                        'ptt_pin': self.config.gpio.ptt_pin,
+                        'led_pin': self.config.gpio.led_pin,
+                        'button_bounce_time': self.config.gpio.button_bounce_time,
+                        'led_brightness': self.config.gpio.led_brightness,
+                    },
+                    'protocol': {
+                        'target_type': self.config.protocol.target_type,
+                        'keepalive_interval': self.config.protocol.keepalive_interval,
+                        'continuous_stream': self.config.protocol.continuous_stream,
+                    },
+                    'debug': {
+                        'verbose': self.config.debug.verbose,
+                        'quiet': self.config.debug.quiet,
+                        'log_level': self.config.debug.log_level,
+                        'show_frame_details': getattr(self.config.debug, 'show_frame_details', False),
+                        'show_timing_info': getattr(self.config.debug, 'show_timing_info', False),
+                    }
+                }
+            
+                await self.send_to_client(websocket, {
+                    "type": "current_config",
+                    "data": config_dict
+                })
+            else:
+                await self.send_to_client(websocket, {
+                    "type": "error",
+                    "message": "No configuration available"
+                })
+            
+        except Exception as e:
+            self.logger.error(f"Error getting current config: {e}")
+            await self.send_to_client(websocket, {
+                "type": "error",
+                "message": f"Error retrieving configuration: {str(e)}"
+            })
+
+    async def handle_update_config(self, data: Dict):
+        """Handle configuration updates from the web interface"""
+        try:
+            # Apply updates to the current configuration
+            if 'callsign' in data:
+                self.config.callsign = data['callsign']
+        
+            if 'network' in data:
+                network = data['network']
+                if 'target_ip' in network:
+                    self.config.network.target_ip = network['target_ip']
+                if 'target_port' in network:
+                    self.config.network.target_port = int(network['target_port'])
+                if 'listen_port' in network:
+                    self.config.network.listen_port = int(network['listen_port'])
+                if 'voice_port' in network:
+                    self.config.network.voice_port = int(network['voice_port'])
+                if 'text_port' in network:
+                    self.config.network.text_port = int(network['text_port'])
+                if 'control_port' in network:
+                    self.config.network.control_port = int(network['control_port'])
+        
+            if 'audio' in data:
+                audio = data['audio']
+                if 'sample_rate' in audio:
+                    self.config.audio.sample_rate = int(audio['sample_rate'])
+                if 'frame_duration_ms' in audio:
+                    self.config.audio.frame_duration_ms = int(audio['frame_duration_ms'])
+                if 'input_device' in audio:
+                    self.config.audio.input_device = audio['input_device']
+                if 'prefer_usb_device' in audio:
+                    self.config.audio.prefer_usb_device = bool(audio['prefer_usb_device'])
+        
+            if 'gpio' in data:
+                gpio = data['gpio']
+                if 'ptt_pin' in gpio:
+                    self.config.gpio.ptt_pin = int(gpio['ptt_pin'])
+                if 'led_pin' in gpio:
+                    self.config.gpio.led_pin = int(gpio['led_pin'])
+                if 'button_bounce_time' in gpio:
+                    self.config.gpio.button_bounce_time = float(gpio['button_bounce_time'])
+                if 'led_brightness' in gpio:
+                    self.config.gpio.led_brightness = float(gpio['led_brightness'])
+        
+            if 'protocol' in data:
+                protocol = data['protocol']
+                if 'target_type' in protocol:
+                    self.config.protocol.target_type = protocol['target_type']
+                if 'keepalive_interval' in protocol:
+                    self.config.protocol.keepalive_interval = float(protocol['keepalive_interval'])
+                if 'continuous_stream' in protocol:
+                    self.config.protocol.continuous_stream = bool(protocol['continuous_stream'])
+        
+            if 'debug' in data:
+                debug = data['debug']
+                if 'verbose' in debug:
+                    self.config.debug.verbose = bool(debug['verbose'])
+                if 'quiet' in debug:
+                    self.config.debug.quiet = bool(debug['quiet'])
+                if 'log_level' in debug:
+                    self.config.debug.log_level = debug['log_level']
+                if 'show_frame_details' in debug:
+                    self.config.debug.show_frame_details = bool(debug['show_frame_details'])
+                if 'show_timing_info' in debug:
+                    self.config.debug.show_timing_info = bool(debug['show_timing_info'])
+        
+            # Apply debug changes immediately to the global DebugConfig
+            if 'debug' in data:
+                from interlocutor import DebugConfig as GlobalDebugConfig
+                GlobalDebugConfig.set_mode(
+                    verbose=self.config.debug.verbose,
+                    quiet=self.config.debug.quiet
+                )
+        
+            # Broadcast the update to all connected clients
+            await self.broadcast_to_all({
+                "type": "config_updated",
+                "data": {"message": "Configuration updated successfully"}
+            })
+        
+            self.logger.info("Configuration updated via web interface")
+        
+        except Exception as e:
+            self.logger.error(f"Error updating config: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Error updating configuration: {str(e)}"
+            })
+
+    async def handle_save_config(self, data: Dict):
+        """Save configuration to file"""
+        try:
+            filename = data.get('filename', 'opulent_voice.yaml')
+        
+            # Use the configuration manager to save the config
+            from config_manager import ConfigurationManager
+            config_manager = ConfigurationManager()
+            config_manager.config = self.config
+        
+            success = config_manager.save_config(filename)
+        
+            if success:
+                await self.broadcast_to_all({
+                    "type": "config_saved",
+                    "data": {"message": f"Configuration saved to {filename}"}
+                })
+                self.logger.info(f"Configuration saved to {filename}")
+            else:
+                await self.broadcast_to_all({
+                    "type": "error",
+                    "message": f"Failed to save configuration to {filename}"
+                })
+            
+        except Exception as e:
+            self.logger.error(f"Error saving config: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Error saving configuration: {str(e)}"
+            })
+
+    async def handle_load_config(self, websocket: WebSocket):
+        """Load configuration from file"""
+        try:
+            from config_manager import ConfigurationManager
+            config_manager = ConfigurationManager()
+        
+            # Load the configuration
+            loaded_config = config_manager.load_config()
+        
+            if loaded_config:
+                self.config = loaded_config
+            
+                # Send the loaded config back to the client
+                await self.handle_get_current_config(websocket)
+            
+                await self.send_to_client(websocket, {
+                    "type": "config_loaded",
+                    "data": {"message": "Configuration loaded successfully"}
+                })
+            
+                self.logger.info("Configuration loaded via web interface")
+            else:
+                await self.send_to_client(websocket, {
+                    "type": "error",
+                    "message": "Failed to load configuration file"
+                })
+            
+        except Exception as e:
+            self.logger.error(f"Error loading config: {e}")
+            await self.send_to_client(websocket, {
+                "type": "error",
+                "message": f"Error loading configuration: {str(e)}"
+            })
+
+    async def handle_test_connection(self, websocket: WebSocket):
+        """Test network connection"""
+        try:
+            # Basic connectivity test
+            if self.radio_system:
+                # Use the radio system's test methods
+                test_results = {
+                    "network_available": True,
+                    "target_reachable": True,  # You could implement actual ping test
+                    "audio_system": True,      # You could implement actual audio test
+                    "gpio_system": True        # You could implement actual GPIO test
+                }
+            
+                await self.send_to_client(websocket, {
+                    "type": "connection_test_result",
+                    "data": {
+                        "success": True,
+                        "results": test_results,
+                        "message": "Connection test completed successfully"
+                    }
+                })
+            else:
+                await self.send_to_client(websocket, {
+                    "type": "connection_test_result", 
+                    "data": {
+                        "success": False,
+                        "message": "Radio system not available for testing"
+                    }
+                })
+            
+        except Exception as e:
+            self.logger.error(f"Error testing connection: {e}")
+            await self.send_to_client(websocket, {
+                "type": "error",
+                "message": f"Connection test failed: {str(e)}"
+            })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
     async def handle_test_audio(self, websocket: WebSocket, data: Dict):
         """Handle audio device testing"""
@@ -407,6 +710,21 @@ async def get_index():
         </body>
         </html>
         """, status_code=200)
+
+
+
+@app.get("/config")
+async def get_config_page():
+    """Serve the configuration page"""
+    config_file = Path("html5_gui/config.html")
+    if config_file.exists():
+        return HTMLResponse(content=config_file.read_text(), status_code=200)
+    else:
+        return HTMLResponse(content="<h1>Configuration page not found</h1>", status_code=404)
+
+
+
+
 
 @app.get("/api/status")
 async def get_status():

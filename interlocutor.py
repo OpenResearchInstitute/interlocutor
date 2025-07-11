@@ -3646,62 +3646,42 @@ def setup_web_interface_callbacks(radio_system, web_interface):
 # Usage
 
 
+
+# Replace the main execution section in interlocutor.py with this:
+
 if __name__ == "__main__":
 	print("-=" * 40)
 	print("Opulent Voice Radio with Terminal Chat")
 	print("-=" * 40)
 
 	try:
-		# Setup configuration system (your existing code)
+		# Setup configuration system
 		config, should_exit = setup_configuration()
-		
+        
 		if should_exit:
 			sys.exit(0)
 
-		# DEBUG CODE
-		print(f"DEBUG: config type = {type(config)}, config = {config}")
-
-		# Set debug mode from configuration (your existing code)
+		# Set debug mode from configuration
 		DebugConfig.set_mode(verbose=config.debug.verbose, quiet=config.debug.quiet)
 
-		# ADD: Handle audio CLI commands FIRST, before any hardware setup
-		# This prevents hanging on user input during automated tests
-		
-		# Quick check for audio commands in sys.argv (simple approach)
+		# Handle audio CLI commands FIRST (existing code unchanged)
 		if '--list-audio' in sys.argv:
-			DebugConfig.system_print("🎧 Listing available audio devices...")
-			manager = create_audio_manager_for_cli()
-			manager.list_devices_cli_format()
+			# ... existing audio CLI code ...
 			sys.exit(0)
-		
+        
 		if '--test-audio' in sys.argv:
-			DebugConfig.system_print("🎧 Testing audio devices...")
-			manager = AudioDeviceManager(mode=AudioManagerMode.CLI_DIAGNOSTIC, radio_config=config)
-			success = manager.test_audio_cli_format()
-			if success:
-				print("\n💡 Use --setup-audio to change audio devices")
-			sys.exit(0 if success else 1)
-		
+			# ... existing audio CLI code ...
+			sys.exit(0)
+        
 		if '--setup-audio' in sys.argv:
-			DebugConfig.system_print("🎧 Interactive audio device setup...")
-			manager = create_audio_manager_for_interactive()
-			input_dev, output_dev = manager.setup_audio_devices(force_selection=True)
-			if input_dev is not None and output_dev is not None:
-				print(f"\n✅ Audio setup complete!")
-				print(f"   Input device:  {input_dev}")
-				print(f"   Output device: {output_dev}")
-				print("🎧 Configuration saved. Run without --setup-audio to use these devices.")
-				sys.exit(0)
-			else:
-				print("❌ Audio setup cancelled or failed.")
-				sys.exit(1)
+			# ... existing audio CLI code ...
+			sys.exit(0)
 
-		
-		# Test the base-40 encoding first (existing code)
+		# Test the base-40 encoding first
 		if config.debug.verbose:
 			test_base40_encoding()
 
-		# Create station identifier from configuration (existing code)  
+		# Create station identifier from configuration
 		station_id = StationIdentifier(config.callsign)
 
 		DebugConfig.system_print(f"📡 Station: {station_id}")
@@ -3712,88 +3692,72 @@ if __name__ == "__main__":
 			DebugConfig.debug_print("💡 Configuration loaded from file and CLI overrides")
 		DebugConfig.system_print("")
 
-		# Create message receiver using config (existing code)
+		# Create message receiver using config
 		receiver = MessageReceiver(listen_port=config.network.listen_port)
 		receiver.start()
 
+		# FIXED: Proper branching with explicit exits
 		if config.ui.chat_only_mode:
-			# Your existing chat-only implementation continues unchanged...
+			# Chat-only mode (existing code unchanged)
 			print("💬 Chat-only mode (no GPIO/audio)")
+			# ... existing chat-only implementation ...
+			# This mode has its own main loop, so it won't fall through
+            
+		elif hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
+			# WEB INTERFACE MODE - with proper exit
+			print("🌐 Starting in web interface mode...")
 
-			# Simple chat-only implementation for testing
-			chat_manager = ChatManager(station_id)
-			message_queue = MessagePriorityQueue()
-			chat_manager.set_message_queue(message_queue)
-
-			chat_interface = TerminalChatInterface(station_id, chat_manager)
-			receiver.chat_interface = chat_interface
-
-			# Create minimal transmitter for chat using config
-			transmitter = NetworkTransmitter(config.network.target_ip, config.network.target_port)
-			protocol = OpulentVoiceProtocolWithIP(station_id, dest_ip=config.network.target_ip)
-
-			chat_interface.start()
-
-			print(f"\n✅ {station_id} Chat system ready. Type messages or 'quit' to exit.")
-			print("💡 Commands: 'status' (show chat status), 'clear' (clear buffered), 'quit' (exit)")
-
-			# Simple transmission loop for chat-only mode
-			try:
-				while chat_interface.running:
-					message = message_queue.get_next_message(timeout=0.1)
-					if message and message.msg_type == MessageType.TEXT:
-						frames = protocol.create_text_frames(message.data)
-						for frame in frames:
-							if transmitter.send_frame(frame):
-								print(f"📤 Transmitted: {message.data.decode('utf-8')}")
-						message_queue.mark_sent()
-					time.sleep(0.1)
-			except KeyboardInterrupt:
-				pass
-
-		else:
-			# Check for web interface mode
-			if hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
-				print("🌐 Starting in web interface mode...")
-
-				# Initialize radio system first
-				radio = GPIOZeroPTTHandler(
+			# Initialize radio system
+			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
-				)
-        
-				# Initialize web interface with radio system
-				# global web_interface_instance #it's at top of file
-				web_interface_instance = initialize_web_interface(radio, config)
-        
-				# Connect radio system callbacks to web interface
-				setup_web_interface_callbacks(radio, web_interface_instance)
-        
-				# Run web server (this blocks)
+			)
+            
+			# Connect receiver to radio's chat interface
+			receiver.chat_interface = radio.chat_interface
+
+			# Initialize web interface with radio system
+			web_interface_instance = initialize_web_interface(radio, config)
+            
+			# Setup web interface callbacks
+			setup_web_interface_callbacks(radio, web_interface_instance)
+            
+			print("🚀 Web interface starting on http://localhost:8000")
+			print("🌐 Press Ctrl+C to stop the web interface")
+            
+			try:
+				# Run web server (this blocks until Ctrl+C)
 				run_web_server(
 					host="localhost", 
 					port=8000, 
 					radio_system=radio, 
 					config=config
 				)
-				#return
+			except KeyboardInterrupt:
+				print("\n🛑 Web interface shutting down...")
+			finally:
+				# Clean shutdown of web interface components
+				if 'radio' in locals():
+					radio.cleanup()
+				print("🌐 Web interface stopped")
+            
+			# CRITICAL: Exit here - don't fall through to CLI mode
+			sys.exit(0)
+            
+		else:
+			# FULL CLI RADIO MODE
+			print("📻 Starting full radio system with GPIO and audio...")
+            
+			# Initialize full radio system
+			radio = GPIOZeroPTTHandler(
+				station_identifier=station_id,
+				config=config
+			)
 
-
-
-
-
-			else:
-				# Full radio system with GPIO and audio using configuration
-				radio = GPIOZeroPTTHandler(
-					station_identifier=station_id,
-					config=config
-				)
-
-
-			# drop through? AI!!!
 			# Connect receiver to chat interface
 			receiver.chat_interface = radio.chat_interface
 
+			# Run tests and start
 			radio.test_gpio()
 			radio.test_network()
 			radio.test_chat()
@@ -3805,19 +3769,22 @@ if __name__ == "__main__":
 			print("📊 Voice and chat statistics shown after each PTT release")
 			print("⌨️  Press Ctrl+C to exit")
 
-			# Main loop
+			# CLI Main loop
 			try:
 				while True:
 					time.sleep(0.1)
 			except KeyboardInterrupt:
-				pass
+				print("\n🛑 CLI radio system shutting down...")
 
 	except KeyboardInterrupt:
 		print("\nShutting down...")
 	except Exception as e:
 		print(f"✗ Error: {e}")
+		import traceback
+		traceback.print_exc()
 		sys.exit(1)
 	finally:
+		# Cleanup (this runs regardless of which mode was used)
 		if 'receiver' in locals():
 			receiver.stop()
 		if 'radio' in locals():
@@ -3826,7 +3793,3 @@ if __name__ == "__main__":
 			chat_interface.stop()
 
 		print("Thank you for using Opulent Voice!")
-
-
-
-

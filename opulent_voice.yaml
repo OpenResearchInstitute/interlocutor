@@ -1,0 +1,72 @@
+# Opulent Voice Protocol Configuration
+# Generated configuration file
+# Version: 1.0
+
+callsign: KK6OOZ
+network:
+  target_ip: 192.168.2.152
+  target_port: 57372
+  listen_port: 57372
+  voice_port: 57373
+  text_port: 57374
+  control_port: 57375
+audio:
+  sample_rate: 48000
+  channels: 1
+  frame_duration_ms: 40
+  input_device: null
+  prefer_usb_device: false
+  device_keywords:
+  - Samson
+  - C01U
+  - USB
+  bitrate: 16000
+gpio:
+  ptt_pin: 23
+  led_pin: 17
+  button_bounce_time: 0.02
+  led_brightness: 1.0
+protocol:
+  frame_size: 133
+  header_size: 12
+  payload_size: 121
+  continuous_stream: true
+  keepalive_interval: 2.0
+  target_type: modem
+debug:
+  verbose: false
+  quiet: false
+  log_level: INFO
+  log_file: null
+  show_frame_details: false
+  show_timing_info: false
+ui:
+  chat_enabled: true
+  chat_only_mode: false
+  show_statistics: true
+  auto_scroll: true
+  theme: dark
+  window_width: 800
+  window_height: 600
+  always_on_top: false
+gui:
+  audio_replay:
+    enabled: true
+    max_stored_messages: 100
+    storage_duration_hours: 24
+    auto_cleanup: true
+  transcription:
+    enabled: true
+    method: auto
+    language: en-US
+    confidence_threshold: 0.7
+    server_endpoint: http://localhost:8001/transcribe
+  accessibility:
+    high_contrast: false
+    reduced_motion: false
+    screen_reader_optimized: false
+    keyboard_shortcuts: true
+    announce_new_messages: true
+    focus_management: true
+config_version: '1.0'
+description: Opulent Voice Protocol Configuration
