@@ -15,6 +15,67 @@ pip3 install opuslib pyaudio gpiozero PyYAML numpy
 
 sudo apt install python3-pyaudio
 
+### 10 July 2025 Documentation
+
+Major Update: Web-Based Configuration System
+We've successfully implemented a complete web-based configuration interface for the Opulent Voice radio system. Users can now configure their entire radio system through a modern web interface.
+
+- Glassmorphism UI with responsive design
+- Real-time configuration updates that immediately affect the running radio system. We have live callsign updates in transmitted packets.
+- Form validation with user-friendly error messages
+
+#### Advanced File Management (tested and seems to be working)
+
+Smart file handling - saves back to original config file when specified with -c
+Auto-discovery - follows CLI search order when no config file specified
+Create/Load/Save/Export configurations through the web interface
+Import existing config files via drag-and-drop
+
+#### Audio Device Management (implemented and needs to be tested)
+
+Interactive device selection with real-time testing
+Input level monitoring during microphone tests
+Output tone testing with user confirmation
+USB device preferences and auto-detection
+
+#### Real-Time Integration
+
+WebSocket communication for instant updates and status
+Live radio system updates - no restart required!
+Immediate packet transmission with new settings
+Status indicators and progress feedback
+
+#### Usage
+Launch Web Interface:
+`python3 interlocutor.py YOUR_CALLSIGN --web-interface`
+
+With specific config file:
+`python3 interlocutor.py YOUR_CALLSIGN -c myconfig.yaml --web-interface`
+
+Access Interface:
+
+Main interface: http://localhost:8000
+
+Configuration: http://localhost:8000/config
+
+Configuration sections include:
+
+Station Configuration - Callsign and identification
+
+Network Settings - IP addresses, ports, and protocol settings
+
+Audio Settings - Sample rates, devices, and testing
+
+GPIO Settings - Raspberry Pi pin configuration
+
+Protocol Settings - Target types and keepalive intervals
+
+Debug & Logging - Verbose modes and diagnostic options
+
+
+And, backward compatible with CLI.
+
+
 ### 28 June 2025 Documentation
 
 YAML audio device configuration file can be loaded and edited and saved. Audio devices manager added.  
