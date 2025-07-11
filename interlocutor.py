@@ -3647,7 +3647,8 @@ def setup_web_interface_callbacks(radio_system, web_interface):
 
 
 
-# In interlocutor.py, replace the main section with this:
+
+# Replace the entire main section in interlocutor.py (starting from "if __name__ == "__main__":") with this:
 
 if __name__ == "__main__":
 	print("-=" * 40)
@@ -3666,15 +3667,24 @@ if __name__ == "__main__":
 
 		# Handle audio CLI commands FIRST (existing code unchanged)
 		if '--list-audio' in sys.argv:
-			# ... existing audio CLI code ...
+			from audio_device_manager import create_audio_manager_for_cli
+			device_manager = create_audio_manager_for_cli()
+			device_manager.list_audio_devices()
+			device_manager.cleanup()
 			sys.exit(0)
 		
 		if '--test-audio' in sys.argv:
-			# ... existing audio CLI code ...
+			from audio_device_manager import create_audio_manager_for_cli
+			device_manager = create_audio_manager_for_cli()
+			device_manager.test_audio_devices()
+			device_manager.cleanup()
 			sys.exit(0)
 		
 		if '--setup-audio' in sys.argv:
-			# ... existing audio CLI code ...
+			from audio_device_manager import create_audio_manager_for_interactive
+			device_manager = create_audio_manager_for_interactive()
+			device_manager.setup_audio_devices(force_selection=True)
+			device_manager.cleanup()
 			sys.exit(0)
 
 		# Test the base-40 encoding first
@@ -3696,15 +3706,9 @@ if __name__ == "__main__":
 		receiver = MessageReceiver(listen_port=config.network.listen_port)
 		receiver.start()
 
-		# FIXED: Proper branching with explicit exits
-		if config.ui.chat_only_mode:
-			# Chat-only mode (existing code unchanged)
-			print("💬 Chat-only mode (no GPIO/audio)")
-			# ... existing chat-only implementation ...
-			# This mode has its own main loop, so it won't fall through
-			
-		elif hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
-			# WEB INTERFACE MODE - NOW WITH CONFIG MANAGER
+		# FIXED: Check for web interface mode first
+		if hasattr(config, 'ui') and hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
+			# WEB INTERFACE MODE - FIXED VERSION
 			print("🌐 Starting in web interface mode...")
 
 			# Initialize radio system
@@ -3719,17 +3723,24 @@ if __name__ == "__main__":
 			# IMPORTANT: Pass the config manager to web interface
 			web_interface_instance = initialize_web_interface(radio, config, config_manager)
 			
-			# Setup web interface callbacks
+			# Setup web interface callbacks with fixed async handling
 			setup_web_interface_callbacks(radio, web_interface_instance)
+			
+			# Start radio system
+			radio.start()
 			
 			print("🚀 Web interface starting on http://localhost:8000")
 			print("🌐 Press Ctrl+C to stop the web interface")
 			
 			try:
+				# FIXED: Get the correct host and port from config
+				host = getattr(config.ui, 'web_interface_host', 'localhost')
+				port = getattr(config.ui, 'web_interface_port', 8000)
+				
 				# Run web server (this blocks until Ctrl+C)
 				run_web_server(
-					host="localhost", 
-					port=8000, 
+					host=host, 
+					port=port, 
 					radio_system=radio, 
 					config=config
 				)
@@ -3743,6 +3754,26 @@ if __name__ == "__main__":
 			
 			# CRITICAL: Exit here - don't fall through to CLI mode
 			sys.exit(0)
+			
+		elif config.ui.chat_only_mode:
+			# Chat-only mode (existing code unchanged)
+			print("💬 Chat-only mode (no GPIO/audio)")
+			# Create a minimal chat-only system
+			from terminal_chat import TerminalChatSystem
+			chat_system = TerminalChatSystem(station_id, config)
+			receiver.chat_interface = chat_system
+			
+			print(f"✅ {station_id} Chat System Ready!")
+			print("💬 Type messages in terminal")
+			print("⌨️  Press Ctrl+C to exit")
+			
+			try:
+				chat_system.start()
+				while True:
+					time.sleep(0.1)
+			except KeyboardInterrupt:
+				print("\n🛑 Chat system shutting down...")
+				chat_system.stop()
 			
 		else:
 			# FULL CLI RADIO MODE
@@ -3789,7 +3820,109 @@ if __name__ == "__main__":
 			receiver.stop()
 		if 'radio' in locals():
 			radio.cleanup()
-		elif 'chat_interface' in locals():
-			chat_interface.stop()
+		elif 'chat_system' in locals():
+			chat_system.stop()
 
 		print("Thank you for using Opulent Voice!")
+
+
+# Also add this function near the top of the file (after the imports):
+
+def setup_web_interface_callbacks(radio_system, web_interface):
+	"""Connect radio system callbacks to web interface for real-time updates"""
+	
+	# Store original chat display method if it exists
+	if (hasattr(radio_system, 'chat_interface') and 
+		hasattr(radio_system.chat_interface, 'display_received_message')):
+		
+		original_display = radio_system.chat_interface.display_received_message
+		
+		# Create async wrapper for message display
+		def enhanced_display(from_station, message):
+			# Call original display for terminal
+			original_display(from_station, message)
+			
+			# Also send to web interface asynchronously
+			if web_interface:
+				# Create a task to handle the async call
+				loop = None
+				try:
+					loop = asyncio.get_event_loop()
+				except RuntimeError:
+					# No event loop in current thread, create one
+					pass
+				
+				if loop and loop.is_running():
+					# Schedule the coroutine to run
+					asyncio.create_task(web_interface.on_message_received({
+						"content": message,
+						"from": str(from_station),
+						"type": "text"
+					}))
+				else:
+					# Handle in a thread-safe way
+					def run_async():
+						asyncio.run(web_interface.on_message_received({
+							"content": message,
+							"from": str(from_station),
+							"type": "text"
+						}))
+					
+					# Run in a separate thread to avoid blocking
+					threading.Thread(target=run_async, daemon=True).start()
+		
+		# Replace the method
+		radio_system.chat_interface.display_received_message = enhanced_display
+	
+	# Store original PTT methods if they exist
+	if hasattr(radio_system, 'ptt_pressed') and hasattr(radio_system, 'ptt_released'):
+		original_ptt_pressed = radio_system.ptt_pressed
+		original_ptt_released = radio_system.ptt_released
+		
+		# Create thread-safe PTT wrappers
+		def ptt_pressed_with_web():
+			original_ptt_pressed()
+			# Notify web interface in thread-safe way
+			if web_interface:
+				def notify_web():
+					asyncio.run(web_interface.on_ptt_state_changed(True))
+				threading.Thread(target=notify_web, daemon=True).start()
+		
+		def ptt_released_with_web():
+			original_ptt_released()
+			# Notify web interface in thread-safe way
+			if web_interface:
+				def notify_web():
+					asyncio.run(web_interface.on_ptt_state_changed(False))
+				threading.Thread(target=notify_web, daemon=True).start()
+		
+		# Replace methods
+		radio_system.ptt_pressed = ptt_pressed_with_web
+		radio_system.ptt_released = ptt_released_with_web
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
