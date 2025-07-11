@@ -363,6 +363,11 @@ class ConfigurationManager:
             Path.home() / ".config" / "opulent_voice" / "config.yaml",  # User config
             Path("/etc/opulent_voice/config.yaml"),  # System config (Linux)
         ]
+
+
+
+
+
     
     def load_config(self, config_file: Optional[str] = None) -> OpulentVoiceConfig:
         """
@@ -1235,7 +1240,10 @@ Configuration:
 
 
 
-def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
+
+# In config_manager.py, replace the setup_configuration function with this:
+
+def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool, ConfigurationManager]:
     """
     Setup configuration system with CLI integration
     
@@ -1243,7 +1251,7 @@ def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
         argv: Command line arguments (None for sys.argv)
         
     Returns:
-        (config_object, should_exit)
+        (config_object, should_exit, config_manager)
     """
     print("DEBUG: Starting setup_configuration")
     
@@ -1258,7 +1266,7 @@ def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
         if manager.create_sample_config(args.create_config):
             print(f"Sample configuration created: {args.create_config}")
             print("Edit the file and run again with: -c {args.create_config}")
-        return None, True
+        return None, True, None
     
     print("DEBUG: Loading configuration")
     # Load configuration
@@ -1282,8 +1290,7 @@ def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
     print(f"DEBUG: config after apply_gui_cli_overrides = {type(config)}")
 
     # Initialize configuration manager with GUI support
-    config_manager = ConfigurationManager()
-    config_manager.config = config
+    manager.config = config
 
     # Validate configuration
     is_valid, errors = manager.validate_config()
@@ -1292,7 +1299,7 @@ def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
         for error in errors:
             print(f"  ✗ {error}")
         # Return a default config instead of exiting directly
-        return OpulentVoiceConfig(), True
+        return OpulentVoiceConfig(), True, None
     
     # Save config if requested
     if args.save_config:
@@ -1305,15 +1312,12 @@ def setup_configuration(argv=None) -> tuple[OpulentVoiceConfig, bool]:
         if not args.callsign:
             print("Error: Callsign required either in config file or command line")
             # Return a default config instead of exiting directly
-            return OpulentVoiceConfig(), True
+            return OpulentVoiceConfig(), True, None
         config.callsign = args.callsign
     
-    print(f"DEBUG: Returning config = {type(config)}, should_exit = False")
-    # Return the config and indicate we should continue (not exit)
-    return config, False
-
-
-
+    print(f"DEBUG: Returning config = {type(config)}, should_exit = False, manager = {type(manager)}")
+    # Return the config, exit flag, and the config manager
+    return config, False, manager
 
 
 

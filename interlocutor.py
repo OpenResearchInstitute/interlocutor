@@ -3647,7 +3647,7 @@ def setup_web_interface_callbacks(radio_system, web_interface):
 
 
 
-# Replace the main execution section in interlocutor.py with this:
+# In interlocutor.py, replace the main section with this:
 
 if __name__ == "__main__":
 	print("-=" * 40)
@@ -3655,9 +3655,9 @@ if __name__ == "__main__":
 	print("-=" * 40)
 
 	try:
-		# Setup configuration system
-		config, should_exit = setup_configuration()
-        
+		# Setup configuration system - NOW RETURNS CONFIG MANAGER TOO
+		config, should_exit, config_manager = setup_configuration()
+		
 		if should_exit:
 			sys.exit(0)
 
@@ -3668,11 +3668,11 @@ if __name__ == "__main__":
 		if '--list-audio' in sys.argv:
 			# ... existing audio CLI code ...
 			sys.exit(0)
-        
+		
 		if '--test-audio' in sys.argv:
 			# ... existing audio CLI code ...
 			sys.exit(0)
-        
+		
 		if '--setup-audio' in sys.argv:
 			# ... existing audio CLI code ...
 			sys.exit(0)
@@ -3702,9 +3702,9 @@ if __name__ == "__main__":
 			print("💬 Chat-only mode (no GPIO/audio)")
 			# ... existing chat-only implementation ...
 			# This mode has its own main loop, so it won't fall through
-            
+			
 		elif hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
-			# WEB INTERFACE MODE - with proper exit
+			# WEB INTERFACE MODE - NOW WITH CONFIG MANAGER
 			print("🌐 Starting in web interface mode...")
 
 			# Initialize radio system
@@ -3712,19 +3712,19 @@ if __name__ == "__main__":
 				station_identifier=station_id,
 				config=config
 			)
-            
+			
 			# Connect receiver to radio's chat interface
 			receiver.chat_interface = radio.chat_interface
 
-			# Initialize web interface with radio system
-			web_interface_instance = initialize_web_interface(radio, config)
-            
+			# IMPORTANT: Pass the config manager to web interface
+			web_interface_instance = initialize_web_interface(radio, config, config_manager)
+			
 			# Setup web interface callbacks
 			setup_web_interface_callbacks(radio, web_interface_instance)
-            
+			
 			print("🚀 Web interface starting on http://localhost:8000")
 			print("🌐 Press Ctrl+C to stop the web interface")
-            
+			
 			try:
 				# Run web server (this blocks until Ctrl+C)
 				run_web_server(
@@ -3740,14 +3740,14 @@ if __name__ == "__main__":
 				if 'radio' in locals():
 					radio.cleanup()
 				print("🌐 Web interface stopped")
-            
+			
 			# CRITICAL: Exit here - don't fall through to CLI mode
 			sys.exit(0)
-            
+			
 		else:
 			# FULL CLI RADIO MODE
 			print("📻 Starting full radio system with GPIO and audio...")
-            
+			
 			# Initialize full radio system
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,

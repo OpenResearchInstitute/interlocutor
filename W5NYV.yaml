@@ -1,85 +1,72 @@
-# Opulent Voice Protocol Configuration File
-# This file configures all aspects of the Opulent Voice radio system
-# CLI arguments will override these settings when provided
+# Opulent Voice Protocol Configuration
+# Generated configuration file
+# Version: 1.0
 
-# Station identification (required)
-callsign: "W5NYV"  # Your station callsign - supports A-Z, 0-9, -, /, .
-
-# Network configuration
+callsign: KC5KYO
 network:
-  target_ip: "192.168.2.152"      # Target IP for transmission
-  target_port: 57372              # Target port for transmission
-  listen_port: 57372              # Local port for receiving
-  
-  # Protocol-specific UDP ports (usually don't need to change)
-  voice_port: 57373               # Port for voice (RTP) traffic
-  text_port: 57374                # Port for text/chat traffic  
-  control_port: 57375             # Port for control messages
-
-# Audio system configuration
+  target_ip: 192.168.2.152
+  target_port: 57372
+  listen_port: 57372
+  voice_port: 57373
+  text_port: 57374
+  control_port: 57375
 audio:
-  sample_rate: 48000              # Audio sample rate (Hz) - protocol requirement
-  channels: 1                     # Number of audio channels
-  frame_duration_ms: 40           # Audio frame duration (milliseconds) - protocol requirement
-  
-  # Audio device selection
-  input_device: null              # Specific device name, or null for auto-detect
-  prefer_usb_device: true         # Prefer USB audio devices
-  device_keywords:                # Keywords to search for in device names
-    - "Samson"
-    - "C01U" 
-    - "USB"
-    
-  # Note: OPUS bitrate is fixed at 16000 bps (protocol requirement)
-
-# GPIO pin configuration (Raspberry Pi)
+  sample_rate: 48000
+  channels: 1
+  frame_duration_ms: 40
+  input_device: null
+  prefer_usb_device: true
+  device_keywords:
+  - Samson
+  - C01U
+  - USB
+  bitrate: 16000
 gpio:
-  ptt_pin: 23                     # GPIO pin for PTT button
-  led_pin: 17                     # GPIO pin for PTT LED
-  button_bounce_time: 0.02        # Button debounce time (seconds)
-  led_brightness: 1.0             # LED brightness (0.0 - 1.0)
-
-# Protocol settings
+  ptt_pin: 23
+  led_pin: 17
+  button_bounce_time: 0.02
+  led_brightness: 1.0
 protocol:
-  frame_size: 133                 # Opulent Voice frame size (bytes)
-  header_size: 12                 # Header size (bytes) 
-  payload_size: 121               # Payload size (bytes)
-  
-  # Frame generation behavior
-  continuous_stream: true         # Generate continuous 40ms frames when active
-  keepalive_interval: 2.0         # Keepalive interval for computer targets (seconds)
-  
-  # Target configuration - affects timeout behavior
-  target_type: "modem"         # "computer" (LAN/Internet) or "modem" (SDR/Radio)
-                                  # computer: keepalives maintain stream
-                                  # modem: no keepalives, modem handles hang-time
-                                  
-  # Notes:
-  # - Voice always preempts all other traffic (protocol requirement)
-  # - UDP delivery is fire-and-forget (no retries possible)
-
-# Debug and logging
+  frame_size: 133
+  header_size: 12
+  payload_size: 121
+  continuous_stream: true
+  keepalive_interval: 2.0
+  target_type: modem
 debug:
-  verbose: false                  # Enable verbose debug output
-  quiet: false                    # Quiet mode (minimal output)
-  log_level: "INFO"               # Logging level: DEBUG, INFO, WARNING, ERROR
-  log_file: null                  # Log file path, or null for console only
-  show_frame_details: false       # Show detailed frame information
-  show_timing_info: false         # Show timing/performance information
-
-# User interface configuration
+  verbose: false
+  quiet: false
+  log_level: INFO
+  log_file: null
+  show_frame_details: false
+  show_timing_info: false
 ui:
-  chat_enabled: true              # Enable chat interface
-  chat_only_mode: false           # Run in chat-only mode (no GPIO/audio)
-  show_statistics: true           # Show transmission statistics
-  auto_scroll: true               # Auto-scroll chat messages
-  
-  # Future GUI settings (for HTML5 interface)
-  theme: "dark"                   # UI theme: dark, light
-  window_width: 800               # Default window width
-  window_height: 600              # Default window height
-  always_on_top: false            # Keep window always on top
-
-# Configuration metadata
-config_version: "1.0"
-description: "Opulent Voice Protocol Configuration"
+  chat_enabled: true
+  chat_only_mode: false
+  show_statistics: true
+  auto_scroll: true
+  theme: dark
+  window_width: 800
+  window_height: 600
+  always_on_top: false
+gui:
+  audio_replay:
+    enabled: true
+    max_stored_messages: 100
+    storage_duration_hours: 24
+    auto_cleanup: true
+  transcription:
+    enabled: true
+    method: auto
+    language: en-US
+    confidence_threshold: 0.7
+    server_endpoint: http://localhost:8001/transcribe
+  accessibility:
+    high_contrast: false
+    reduced_motion: false
+    screen_reader_optimized: false
+    keyboard_shortcuts: true
+    announce_new_messages: true
+    focus_management: true
+config_version: '1.0'
+description: Opulent Voice Protocol Configuration

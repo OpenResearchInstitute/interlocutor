@@ -24,10 +24,24 @@ from config_manager import OpulentVoiceConfig
 
 class RadioWebInterface:
     """Bridge between web GUI and radio system"""
+    def __init__(self, radio_system=None, config: OpulentVoiceConfig = None, config_manager=None):
+
+        # DEBUG: Check what we're receiving in constructor
+        print(f"🔍 DEBUG RadioWebInterface.__init__:")
+        print(f"   config_manager = {config_manager is not None}")
+        if config_manager:
+            print(f"   config_manager type = {type(config_manager)}")
     
-    def __init__(self, radio_system=None, config: OpulentVoiceConfig = None):
         self.radio_system = radio_system
         self.config = config
+        self.config_manager = config_manager  # This should not be None!
+        #END DEBUG
+
+
+
+        self.radio_system = radio_system
+        self.config = config
+        self.config_manager = config_manager  # NEW: Keep reference to config manager
         self.websocket_clients: Set[WebSocket] = set()
         self.status_cache = {}
         self.message_history = []
@@ -38,6 +52,13 @@ class RadioWebInterface:
         
         self.logger = logging.getLogger(__name__)
         
+        # Log which config file we're using (if any)
+        if self.config_manager and hasattr(self.config_manager, 'config_file_path'):
+            self.logger.info(f"Web interface using config file: {self.config_manager.config_file_path}")
+        else:
+            self.logger.info("Web interface using default configuration")
+
+
     async def connect_websocket(self, websocket: WebSocket):
         """Handle new WebSocket connection"""
         await websocket.accept()
@@ -84,22 +105,32 @@ class RadioWebInterface:
 
 
 
+
+
+
+
+
+
+# Replace our handle_gui_command method with this:
+
     async def handle_gui_command(self, websocket: WebSocket, command_data: Dict):
         """Process commands from GUI"""
         try:
             command = command_data.get('action')
             data = command_data.get('data', {})
-        
+		
             if command == 'send_text_message':
                 await self.handle_send_text_message(data)
             elif command == 'update_config':
-                await self.handle_update_config(data)  # Use the NEW method
+                await self.handle_update_config(data)
             elif command == 'get_current_config':
                 await self.handle_get_current_config(websocket)
             elif command == 'save_config':
                 await self.handle_save_config(data)
             elif command == 'load_config':
-                await self.handle_load_config(websocket)
+                await self.handle_load_config(websocket, data)
+            elif command == 'create_config':  # NEW
+                await self.handle_create_config(data)
             elif command == 'test_connection':
                 await self.handle_test_connection(websocket)
             elif command == 'get_audio_devices':
@@ -114,13 +145,20 @@ class RadioWebInterface:
                     "type": "error",
                     "message": f"Unknown command: {command}"
                 })
-            
+			
         except Exception as e:
             self.logger.error(f"Error handling GUI command: {e}")
             await self.send_to_client(websocket, {
                 "type": "error",
                 "message": str(e)
             })
+
+
+
+
+
+
+
 
 
 
@@ -341,6 +379,33 @@ class RadioWebInterface:
                     verbose=self.config.debug.verbose,
                     quiet=self.config.debug.quiet
                 )
+
+
+
+            # FIX 2: UPDATE RADIO SYSTEM WITH NEW CALLSIGN (ADD THIS SECTION)
+            if self.radio_system and 'callsign' in data:
+               try:
+                   # Create new station identifier and update radio system
+                   from interlocutor import StationIdentifier
+                   new_station_id = StationIdentifier(data['callsign'])
+				
+                   # Update the radio system's station ID
+                   self.radio_system.station_id = new_station_id
+				
+                   # Update the protocol's station ID and bytes
+                   if hasattr(self.radio_system, 'protocol'):
+                       self.radio_system.protocol.station_id = new_station_id
+                       self.radio_system.protocol.station_id_bytes = new_station_id.to_bytes()
+				
+                   self.logger.info(f"Updated radio system callsign to: {data['callsign']}")
+				
+               except Exception as e:
+                   self.logger.error(f"Error updating radio system callsign: {e}")
+		# END FIX 2
+
+
+
+
         
             # Broadcast the update to all connected clients
             await self.broadcast_to_all({
@@ -357,22 +422,62 @@ class RadioWebInterface:
                 "message": f"Error updating configuration: {str(e)}"
             })
 
+
+
+
+
+
+    # Add these methods to the RadioWebInterface class in web_interface.py:
+
     async def handle_save_config(self, data: Dict):
-        """Save configuration to file"""
+        """Save configuration to file using CLI-compatible logic"""
         try:
-            filename = data.get('filename', 'opulent_voice.yaml')
-        
-            # Use the configuration manager to save the config
-            from config_manager import ConfigurationManager
-            config_manager = ConfigurationManager()
-            config_manager.config = self.config
-        
-            success = config_manager.save_config(filename)
-        
+            # Get filename from request or use smart defaults
+            requested_filename = data.get('filename')
+	
+#DEBUG SECTION
+
+            # DEBUG: Print what we have
+            print(f"🔍 DEBUG save_config:")
+            print(f"   requested_filename = {requested_filename}")
+            print(f"   config_manager exists = {self.config_manager is not None}")
+            if self.config_manager:
+                print(f"   has config_file_path = {hasattr(self.config_manager, 'config_file_path')}")
+                if hasattr(self.config_manager, 'config_file_path'):
+                    print(f"   config_file_path = {self.config_manager.config_file_path}")
+#END DEBUG SECTION
+
+
+	
+            if requested_filename:
+                # User specified a filename explicitly
+                filename = requested_filename
+            elif self.config_manager and hasattr(self.config_manager, 'config_file_path'):
+                # Save back to the original config file (best option)
+                filename = str(self.config_manager.config_file_path)
+            else:
+                # Fall back to CLI default discovery logic
+                filename = self._get_default_save_filename()
+		
+            # Use the existing configuration manager to save
+            if self.config_manager:
+                # Update the config manager's current config
+                self.config_manager.config = self.config
+                success = self.config_manager.save_config(filename)
+            else:
+                # Create a new config manager if needed
+                from config_manager import ConfigurationManager
+                config_manager = ConfigurationManager()
+                config_manager.config = self.config
+                success = config_manager.save_config(filename)
+		
             if success:
                 await self.broadcast_to_all({
                     "type": "config_saved",
-                    "data": {"message": f"Configuration saved to {filename}"}
+                    "data": {
+                        "message": f"Configuration saved to {filename}",
+                        "filename": filename
+                    }
                 })
                 self.logger.info(f"Configuration saved to {filename}")
             else:
@@ -380,7 +485,7 @@ class RadioWebInterface:
                     "type": "error",
                     "message": f"Failed to save configuration to {filename}"
                 })
-            
+			
         except Exception as e:
             self.logger.error(f"Error saving config: {e}")
             await self.broadcast_to_all({
@@ -388,39 +493,131 @@ class RadioWebInterface:
                 "message": f"Error saving configuration: {str(e)}"
             })
 
-    async def handle_load_config(self, websocket: WebSocket):
-        """Load configuration from file"""
+    def _get_default_save_filename(self) -> str:
+        """Get default save filename using CLI logic"""
+        # Use the same search order as CLI, but for saving
+        candidate_files = [
+            "opulent_voice.yaml",  # Current directory (most common)
+            "config/opulent_voice.yaml",  # Config subdirectory
+        ]
+	
+        for candidate in candidate_files:
+            candidate_path = Path(candidate)
+            if candidate_path.parent.exists():  # Can we write to this location?
+                return str(candidate_path)
+	
+        # Last resort: current directory
+        return "opulent_voice.yaml"
+
+    async def handle_load_config(self, websocket: WebSocket, data: Dict = None):
+        """Load configuration from file using CLI logic"""
         try:
-            from config_manager import ConfigurationManager
-            config_manager = ConfigurationManager()
-        
-            # Load the configuration
-            loaded_config = config_manager.load_config()
-        
+            specified_file = data.get('filename') if data else None
+		
+            if self.config_manager:
+                # Use existing config manager
+                if specified_file:
+                    # Load specific file
+                    loaded_config = self.config_manager.load_config(specified_file)
+                else:
+                    # Use CLI auto-discovery logic
+                    loaded_config = self.config_manager.load_config()
+            else:
+                # Create new config manager with CLI logic
+                from config_manager import ConfigurationManager
+                config_manager = ConfigurationManager()
+                loaded_config = config_manager.load_config(specified_file)
+                self.config_manager = config_manager
+		
             if loaded_config:
                 self.config = loaded_config
-            
+			
                 # Send the loaded config back to the client
                 await self.handle_get_current_config(websocket)
-            
+			
+                # Determine what file was actually loaded
+                loaded_file = "configuration file"
+                if self.config_manager and hasattr(self.config_manager, 'config_file_path'):
+                    loaded_file = str(self.config_manager.config_file_path)
+			
                 await self.send_to_client(websocket, {
                     "type": "config_loaded",
-                    "data": {"message": "Configuration loaded successfully"}
+                    "data": {
+                        "message": f"Configuration loaded from {loaded_file}",
+                        "filename": loaded_file
+                    }
                 })
-            
-                self.logger.info("Configuration loaded via web interface")
+			
+                self.logger.info(f"Configuration loaded from {loaded_file}")
             else:
                 await self.send_to_client(websocket, {
                     "type": "error",
-                    "message": "Failed to load configuration file"
+                        "message": "No configuration file found. Use 'Create Configuration' to make one."
                 })
-            
+
         except Exception as e:
             self.logger.error(f"Error loading config: {e}")
             await self.send_to_client(websocket, {
                 "type": "error",
                 "message": f"Error loading configuration: {str(e)}"
             })
+
+    async def handle_create_config(self, data: Dict):
+        """Create a new configuration file"""
+        try:
+            filename = data.get('filename', 'opulent_voice.yaml')
+		
+            from config_manager import ConfigurationManager
+            config_manager = ConfigurationManager()
+		
+            success = config_manager.create_sample_config(filename)
+		
+            if success:
+                # Load the newly created config
+                self.config = config_manager.load_config(filename)
+                self.config_manager = config_manager
+			
+                await self.broadcast_to_all({
+                    "type": "config_created",
+                    "data": {
+                        "message": f"New configuration file created: {filename}",
+                        "filename": filename
+                    }
+                })
+			
+                # Also send the new config to populate the form
+                await self.broadcast_to_all({
+                    "type": "config_loaded",
+                    "data": self.config if hasattr(self.config, 'to_dict') else {}
+                })
+			
+            else:
+                await self.broadcast_to_all({
+                    "type": "error", 
+                    "message": f"Failed to create configuration file: {filename}"
+                })
+			
+        except Exception as e:
+            self.logger.error(f"Error creating config: {e}")
+            await self.broadcast_to_all({
+                "type": "error",
+                "message": f"Error creating configuration: {str(e)}"
+            })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     async def handle_test_connection(self, websocket: WebSocket):
         """Test network connection"""
@@ -660,11 +857,28 @@ app.add_middleware(
 # Global web interface instance
 web_interface: Optional[RadioWebInterface] = None
 
-def initialize_web_interface(radio_system=None, config=None):
-    """Initialize the web interface with radio system"""
+
+def initialize_web_interface(radio_system=None, config=None, config_manager=None):
+    """Initialize the web interface with radio system and config manager"""
     global web_interface
-    web_interface = RadioWebInterface(radio_system, config)
+
+
+    # DEBUG: Check what we're receiving
+    print(f"🔍 DEBUG initialize_web_interface:")
+    print(f"   radio_system = {radio_system is not None}")
+    print(f"   config = {config is not None}")
+    print(f"   config_manager = {config_manager is not None}")
+    if config_manager:
+        print(f"   config_manager type = {type(config_manager)}")
+        print(f"   config_manager has config_file_path = {hasattr(config_manager, 'config_file_path')}")
+        if hasattr(config_manager, 'config_file_path'):
+            print(f"   config_file_path = {config_manager.config_file_path}")
+    #END DEBUG:
+
+
+    web_interface = RadioWebInterface(radio_system, config, config_manager)
     return web_interface
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -752,7 +966,9 @@ except RuntimeError:
 
 def run_web_server(host="localhost", port=8000, radio_system=None, config=None):
     """Run the web server"""
-    initialize_web_interface(radio_system, config)
+    
+    # comment this out because we already initialize properly in interlocutor.py
+    #initialize_web_interface(radio_system, config, config_manager)
     
     print(f"🌐 Starting Opulent Voice Web Interface on http://{host}:{port}")
     print(f"📡 WebSocket endpoint: ws://{host}:{port}/ws")
