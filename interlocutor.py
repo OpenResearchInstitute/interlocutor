@@ -264,22 +264,22 @@ class COBSFrameBoundaryManager:
 			self.stats['encoding_errors'] += 1
 			raise ValueError(f"COBS encoding failed: {e}")
 
-# 	def decode_frame(self, encoded_data: bytes) -> Tuple[bytes, int]:
-# 		"""Decode COBS frame and return original IP data"""
-# 		try:
-# 			delimiter_pos = encoded_data.find(0)
-# 			if delimiter_pos == -1:
-# 				raise ValueError("No frame delimiter found")
+	def decode_frame(self, encoded_data: bytes) -> Tuple[bytes, int]:
+		"""Decode COBS frame and return original IP data"""
+		try:
+			delimiter_pos = encoded_data.find(0)
+			if delimiter_pos == -1:
+				raise ValueError("No frame delimiter found")
 
-# 			frame_data = encoded_data[:delimiter_pos + 1]
-# 			decoded_frame = COBSEncoder.decode(frame_data)
+			frame_data = encoded_data[:delimiter_pos + 1]
+			decoded_frame = COBSEncoder.decode(frame_data)
 
-# 			self.stats['frames_decoded'] += 1
-# 			return decoded_frame, len(frame_data)
+			self.stats['frames_decoded'] += 1
+			return decoded_frame, len(frame_data)
 
-# 		except Exception as e:
-# 			self.stats['decoding_errors'] += 1
-# 			raise ValueError(f"COBS decoding failed: {e}")
+		except Exception as e:
+			self.stats['decoding_errors'] += 1
+			raise ValueError(f"COBS decoding failed: {e}")
 
 	def get_stats(self) -> dict:
 		"""Get encoding statistics"""
@@ -3362,6 +3362,9 @@ class MessageReceiver:
 		# NEW: Simple frame reassembler (no fragmentation headers)
 		self.reassembler = SimpleFrameReassembler()
 
+		# 
+		self.cobs_manager = COBSFrameBoundaryManager()
+
 		# For parsing complete frames
 		self.protocol = OpulentVoiceProtocolWithIP(StationIdentifier("TEMP"))
 
@@ -3479,7 +3482,13 @@ class MessageReceiver:
 				DebugConfig.debug_print(f"📥 Received COBS frame from {addr}: {len(frame)}B")
 
 				# Step 4: COBS decode to get original IP frame
-				self._process_complete_ip_frame(frame, station_bytes, addr)
+				try:
+					ip_frame, _ = self.cobs_manager.decode_frame(frame)
+				except Exception as e:
+					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
+					continue
+
+				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
 
 		except Exception as e:
 			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
