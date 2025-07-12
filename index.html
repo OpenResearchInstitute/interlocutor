@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Opulent Voice Radio Interface</title>
+	
+	<!-- Accessibility and SEO -->
+	<meta name="description" content="Amateur Radio Digital Voice and Chat Interface">
+	<meta name="theme-color" content="#1a1a2e">
+	
+	<!-- Skip link for keyboard users -->
+	<a href="#main-content" class="skip-link">Skip to main content</a>
+	
+	<style>
+		/* Include all the existing CSS from your original file */
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		:root {
+			--primary-color: #1e3c72;
+			--secondary-color: #2a5298;
+			--accent-color: #42a5f5;
+			--success-color: #4caf50;
+			--warning-color: #ff9800;
+			--error-color: #f44336;
+			--text-primary: #ffffff;
+			--text-secondary: rgba(255, 255, 255, 0.8);
+			--bg-glass: rgba(255, 255, 255, 0.1);
+			--bg-glass-hover: rgba(255, 255, 255, 0.15);
+			--border-glass: rgba(255, 255, 255, 0.2);
+			--shadow-main: 0 15px 35px rgba(0, 0, 0, 0.2);
+			--shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.3);
+		}
+
+		.skip-link {
+			position: absolute;
+			top: -40px;
+			left: 6px;
+			background: var(--accent-color);
+			color: white;
+			padding: 8px;
+			text-decoration: none;
+			border-radius: 4px;
+			z-index: 1000;
+		}
+
+		.skip-link:focus {
+			top: 6px;
+		}
+
+		.sr-only {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+
+		body {
+			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--primary-color) 100%);
+			min-height: 100vh;
+			color: var(--text-primary);
+			line-height: 1.6;
+		}
+
+		/* Header */
+		.main-header {
+			background: var(--bg-glass);
+			backdrop-filter: blur(20px);
+			border-bottom: 1px solid var(--border-glass);
+			padding: 1rem 2rem;
+			position: sticky;
+			top: 0;
+			z-index: 100;
+		}
+
+		.header-content {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			max-width: 1400px;
+			margin: 0 auto;
+		}
+
+		.app-title {
+			font-size: 1.8rem;
+			font-weight: 600;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.app-icon {
+			font-size: 2rem;
+			filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+		}
+
+		.connection-status {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.5rem 1rem;
+			background: var(--bg-glass);
+			border-radius: 12px;
+			border: 1px solid var(--border-glass);
+		}
+
+		.status-indicator {
+			width: 12px;
+			height: 12px;
+			border-radius: 50%;
+			animation: pulse 2s infinite;
+		}
+
+		.status-indicator.connected {
+			background: var(--success-color);
+		}
+
+		.status-indicator.disconnected {
+			background: var(--error-color);
+		}
+
+		.status-indicator.connecting {
+			background: var(--warning-color);
+		}
+
+		@keyframes pulse {
+			0%, 100% { opacity: 1; }
+			50% { opacity: 0.5; }
+		}
+
+		.header-controls {
+			display: flex;
+			gap: 1rem;
+			align-items: center;
+		}
+
+		.tab-navigation {
+			display: flex;
+			gap: 0.5rem;
+		}
+
+		.tab-button {
+			padding: 0.5rem 1rem;
+			background: transparent;
+			border: 2px solid var(--border-glass);
+			border-radius: 8px;
+			color: var(--text-secondary);
+			cursor: pointer;
+			transition: all 0.3s ease;
+			font-size: 0.9rem;
+		}
+
+		.tab-button:hover {
+			background: var(--bg-glass-hover);
+			color: var(--text-primary);
+		}
+
+		.tab-button.active {
+			background: var(--accent-color);
+			border-color: var(--accent-color);
+			color: white;
+		}
+
+		/* Main Layout */
+		.main-container {
+			max-width: 1400px;
+			margin: 0 auto;
+			padding: 2rem;
+			display: grid;
+			grid-template-columns: 1fr 400px;
+			gap: 2rem;
+			min-height: calc(100vh - 120px);
+		}
+
+		@media (max-width: 1200px) {
+			.main-container {
+				grid-template-columns: 1fr;
+				gap: 1.5rem;
+			}
+		}
+
+		/* Panel Styles */
+		.panel {
+			background: var(--bg-glass);
+			backdrop-filter: blur(20px);
+			border: 1px solid var(--border-glass);
+			border-radius: 20px;
+			padding: 1.5rem;
+			box-shadow: var(--shadow-main);
+			transition: all 0.3s ease;
+		}
+
+		.panel:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-hover);
+		}
+
+		.panel-title {
+			font-size: 1.4rem;
+			font-weight: 600;
+			margin-bottom: 1.5rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.panel-icon {
+			font-size: 1.6rem;
+			filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+		}
+
+		/* Chat Interface */
+		.chat-container {
+			display: grid;
+			grid-template-rows: auto 1fr auto;
+			height: 600px;
+			gap: 1rem;
+		}
+
+		.chat-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			padding-bottom: 1rem;
+			border-bottom: 1px solid var(--border-glass);
+		}
+
+		.station-info {
+			font-size: 1.1rem;
+			font-weight: 500;
+		}
+
+		.ptt-button {
+			padding: 0.8rem 1.5rem;
+			background: linear-gradient(45deg, var(--success-color), #43a047);
+			border: none;
+			border-radius: 12px;
+			color: white;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			min-width: 120px;
+			justify-content: center;
+		}
+
+		.ptt-button:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 25px rgba(76, 175, 80, 0.4);
+		}
+
+		.ptt-button.active {
+			background: linear-gradient(45deg, var(--error-color), #d32f2f);
+			animation: ptt-active 0.5s ease infinite alternate;
+		}
+
+		.ptt-button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+
+		@keyframes ptt-active {
+			from { box-shadow: 0 0 20px rgba(244, 67, 54, 0.6); }
+			to { box-shadow: 0 0 30px rgba(244, 67, 54, 0.8); }
+		}
+
+		.message-history {
+			background: rgba(0, 0, 0, 0.1);
+			border-radius: 12px;
+			padding: 1rem;
+			overflow-y: auto;
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+			max-height: 400px;
+		}
+
+		.message {
+			padding: 0.8rem 1rem;
+			border-radius: 12px;
+			max-width: 80%;
+			word-wrap: break-word;
+			animation: messageAppear 0.3s ease;
+		}
+
+		@keyframes messageAppear {
+			from { opacity: 0; transform: translateY(10px); }
+			to { opacity: 1; transform: translateY(0); }
+		}
+
+		.message.outgoing {
+			background: linear-gradient(45deg, var(--accent-color), #1976d2);
+			align-self: flex-end;
+			margin-left: auto;
+		}
+
+		.message.incoming {
+			background: var(--bg-glass);
+			border: 1px solid var(--border-glass);
+			align-self: flex-start;
+		}
+
+		.message.system {
+			background: rgba(255, 193, 7, 0.2);
+			border: 1px solid rgba(255, 193, 7, 0.5);
+			align-self: center;
+			text-align: center;
+			font-style: italic;
+			max-width: 90%;
+		}
+
+		.message-meta {
+			font-size: 0.8rem;
+			opacity: 0.7;
+			margin-top: 0.3rem;
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+		}
+
+		.message-input-form {
+			display: flex;
+			gap: 0.5rem;
+			align-items: flex-end;
+		}
+
+		.input-container {
+			flex: 1;
+			position: relative;
+		}
+
+		.message-input {
+			width: 100%;
+			padding: 0.8rem 1rem;
+			border: 2px solid var(--border-glass);
+			border-radius: 12px;
+			background: var(--bg-glass);
+			color: var(--text-primary);
+			font-size: 1rem;
+			resize: none;
+			min-height: 45px;
+			max-height: 100px;
+		}
+
+		.message-input:focus {
+			outline: none;
+			border-color: var(--accent-color);
+			box-shadow: 0 0 20px rgba(66, 165, 245, 0.3);
+		}
+
+		.message-input::placeholder {
+			color: var(--text-secondary);
+		}
+
+		.message-input:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+		}
+
+		.send-button {
+			padding: 0.8rem 1rem;
+			background: linear-gradient(45deg, var(--accent-color), #1976d2);
+			border: none;
+			border-radius: 12px;
+			color: white;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			min-width: 60px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.send-button:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 25px rgba(66, 165, 245, 0.4);
+		}
+
+		.send-button:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+
+		/* Configuration Tabs */
+		.config-tabs {
+			display: none;
+		}
+
+		.config-tabs.active {
+			display: block;
+		}
+
+		.config-grid {
+			display: grid;
+			gap: 1.5rem;
+		}
+
+		.config-section {
+			background: rgba(255, 255, 255, 0.05);
+			border-radius: 12px;
+			padding: 1.5rem;
+			border: 1px solid var(--border-glass);
+		}
+
+		.section-header {
+			font-size: 1.2rem;
+			font-weight: 600;
+			margin-bottom: 1rem;
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.form-group {
+			margin-bottom: 1rem;
+		}
+
+		.form-group label {
+			display: block;
+			margin-bottom: 0.5rem;
+			font-weight: 500;
+			color: var(--text-secondary);
+		}
+
+		.form-group input,
+		.form-group select {
+			width: 100%;
+			padding: 0.8rem 1rem;
+			border: 2px solid var(--border-glass);
+			border-radius: 8px;
+			background: var(--bg-glass);
+			color: var(--text-primary);
+			font-size: 1rem;
+			transition: all 0.3s ease;
+		}
+
+		.form-group input:focus,
+		.form-group select:focus {
+			outline: none;
+			border-color: var(--accent-color);
+			box-shadow: 0 0 15px rgba(66, 165, 245, 0.3);
+		}
+
+		.form-group input::placeholder {
+			color: var(--text-secondary);
+		}
+
+		/* Buttons */
+		.btn {
+			padding: 0.8rem 1.5rem;
+			border: none;
+			border-radius: 12px;
+			font-size: 1rem;
+			font-weight: 600;
+			cursor: pointer;
+			transition: all 0.3s ease;
+			background: var(--bg-glass);
+			color: var(--text-primary);
+			border: 2px solid var(--border-glass);
+			backdrop-filter: blur(10px);
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+
+		.btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+		}
+
+		.btn-primary {
+			background: linear-gradient(45deg, var(--accent-color), #1976d2);
+			border-color: var(--accent-color);
+		}
+
+		.btn-success {
+			background: linear-gradient(45deg, var(--success-color), #43a047);
+			border-color: var(--success-color);
+		}
+
+		.btn:disabled {
+			opacity: 0.5;
+			cursor: not-allowed;
+			transform: none;
+			box-shadow: none;
+		}
+
+		/* Status Panel */
+		.status-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 1rem;
+			margin-bottom: 1.5rem;
+		}
+
+		.stat-item {
+			background: rgba(255, 255, 255, 0.05);
+			padding: 1rem;
+			border-radius: 8px;
+			text-align: center;
+		}
+
+		.stat-label {
+			display: block;
+			font-size: 0.9rem;
+			color: var(--text-secondary);
+			margin-bottom: 0.5rem;
+		}
+
+		.stat-value {
+			font-size: 1.5rem;
+			font-weight: 600;
+			color: var(--accent-color);
+		}
+
+		/* System Log */
+		.log-section {
+			margin-top: 1.5rem;
+		}
+
+		.log-controls {
+			display: flex;
+			gap: 1rem;
+			margin-bottom: 1rem;
+			align-items: center;
+		}
+
+		.system-log {
+			background: rgba(0, 0, 0, 0.2);
+			border-radius: 8px;
+			padding: 1rem;
+			height: 200px;
+			overflow-y: auto;
+			font-family: 'Courier New', monospace;
+			font-size: 0.9rem;
+			line-height: 1.4;
+		}
+
+		.log-entry {
+			margin-bottom: 0.5rem;
+			padding: 0.3rem 0;
+		}
+
+		.log-entry.info { color: var(--text-secondary); }
+		.log-entry.warning { color: var(--warning-color); }
+		.log-entry.error { color: var(--error-color); }
+		.log-entry.success { color: var(--success-color); }
+
+		/* Notification System */
+		.notification {
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			padding: 1rem 1.5rem;
+			border-radius: 12px;
+			color: white;
+			font-weight: 500;
+			z-index: 1000;
+			transform: translateX(400px);
+			transition: all 0.3s ease;
+			max-width: 350px;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+		}
+
+		.notification.show {
+			transform: translateX(0);
+		}
+
+		.notification.success {
+			background: linear-gradient(45deg, var(--success-color), #43a047);
+		}
+
+		.notification.error {
+			background: linear-gradient(45deg, var(--error-color), #d32f2f);
+		}
+
+		.notification.info {
+			background: linear-gradient(45deg, var(--accent-color), #1976d2);
+		}
+
+		.notification.warning {
+			background: linear-gradient(45deg, var(--warning-color), #f57c00);
+		}
+
+		/* Button Groups */
+		.button-group {
+			display: flex;
+			gap: 1rem;
+			flex-wrap: wrap;
+			justify-content: center;
+			margin-top: 1.5rem;
+		}
+
+		/* Connection retry styles */
+		.connection-retry {
+			background: rgba(255, 152, 0, 0.1);
+			border: 1px solid rgba(255, 152, 0, 0.3);
+			border-radius: 8px;
+			padding: 1rem;
+			margin: 1rem 0;
+			text-align: center;
+			color: var(--warning-color);
+		}
+
+		.retry-button {
+			background: var(--warning-color);
+			color: white;
+			border: none;
+			padding: 0.5rem 1rem;
+			border-radius: 6px;
+			cursor: pointer;
+			margin-top: 0.5rem;
+		}
+
+		.retry-button:hover {
+			background: #f57c00;
+		}
+
+		/* Responsive Design */
+		@media (max-width: 768px) {
+			.header-content {
+				flex-direction: column;
+				gap: 1rem;
+			}
+			
+			.main-container {
+				padding: 1rem;
+				grid-template-columns: 1fr;
+			}
+			
+			.button-group {
+				flex-direction: column;
+			}
+			
+			.tab-navigation {
+				overflow-x: auto;
+				white-space: nowrap;
+			}
+		}
+	</style>
+</head>
+<body>
+	<!-- Screen reader announcements -->
+	<div id="sr-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+	<div id="sr-status" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+	
+	<header role="banner" class="main-header">
+		<div class="header-content">
+			<h1 class="app-title">
+				<span class="app-icon" aria-hidden="true">📻</span>
+				Opulent Voice Radio
+			</h1>
+			
+			<div class="connection-status" id="connection-status" role="status" aria-live="polite">
+				<span class="status-indicator connecting" aria-label="Connection status"></span>
+				<span class="status-text">Connecting...</span>
+			</div>
+			
+			<div class="header-controls">
+				<nav class="tab-navigation" role="tablist">
+					<button class="tab-button active" 
+							role="tab" 
+							aria-selected="true" 
+							aria-controls="chat-panel"
+							id="chat-tab"
+							onclick="switchTab('chat')">
+						💬 Chat
+					</button>
+					<button class="tab-button" 
+							role="tab" 
+							aria-selected="false" 
+							aria-controls="config-panel"
+							id="config-tab"
+							onclick="switchTab('config')">
+						⚙️ Configuration
+					</button>
+				</nav>
+			</div>
+		</div>
+	</header>
+
+	<main id="main-content" role="main" class="main-container">
+		
+		<!-- Chat Panel (Default View) -->
+		<div id="chat-panel" class="panel" role="tabpanel" aria-labelledby="chat-tab">
+			<div class="panel-title">
+				<span class="panel-icon">💬</span>
+				Communications
+			</div>
+			
+			<div class="chat-container">
+				<div class="chat-header">
+					<div class="station-info">
+						<span>Station: </span>
+						<strong id="current-station">CONNECTING...</strong>
+					</div>
+					
+					<button id="ptt-button" 
+							class="ptt-button" 
+							aria-pressed="false"
+							aria-describedby="ptt-status"
+							disabled>
+						<span aria-hidden="true">🎤</span>
+						<span class="ptt-text">PTT</span>
+					</button>
+				</div>
+				
+				<div id="message-history" 
+					 class="message-history" 
+					 role="log" 
+					 aria-live="polite" 
+					 aria-label="Message history"
+					 tabindex="0">
+					<div class="message system">
+						<div>Welcome to Opulent Voice Radio Interface</div>
+						<div class="message-meta">
+							<span>System</span>
+							<span id="welcome-time"></span>
+						</div>
+					</div>
+				</div>
+				
+				<!-- Connection retry panel (initially hidden) -->
+				<div id="connection-retry" class="connection-retry" style="display: none;">
+					<div>Connection lost to radio system</div>
+					<button class="retry-button" onclick="attemptReconnect()">Retry Connection</button>
+				</div>
+				
+				<form id="message-form" class="message-input-form">
+					<div class="input-container">
+						<label for="message-input" class="sr-only">Message to send</label>
+						<textarea id="message-input" 
+								class="message-input"
+								placeholder="Type your message..."
+								rows="1"
+								disabled></textarea>
+					</div>
+					<button type="submit" 
+							class="send-button" 
+							aria-label="Send message"
+							disabled>
+						<span aria-hidden="true">📤</span>
+					</button>
+				</form>
+			</div>
+		</div>
+
+
+
+		<!-- Configuration Panel -->
+		<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
+			<div class="panel-title">
+				<span class="panel-icon">⚙️</span>
+				Configuration Management
+			</div>
+			
+			<!-- Configuration File Management Section -->
+			<div class="config-section">
+				<div class="section-header">
+					<span aria-hidden="true">📁</span>
+					Configuration Files
+				</div>
+				
+				<div class="config-file-info" id="config-file-info">
+					<div class="current-file">
+						<label>Current Configuration File:</label>
+						<span id="current-config-file">No file loaded</span>
+					</div>
+				</div>
+				
+				<div class="config-file-actions">
+					<div class="file-action-group">
+						<label for="config-filename">File Name (optional):</label>
+						<input type="text" 
+							   id="config-filename" 
+							   placeholder="Leave empty for auto-discovery"
+							   class="config-filename-input">
+					</div>
+					
+					<div class="button-group config-file-buttons">
+						<button class="btn btn-primary" onclick="loadConfigFile()">
+							<span aria-hidden="true">📂</span>
+							Load Config
+						</button>
+						
+						<button class="btn btn-success" onclick="saveConfigFile()">
+							<span aria-hidden="true">💾</span>
+							Save Config
+						</button>
+						
+						<button class="btn" onclick="createConfigFile()">
+							<span aria-hidden="true">📄</span>
+							Create New
+						</button>
+						
+						<button class="btn" onclick="testConnection()">
+							<span aria-hidden="true">🧪</span>
+							Test System
+						</button>
+					</div>
+				</div>
+			</div>
+			
+			<div class="config-grid">
+				<!-- Station Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">📡</span>
+						Station Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="callsign">Callsign *</label>
+						<input type="text" 
+							   id="callsign" 
+							   placeholder="W1ABC" 
+							   maxlength="10" 
+							   required
+							   aria-describedby="callsign-help">
+						<div id="callsign-help" class="help-text">
+							Amateur radio callsign (A-Z, 0-9, -, /, .)
+						</div>
+					</div>
+				</div>
+
+				<!-- Network Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🌐</span>
+						Network Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="target-ip">Target IP Address</label>
+						<input type="text" 
+							   id="target-ip" 
+							   placeholder="192.168.2.152"
+							   aria-describedby="target-ip-help">
+						<div id="target-ip-help" class="help-text">
+							IP address of target system
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="target-port">Target Port</label>
+						<input type="number" 
+							   id="target-port" 
+							   placeholder="57372" 
+							   min="1" 
+							   max="65535"
+							   aria-describedby="target-port-help">
+						<div id="target-port-help" class="help-text">
+							UDP port for radio communication
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="listen-port">Listen Port</label>
+						<input type="number" 
+							   id="listen-port" 
+							   placeholder="57372" 
+							   min="1" 
+							   max="65535"
+							   aria-describedby="listen-port-help">
+						<div id="listen-port-help" class="help-text">
+							Local port for receiving messages
+						</div>
+					</div>
+				</div>
+
+				<!-- Audio Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🎵</span>
+						Audio Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="sample-rate">Sample Rate (Hz)</label>
+						<select id="sample-rate" aria-describedby="sample-rate-help">
+							<option value="48000">48000 Hz (Recommended)</option>
+							<option value="44100">44100 Hz</option>
+							<option value="96000">96000 Hz</option>
+						</select>
+						<div id="sample-rate-help" class="help-text">
+							Audio sampling frequency
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="frame-duration">Frame Duration (ms)</label>
+						<select id="frame-duration" aria-describedby="frame-duration-help">
+							<option value="40">40 ms (Recommended)</option>
+							<option value="20">20 ms</option>
+							<option value="60">60 ms</option>
+						</select>
+						<div id="frame-duration-help" class="help-text">
+							Audio frame timing
+						</div>
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="prefer-usb" checked>
+						<label for="prefer-usb">Prefer USB Audio Devices</label>
+					</div>
+				</div>
+
+				<!-- Protocol Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🔧</span>
+						Protocol Settings
+					</div>
+					
+					<div class="form-group">
+						<label for="target-type">Target Type</label>
+						<select id="target-type" aria-describedby="target-type-help">
+							<option value="computer">Computer (LAN/Internet)</option>
+							<option value="modem">Modem (SDR/Radio)</option>
+						</select>
+						<div id="target-type-help" class="help-text">
+							Affects keepalive and timeout behavior
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="keepalive-interval">Keepalive Interval (seconds)</label>
+						<input type="number" 
+							   id="keepalive-interval" 
+							   placeholder="2.0" 
+							   min="0.5" 
+							   max="60"
+							   step="0.1"
+							   aria-describedby="keepalive-help">
+						<div id="keepalive-help" class="help-text">
+							Keepalive timing for computer targets
+						</div>
+					</div>
+				</div>
+
+				<!-- GPIO Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🔌</span>
+						GPIO Settings (Raspberry Pi)
+					</div>
+					
+					<div class="form-group">
+						<label for="ptt-pin">PTT GPIO Pin</label>
+						<input type="number" 
+							   id="ptt-pin" 
+							   placeholder="23" 
+							   min="2" 
+							   max="27"
+							   aria-describedby="ptt-pin-help">
+						<div id="ptt-pin-help" class="help-text">
+							GPIO pin for PTT button
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="led-pin">LED GPIO Pin</label>
+						<input type="number" 
+							   id="led-pin" 
+							   placeholder="17" 
+							   min="2" 
+							   max="27"
+							   aria-describedby="led-pin-help">
+						<div id="led-pin-help" class="help-text">
+							GPIO pin for PTT LED indicator
+						</div>
+					</div>
+				</div>
+
+				<!-- Debug Configuration -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">🐛</span>
+						Debug Settings
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="verbose-mode">
+						<label for="verbose-mode">Verbose Debug Output</label>
+					</div>
+					
+					<div class="checkbox-group">
+						<input type="checkbox" id="quiet-mode">
+						<label for="quiet-mode">Quiet Mode (Minimal Output)</label>
+					</div>
+					
+					<div class="form-group">
+						<label for="log-level">Log Level</label>
+						<select id="log-level-config">
+							<option value="DEBUG">Debug (All Messages)</option>
+							<option value="INFO" selected>Info (Normal)</option>
+							<option value="WARNING">Warning (Important Only)</option>
+							<option value="ERROR">Error (Problems Only)</option>
+						</select>
+					</div>
+				</div>
+
+				<!-- Apply/Save Actions -->
+				<div class="config-section">
+					<div class="section-header">
+						<span aria-hidden="true">💫</span>
+						Apply Changes
+					</div>
+					
+					<div class="button-group">
+						<button class="btn btn-primary" onclick="applyConfig()">
+							<span aria-hidden="true">✅</span>
+							Apply Changes
+						</button>
+						
+						<button class="btn btn-success" onclick="saveCurrentConfig()">
+							<span aria-hidden="true">💾</span>
+							Save Current Config
+						</button>
+						
+						<button class="btn" onclick="resetToDefaults()">
+							<span aria-hidden="true">🔄</span>
+							Reset to Defaults
+						</button>
+					</div>
+					
+					<div class="config-status" id="config-status">
+						Ready to configure system settings
+					</div>
+				</div>
+			</div>
+		</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		<!-- Status Panel (Always Visible) -->
+		<div class="panel">
+			<div class="panel-title">
+				<span class="panel-icon">📊</span>
+				System Status
+			</div>
+			
+			<div class="status-grid">
+				<div class="stat-item">
+					<span class="stat-label">Connection</span>
+					<span id="connection-stat" class="stat-value">CONNECTING</span>
+				</div>
+				
+				<div class="stat-item">
+					<span class="stat-label">Messages Sent</span>
+					<span id="messages-sent" class="stat-value">0</span>
+				</div>
+				
+				<div class="stat-item">
+					<span class="stat-label">Messages Received</span>
+					<span id="messages-received" class="stat-value">0</span>
+				</div>
+				
+				<div class="stat-item">
+					<span class="stat-label">Uptime</span>
+					<span id="uptime" class="stat-value">00:00</span>
+				</div>
+			</div>
+			
+			<!-- System Log -->
+			<div class="log-section">
+				<h3>System Log</h3>
+				<div class="log-controls">
+					<select id="log-level" aria-label="Log level filter">
+						<option value="all">All Messages</option>
+						<option value="info">Info and Above</option>
+						<option value="warning">Warnings and Errors</option>
+						<option value="error">Errors Only</option>
+					</select>
+					
+					<button class="btn" onclick="clearLog()">
+						Clear Log
+					</button>
+				</div>
+				
+				<div id="system-log" 
+					 class="system-log" 
+					 role="log" 
+					 aria-live="polite"
+					 aria-label="System log messages"
+					 tabindex="0">
+				</div>
+			</div>
+		</div>
+	</main>
+
+	<!-- Notification system -->
+	<div id="notification" class="notification"></div>
+
+	<script>
+		// Global application state
+		let ws = null;
+		let currentStation = 'CONNECTING...';
+		let messageCount = { sent: 0, received: 0 };
+		let startTime = Date.now();
+		let pttActive = false;
+		let currentConfig = {};
+		let reconnectAttempts = 0;
+		let maxReconnectAttempts = 10;
+		let reconnectDelay = 1000; // Start with 1 second
+
+		// Initialize welcome time
+		document.getElementById('welcome-time').textContent = new Date().toLocaleTimeString();
+
+		// FIXED: Enhanced connection management
+		function connectWebSocket() {
+			// Clear any existing connection
+			if (ws) {
+				ws.close();
+				ws = null;
+			}
+
+			const wsUrl = `ws://${window.location.host}/ws`;
+			addLogEntry(`Attempting to connect to ${wsUrl}`, 'info');
+			
+			try {
+				ws = new WebSocket(wsUrl);
+				
+				// Set a connection timeout
+				const connectionTimeout = setTimeout(() => {
+					if (ws.readyState === WebSocket.CONNECTING) {
+						addLogEntry('Connection timeout - retrying...', 'warning');
+						ws.close();
+					}
+				}, 5000);
+
+				ws.onopen = function(event) {
+					clearTimeout(connectionTimeout);
+					reconnectAttempts = 0;
+					reconnectDelay = 1000;
+					
+					updateConnectionStatus(true);
+					showNotification('Connected to Opulent Voice System', 'success');
+					addLogEntry('WebSocket connection established', 'success');
+					
+					// Hide retry panel if visible
+					document.getElementById('connection-retry').style.display = 'none';
+					
+					// Load initial data
+					loadCurrentConfig();
+					sendWebSocketMessage('get_message_history');
+				};
+
+				ws.onclose = function(event) {
+					clearTimeout(connectionTimeout);
+					updateConnectionStatus(false);
+					
+					// Only attempt reconnect if it wasn't a clean close
+					if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+						addLogEntry(`Connection closed (code: ${event.code}). Reconnecting in ${reconnectDelay/1000}s...`, 'warning');
+						
+						setTimeout(() => {
+							reconnectAttempts++;
+							reconnectDelay = Math.min(reconnectDelay * 1.5, 30000); // Max 30 seconds
+							connectWebSocket();
+						}, reconnectDelay);
+					} else {
+						addLogEntry('Connection failed - maximum retry attempts reached', 'error');
+						showNotification('Connection failed. Check if the radio system is running.', 'error');
+						document.getElementById('connection-retry').style.display = 'block';
+					}
+				};
+
+				ws.onmessage = function(event) {
+					try {
+						const message = JSON.parse(event.data);
+						handleWebSocketMessage(message);
+					} catch (e) {
+						addLogEntry(`Error parsing message: ${e.message}`, 'error');
+					}
+				};
+
+				ws.onerror = function(error) {
+					clearTimeout(connectionTimeout);
+					addLogEntry('WebSocket error occurred', 'error');
+					updateConnectionStatus(false);
+				};
+
+			} catch (error) {
+				addLogEntry(`Failed to create WebSocket: ${error.message}`, 'error');
+				updateConnectionStatus(false);
+			}
+		}
+
+		// Manual reconnect function
+		function attemptReconnect() {
+			addLogEntry('Manual reconnection attempt...', 'info');
+			reconnectAttempts = 0;
+			reconnectDelay = 1000;
+			document.getElementById('connection-retry').style.display = 'none';
+			connectWebSocket();
+		}
+
+		function sendWebSocketMessage(action, data = {}) {
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				try {
+					const message = JSON.stringify({ action, data });
+					ws.send(message);
+					addLogEntry(`Sent: ${action}`, 'info');
+					return true;
+				} catch (error) {
+					addLogEntry(`Error sending message: ${error.message}`, 'error');
+					return false;
+				}
+			} else {
+				addLogEntry('Cannot send message - not connected', 'warning');
+				return false;
+			}
+		}
+
+		// Enhanced WebSocket message handling
+		function handleWebSocketMessage(message) {
+			addLogEntry(`Received: ${message.type}`, 'info');
+			
+			switch (message.type) {
+				case 'initial_status':
+					populateStatusFromData(message.data);
+					if (message.data.message_history) {
+						loadMessageHistory(message.data.message_history);
+					}
+					break;
+					
+				case 'current_config':
+					populateConfigFromData(message.data);
+					break;
+					
+				case 'message_received':
+					handleIncomingMessage(message.data);
+					break;
+					
+				case 'message_sent':
+					addLogEntry('Message confirmed sent', 'success');
+					break;
+					
+				case 'message_history':
+					loadMessageHistory(message.data);
+					break;
+					
+				case 'ptt_state_changed':
+					handlePTTStateChange(message.data.active);
+					break;
+					
+				case 'status_update':
+					updateSystemStatus(message.data);
+					break;
+					
+
+
+				case 'config_saved':
+				case 'config_loaded':
+				case 'config_updated':
+					showNotification(message.data.message || 'Operation completed', 'success');
+					if (message.type === 'config_loaded') {
+						loadCurrentConfig();
+					}
+					break;
+					
+				case 'error':
+					showNotification(message.message || 'An error occurred', 'error');
+					addLogEntry(`Error: ${message.message}`, 'error');
+					break;
+					
+
+
+
+
+				case 'config_loaded':
+				case 'config_saved': 
+				case 'config_created':
+				case 'config_not_found':
+				case 'config_validation_warning':
+				case 'connection_test_result':
+					handleEnhancedConfigMessage(message);
+					break;
+
+
+
+
+				default:
+					addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+			}
+		}
+
+		// Tab switching functionality
+		function switchTab(tabName) {
+			document.querySelectorAll('.tab-button').forEach(btn => {
+				btn.classList.remove('active');
+				btn.setAttribute('aria-selected', 'false');
+			});
+			
+			if (tabName === 'chat') {
+				document.getElementById('chat-tab').classList.add('active');
+				document.getElementById('chat-tab').setAttribute('aria-selected', 'true');
+				document.getElementById('chat-panel').style.display = 'block';
+				document.getElementById('config-panel').style.display = 'none';
+			} else if (tabName === 'config') {
+				document.getElementById('config-tab').classList.add('active');
+				document.getElementById('config-tab').setAttribute('aria-selected', 'true');
+				document.getElementById('chat-panel').style.display = 'none';
+				document.getElementById('config-panel').style.display = 'block';
+				
+				if (ws && ws.readyState === WebSocket.OPEN) {
+					sendWebSocketMessage('get_current_config');
+				}
+			}
+			
+			announceToScreenReader(`Switched to ${tabName} tab`);
+		}
+
+		// Connection status management with better state handling
+		function updateConnectionStatus(connected) {
+			const statusIndicator = document.querySelector('.status-indicator');
+			const statusText = document.querySelector('.status-text');
+			const connectionStat = document.getElementById('connection-stat');
+			const pttButton = document.getElementById('ptt-button');
+			const messageInput = document.getElementById('message-input');
+			const sendButton = document.querySelector('.send-button');
+			
+			if (connected) {
+				statusIndicator.className = 'status-indicator connected';
+				statusText.textContent = 'Connected';
+				connectionStat.textContent = 'ONLINE';
+				connectionStat.style.color = 'var(--success-color)';
+				
+				// Enable chat controls
+				pttButton.disabled = false;
+				messageInput.disabled = false;
+				sendButton.disabled = false;
+				messageInput.placeholder = 'Type your message...';
+			} else {
+				statusIndicator.className = 'status-indicator disconnected';
+				statusText.textContent = 'Disconnected';
+				connectionStat.textContent = 'OFFLINE';
+				connectionStat.style.color = 'var(--error-color)';
+				currentStation = 'DISCONNECTED';
+				document.getElementById('current-station').textContent = currentStation;
+				
+				// Disable chat controls
+				pttButton.disabled = true;
+				messageInput.disabled = true;
+				sendButton.disabled = true;
+				messageInput.placeholder = 'Connect to radio system to send messages...';
+				
+				// Reset PTT state
+				if (pttActive) {
+					handlePTTStateChange(false);
+				}
+			}
+		}
+
+		// Enhanced message handling
+		function loadMessageHistory(messages) {
+			const messageHistory = document.getElementById('message-history');
+			
+			// Keep welcome message
+			const welcomeMessage = messageHistory.querySelector('.message.system');
+			messageHistory.innerHTML = '';
+			if (welcomeMessage) {
+				messageHistory.appendChild(welcomeMessage);
+			}
+			
+			// Add all messages from history
+			messages.forEach(messageData => {
+				let direction = 'incoming';
+				let from = messageData.from;
+				
+				if (messageData.from === currentStation || messageData.direction === 'outgoing') {
+					direction = 'outgoing';
+					from = 'You';
+				}
+				
+				const message = createMessageElement(
+					messageData.content,
+					direction,
+					from,
+					messageData.timestamp
+				);
+				messageHistory.appendChild(message);
+			});
+			
+			scrollToBottom(messageHistory);
+			addLogEntry(`Loaded ${messages.length} messages from history`, 'info');
+		}
+
+		function handleIncomingMessage(data) {
+			const messageHistory = document.getElementById('message-history');
+			
+			// Don't display if this is our own message
+			if (data.from === currentStation) {
+				return;
+			}
+			
+			const message = createMessageElement(data.content, 'incoming', data.from, data.timestamp);
+			messageHistory.appendChild(message);
+			scrollToBottom(messageHistory);
+			
+			messageCount.received++;
+			document.getElementById('messages-received').textContent = messageCount.received;
+			
+			announceToScreenReader(`New message from ${data.from}: ${data.content}`);
+			addLogEntry(`Message received from ${data.from}`, 'info');
+		}
+
+		function createMessageElement(content, direction, from, timestamp) {
+			const messageEl = document.createElement('div');
+			messageEl.className = `message ${direction}`;
+			messageEl.setAttribute('role', 'log');
+			messageEl.setAttribute('aria-live', 'polite');
+			
+			const contentEl = document.createElement('div');
+			contentEl.className = 'message-content';
+			contentEl.textContent = content;
+			messageEl.appendChild(contentEl);
+			
+			const metaEl = document.createElement('div');
+			metaEl.className = 'message-meta';
+			
+			const fromEl = document.createElement('span');
+			fromEl.className = 'message-from';
+			fromEl.textContent = direction === 'outgoing' ? 'You' : from;
+			metaEl.appendChild(fromEl);
+			
+			const timeEl = document.createElement('span');
+			timeEl.className = 'message-time';
+			const date = new Date(timestamp);
+			timeEl.textContent = date.toLocaleTimeString();
+			timeEl.setAttribute('title', date.toLocaleString());
+			metaEl.appendChild(timeEl);
+			
+			messageEl.appendChild(metaEl);
+			return messageEl;
+		}
+
+		function scrollToBottom(element, smooth = true) {
+			if (smooth) {
+				element.scrollTo({
+					top: element.scrollHeight,
+					behavior: 'smooth'
+				});
+			} else {
+				element.scrollTop = element.scrollHeight;
+			}
+		}
+
+		// Message sending
+		function sendMessage() {
+			const messageInput = document.getElementById('message-input');
+			const message = messageInput.value.trim();
+			
+			if (!message) return;
+			
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				const timestamp = new Date().toISOString();
+				displayOutgoingMessage(message, timestamp);
+				
+				sendWebSocketMessage('send_text_message', { message });
+				messageInput.value = '';
+				messageInput.style.height = 'auto';
+				
+				addLogEntry(`Sent message: ${message.substring(0, 50)}...`, 'info');
+			} else {
+				showNotification('Cannot send message: not connected', 'error');
+			}
+		}
+
+		function displayOutgoingMessage(content, timestamp) {
+			const messageHistory = document.getElementById('message-history');
+			const message = createMessageElement(content, 'outgoing', currentStation, timestamp);
+			messageHistory.appendChild(message);
+			scrollToBottom(messageHistory);
+			
+			messageCount.sent++;
+			document.getElementById('messages-sent').textContent = messageCount.sent;
+			
+			announceToScreenReader(`You sent: ${content}`);
+		}
+
+		// PTT functionality
+		function togglePTT() {
+			if (pttActive) {
+				deactivatePTT();
+			} else {
+				activatePTT();
+			}
+		}
+
+		function activatePTT() {
+			if (pttActive || !ws || ws.readyState !== WebSocket.OPEN) return;
+			
+			sendWebSocketMessage('ptt_pressed');
+			handlePTTStateChange(true);
+			addLogEntry('PTT activated', 'info');
+		}
+
+		function deactivatePTT() {
+			if (!pttActive) return;
+			
+			sendWebSocketMessage('ptt_released');
+			handlePTTStateChange(false);
+			addLogEntry('PTT released', 'info');
+		}
+
+		function handlePTTStateChange(active) {
+			pttActive = active;
+			const pttButton = document.getElementById('ptt-button');
+			const pttText = pttButton.querySelector('.ptt-text');
+			
+			if (active) {
+				pttButton.classList.add('active');
+				pttButton.setAttribute('aria-pressed', 'true');
+				pttText.textContent = 'TRANSMITTING';
+				announceToScreenReader('PTT activated - transmitting');
+			} else {
+				pttButton.classList.remove('active');
+				pttButton.setAttribute('aria-pressed', 'false');
+				pttText.textContent = 'PTT';
+				announceToScreenReader('PTT released');
+			}
+		}
+
+		// Configuration management
+		function loadCurrentConfig() {
+			sendWebSocketMessage('get_current_config');
+		}
+
+		function populateStatusFromData(status) {
+			currentStation = status.station_id || 'DISCONNECTED';
+			document.getElementById('current-station').textContent = currentStation;
+			
+			if (status.config) {
+				document.getElementById('target-ip').value = status.config.target_ip || '';
+				document.getElementById('target-port').value = status.config.target_port || '';
+			}
+		}
+
+		function populateConfigFromData(config) {
+			currentConfig = config;
+			
+			if (config.callsign) {
+				document.getElementById('callsign').value = config.callsign;
+				currentStation = config.callsign;
+				document.getElementById('current-station').textContent = currentStation;
+			}
+			
+			if (config.network) {
+				if (config.network.target_ip) document.getElementById('target-ip').value = config.network.target_ip;
+				if (config.network.target_port) document.getElementById('target-port').value = config.network.target_port;
+			}
+		}
+
+		function applyConfig() {
+			const config = gatherConfigData();
+			if (validateConfig(config)) {
+				sendWebSocketMessage('update_config', config);
+				showNotification('Applying configuration...', 'info');
+			}
+		}
+
+		function saveConfig() {
+			const config = gatherConfigData();
+			if (validateConfig(config)) {
+				sendWebSocketMessage('save_config', config);
+				showNotification('Saving configuration...', 'info');
+			}
+		}
+
+		function gatherConfigData() {
+			return {
+				callsign: document.getElementById('callsign').value.trim(),
+				network: {
+					target_ip: document.getElementById('target-ip').value.trim(),
+					target_port: parseInt(document.getElementById('target-port').value) || 57372
+				}
+			};
+		}
+
+		function validateConfig(config) {
+			const errors = [];
+			
+			if (!config.callsign) {
+				errors.push('Callsign is required');
+			} else if (!/^[A-Z0-9\-\/.]+$/i.test(config.callsign)) {
+				errors.push('Callsign contains invalid characters');
+			}
+			
+			if (!config.network.target_ip) {
+				errors.push('Target IP is required');
+			}
+			
+			if (config.network.target_port < 1 || config.network.target_port > 65535) {
+				errors.push('Target port must be between 1 and 65535');
+			}
+			
+			if (errors.length > 0) {
+				showNotification(errors.join('; '), 'error');
+				return false;
+			}
+			
+			return true;
+		}
+
+		function updateSystemStatus(data) {
+			if (data.station_id) {
+				currentStation = data.station_id;
+				document.getElementById('current-station').textContent = currentStation;
+			}
+		}
+
+		// Logging system
+		function addLogEntry(message, level = 'info') {
+			const logContainer = document.getElementById('system-log');
+			const entry = document.createElement('div');
+			entry.className = `log-entry ${level}`;
+			
+			const timestamp = new Date().toLocaleTimeString();
+			entry.innerHTML = `<span style="color: var(--text-secondary);">[${timestamp}]</span> ${message}`;
+			
+			logContainer.appendChild(entry);
+			logContainer.scrollTop = logContainer.scrollHeight;
+			
+			// Limit log entries (keep last 100)
+			while (logContainer.children.length > 100) {
+				logContainer.removeChild(logContainer.firstChild);
+			}
+			
+			filterLogEntries();
+		}
+
+		function clearLog() {
+			document.getElementById('system-log').innerHTML = '';
+			addLogEntry('Log cleared', 'info');
+		}
+
+		function filterLogEntries() {
+			const selectedLevel = document.getElementById('log-level').value;
+			const entries = document.querySelectorAll('.log-entry');
+			
+			entries.forEach(entry => {
+				const entryLevel = entry.className.split(' ')[1];
+				let show = false;
+				
+				switch (selectedLevel) {
+					case 'all':
+						show = true;
+						break;
+					case 'info':
+						show = ['info', 'success', 'warning', 'error'].includes(entryLevel);
+						break;
+					case 'warning':
+						show = ['warning', 'error'].includes(entryLevel);
+						break;
+					case 'error':
+						show = entryLevel === 'error';
+						break;
+				}
+				
+				entry.style.display = show ? 'block' : 'none';
+			});
+		}
+
+		// Notification system
+		function showNotification(message, type = 'info') {
+			const notification = document.getElementById('notification');
+			notification.textContent = message;
+			notification.className = `notification ${type}`;
+			
+			setTimeout(() => notification.classList.add('show'), 100);
+			
+			setTimeout(() => {
+				notification.classList.remove('show');
+			}, 4000);
+		}
+
+		// Accessibility helpers
+		function announceToScreenReader(message) {
+			const announcer = document.getElementById('sr-announcements');
+			announcer.textContent = message;
+			
+			setTimeout(() => {
+				announcer.textContent = '';
+			}, 1000);
+		}
+
+		// Uptime counter
+		function updateUptime() {
+			const elapsed = Date.now() - startTime;
+			const minutes = Math.floor(elapsed / 60000);
+			const seconds = Math.floor((elapsed % 60000) / 1000);
+			
+			document.getElementById('uptime').textContent = 
+				`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		}
+
+		// Event listeners
+		document.addEventListener('DOMContentLoaded', function() {
+			// Message form handling
+			const messageForm = document.getElementById('message-form');
+			const messageInput = document.getElementById('message-input');
+			
+			messageForm.addEventListener('submit', function(e) {
+				e.preventDefault();
+				sendMessage();
+			});
+
+			messageInput.addEventListener('keydown', function(e) {
+				if (e.key === 'Enter' && !e.shiftKey) {
+					e.preventDefault();
+					sendMessage();
+				}
+			});
+
+			// Auto-resize textarea
+			messageInput.addEventListener('input', function() {
+				this.style.height = 'auto';
+				this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+			});
+
+			// PTT button handling
+			const pttButton = document.getElementById('ptt-button');
+			pttButton.addEventListener('click', function() {
+				if (!ws || ws.readyState !== WebSocket.OPEN) {
+					showNotification('Cannot use PTT: not connected', 'error');
+					return;
+				}
+				togglePTT();
+			});
+
+			// Keyboard PTT (spacebar)
+			document.addEventListener('keydown', function(e) {
+				if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+					e.preventDefault();
+					if (!pttActive && ws && ws.readyState === WebSocket.OPEN) {
+						activatePTT();
+					}
+				}
+			});
+
+			document.addEventListener('keyup', function(e) {
+				if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+					e.preventDefault();
+					if (pttActive) {
+						deactivatePTT();
+					}
+				}
+			});
+
+			// Log level filter
+			document.getElementById('log-level').addEventListener('change', filterLogEntries);
+
+			// Keyboard shortcuts
+			document.addEventListener('keydown', function(e) {
+				// Ctrl+1 for Chat tab
+				if (e.ctrlKey && e.key === '1') {
+					e.preventDefault();
+					switchTab('chat');
+				}
+				
+				// Ctrl+2 for Config tab
+				if (e.ctrlKey && e.key === '2') {
+					e.preventDefault();
+					switchTab('config');
+				}
+				
+				// Escape to release PTT
+				if (e.key === 'Escape' && pttActive) {
+					e.preventDefault();
+					deactivatePTT();
+				}
+			});
+
+			// Start uptime counter
+			setInterval(updateUptime, 1000);
+
+			// Initialize connection
+			addLogEntry('Starting Opulent Voice Web Interface', 'info');
+			connectWebSocket();
+		});
+
+		// Handle page visibility for WebSocket reconnection
+		document.addEventListener('visibilitychange', function() {
+			if (!document.hidden && (!ws || ws.readyState !== WebSocket.OPEN)) {
+				addLogEntry('Page became visible - checking connection', 'info');
+				connectWebSocket();
+			}
+		});
+
+		// Make functions globally available for debugging
+		window.radioInterface = {
+			connectWebSocket,
+			sendWebSocketMessage,
+			switchTab,
+			sendMessage,
+			togglePTT,
+			applyConfig,
+			saveConfig,
+			showNotification,
+			addLogEntry,
+			attemptReconnect
+		};
+
+
+
+
+
+
+// Enhanced Configuration Management Functions - ADD TO YOUR index.html <script> section
+
+		// Configuration file management
+		function loadConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim();
+			const data = filename ? { filename } : {};
+			
+			addLogEntry(`Loading configuration${filename ? ` from ${filename}` : ' (auto-discovery)'}...`, 'info');
+			sendWebSocketMessage('load_config', data);
+		}
+
+		function saveConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim();
+			const data = filename ? { filename } : {};
+			
+			addLogEntry(`Saving configuration${filename ? ` to ${filename}` : ' (auto-location)'}...`, 'info');
+			sendWebSocketMessage('save_config', data);
+		}
+
+		function createConfigFile() {
+			const filename = document.getElementById('config-filename').value.trim() || 'opulent_voice.yaml';
+			
+			const templateChoice = confirm(
+				"Create configuration file:\n\n" +
+				"OK = Create sample template\n" + 
+				"Cancel = Save current settings as new file"
+			);
+			
+			const data = {
+				filename: filename,
+				template_type: templateChoice ? 'full' : 'current'
+			};
+			
+			addLogEntry(`Creating new configuration file: ${filename}`, 'info');
+			sendWebSocketMessage('create_config', data);
+		}
+
+		function testConnection() {
+			addLogEntry('Testing system connection...', 'info');
+			sendWebSocketMessage('test_connection');
+		}
+
+		function resetToDefaults() {
+			if (confirm('Reset all configuration to defaults? This will clear the current form.')) {
+				// Reset form to default values
+				document.getElementById('callsign').value = '';
+				document.getElementById('target-ip').value = '192.168.2.152';
+				document.getElementById('target-port').value = '57372';
+				document.getElementById('listen-port').value = '57372';
+				document.getElementById('sample-rate').value = '48000';
+				document.getElementById('frame-duration').value = '40';
+				document.getElementById('prefer-usb').checked = true;
+				document.getElementById('target-type').value = 'computer';
+				document.getElementById('keepalive-interval').value = '2.0';
+				document.getElementById('ptt-pin').value = '23';
+				document.getElementById('led-pin').value = '17';
+				document.getElementById('verbose-mode').checked = false;
+				document.getElementById('quiet-mode').checked = false;
+				document.getElementById('log-level-config').value = 'INFO';
+				
+				updateConfigStatus('Configuration reset to defaults');
+				addLogEntry('Configuration form reset to defaults', 'info');
+			}
+		}
+
+		function saveCurrentConfig() {
+			// Same as the existing saveConfig but with better messaging
+			const config = gatherEnhancedConfigData();
+			if (validateEnhancedConfig(config)) {
+				sendWebSocketMessage('save_config', config);
+				showNotification('Saving current configuration...', 'info');
+			}
+		}
+
+		// Enhanced config data gathering
+		function gatherEnhancedConfigData() {
+			return {
+				callsign: document.getElementById('callsign').value.trim(),
+				network: {
+					target_ip: document.getElementById('target-ip').value.trim(),
+					target_port: parseInt(document.getElementById('target-port').value) || 57372,
+					listen_port: parseInt(document.getElementById('listen-port').value) || 57372
+				},
+				audio: {
+					sample_rate: parseInt(document.getElementById('sample-rate').value) || 48000,
+					frame_duration_ms: parseInt(document.getElementById('frame-duration').value) || 40,
+					prefer_usb_device: document.getElementById('prefer-usb').checked,
+					device_keywords: ["Samson", "C01U", "USB"]  // Default keywords
+				},
+				protocol: {
+					target_type: document.getElementById('target-type').value || 'computer',
+					keepalive_interval: parseFloat(document.getElementById('keepalive-interval').value) || 2.0
+				},
+				gpio: {
+					ptt_pin: parseInt(document.getElementById('ptt-pin').value) || 23,
+					led_pin: parseInt(document.getElementById('led-pin').value) || 17,
+					button_bounce_time: 0.02,  // Default
+					led_brightness: 1.0        // Default
+				},
+				debug: {
+					verbose: document.getElementById('verbose-mode').checked,
+					quiet: document.getElementById('quiet-mode').checked,
+					log_level: document.getElementById('log-level-config').value || 'INFO'
+				}
+			};
+		}
+
+		// Enhanced config validation
+		function validateEnhancedConfig(config) {
+			const errors = [];
+			
+			// Callsign validation
+			if (!config.callsign) {
+				errors.push('Callsign is required');
+			} else if (!/^[A-Z0-9\-\/.]+$/i.test(config.callsign)) {
+				errors.push('Callsign contains invalid characters');
+			}
+			
+			// Network validation
+			if (!config.network.target_ip) {
+				errors.push('Target IP is required');
+			}
+			
+			if (config.network.target_port < 1 || config.network.target_port > 65535) {
+				errors.push('Target port must be between 1 and 65535');
+			}
+			
+			if (config.network.listen_port < 1 || config.network.listen_port > 65535) {
+				errors.push('Listen port must be between 1 and 65535');
+			}
+			
+			// Audio validation
+			const validSampleRates = [8000, 16000, 24000, 44100, 48000, 96000];
+			if (!validSampleRates.includes(config.audio.sample_rate)) {
+				errors.push('Invalid sample rate selected');
+			}
+			
+			const validFrameDurations = [20, 40, 60];
+			if (!validFrameDurations.includes(config.audio.frame_duration_ms)) {
+				errors.push('Invalid frame duration selected');
+			}
+			
+			// GPIO validation
+			if (config.gpio.ptt_pin < 2 || config.gpio.ptt_pin > 27) {
+				errors.push('PTT pin must be between 2 and 27');
+			}
+			
+			if (config.gpio.led_pin < 2 || config.gpio.led_pin > 27) {
+				errors.push('LED pin must be between 2 and 27');
+			}
+			
+			if (config.gpio.ptt_pin === config.gpio.led_pin) {
+				errors.push('PTT pin and LED pin cannot be the same');
+			}
+			
+			// Protocol validation
+			if (!['computer', 'modem'].includes(config.protocol.target_type)) {
+				errors.push('Target type must be computer or modem');
+			}
+			
+			if (config.protocol.keepalive_interval < 0.5 || config.protocol.keepalive_interval > 60) {
+				errors.push('Keepalive interval must be between 0.5 and 60 seconds');
+			}
+			
+			// Debug validation
+			if (config.debug.verbose && config.debug.quiet) {
+				errors.push('Cannot enable both verbose and quiet modes');
+			}
+			
+			if (errors.length > 0) {
+				showNotification(errors.join('; '), 'error');
+				updateConfigStatus('Configuration has errors: ' + errors.join(', '));
+				return false;
+			}
+			
+			updateConfigStatus('Configuration is valid');
+			return true;
+		}
+
+		// Enhanced config population from server data
+		function populateEnhancedConfigFromData(config) {
+			currentConfig = config;
+			
+			// Update current file display
+			if (config._metadata && config._metadata.config_file_path) {
+				document.getElementById('current-config-file').textContent = config._metadata.config_file_path;
+			} else {
+				document.getElementById('current-config-file').textContent = 'Default configuration';
+			}
+			
+			// Station settings
+			if (config.callsign) {
+				document.getElementById('callsign').value = config.callsign;
+				currentStation = config.callsign;
+				document.getElementById('current-station').textContent = currentStation;
+			}
+			
+			// Network settings
+			if (config.network) {
+				if (config.network.target_ip) document.getElementById('target-ip').value = config.network.target_ip;
+				if (config.network.target_port) document.getElementById('target-port').value = config.network.target_port;
+				if (config.network.listen_port) document.getElementById('listen-port').value = config.network.listen_port;
+			}
+			
+			// Audio settings
+			if (config.audio) {
+				if (config.audio.sample_rate) document.getElementById('sample-rate').value = config.audio.sample_rate;
+				if (config.audio.frame_duration_ms) document.getElementById('frame-duration').value = config.audio.frame_duration_ms;
+				if (config.audio.prefer_usb_device !== undefined) document.getElementById('prefer-usb').checked = config.audio.prefer_usb_device;
+			}
+			
+			// Protocol settings
+			if (config.protocol) {
+				if (config.protocol.target_type) document.getElementById('target-type').value = config.protocol.target_type;
+				if (config.protocol.keepalive_interval) document.getElementById('keepalive-interval').value = config.protocol.keepalive_interval;
+			}
+			
+			// GPIO settings
+			if (config.gpio) {
+				if (config.gpio.ptt_pin) document.getElementById('ptt-pin').value = config.gpio.ptt_pin;
+				if (config.gpio.led_pin) document.getElementById('led-pin').value = config.gpio.led_pin;
+			}
+			
+			// Debug settings
+			if (config.debug) {
+				if (config.debug.verbose !== undefined) document.getElementById('verbose-mode').checked = config.debug.verbose;
+				if (config.debug.quiet !== undefined) document.getElementById('quiet-mode').checked = config.debug.quiet;
+				if (config.debug.log_level) document.getElementById('log-level-config').value = config.debug.log_level;
+			}
+			
+			updateConfigStatus('Configuration loaded successfully');
+		}
+
+		// Configuration status updates
+		function updateConfigStatus(message) {
+			const statusElement = document.getElementById('config-status');
+			if (statusElement) {
+				statusElement.textContent = message;
+				// Add some visual feedback
+				statusElement.style.opacity = '0.7';
+				setTimeout(() => {
+					if (statusElement.style) statusElement.style.opacity = '1';
+				}, 100);
+			}
+		}
+
+		// Enhanced WebSocket message handling for new config features
+		function handleEnhancedConfigMessage(message) {
+			switch (message.type) {
+				case 'current_config':
+					populateEnhancedConfigFromData(message.data);
+					break;
+					
+				case 'config_loaded':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Loaded: ${message.data.filename}`);
+					// Refresh the config display
+					loadCurrentConfig();
+					break;
+					
+				case 'config_saved':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Saved: ${message.data.filename}`);
+					break;
+					
+				case 'config_created':
+					showNotification(message.data.message, 'success');
+					updateConfigStatus(`Created: ${message.data.filename}`);
+					// Load the newly created config
+					loadCurrentConfig();
+					break;
+					
+				case 'config_not_found':
+					showNotification('No configuration file found in standard locations', 'warning');
+					updateConfigStatus('No config file found - use Create New');
+					addLogEntry(`Searched paths: ${message.data.searched_paths.join(', ')}`, 'info');
+					break;
+					
+				case 'config_validation_warning':
+					showNotification('Configuration loaded with warnings', 'warning');
+					updateConfigStatus(`Warnings: ${message.data.errors.join(', ')}`);
+					addLogEntry(`Config warnings: ${message.data.errors.join(', ')}`, 'warning');
+					break;
+					
+				case 'connection_test_result':
+					const result = message.data;
+					if (result.success) {
+						showNotification('System test passed', 'success');
+						updateConfigStatus('System test: All components OK');
+					} else {
+						showNotification('System test found issues', 'warning');
+						updateConfigStatus(`System test: ${result.message}`);
+					}
+					
+					// Log detailed results
+					if (result.results) {
+						Object.entries(result.results).forEach(([test, passed]) => {
+							const status = passed ? 'PASS' : 'FAIL';
+							addLogEntry(`Test ${test}: ${status}`, passed ? 'success' : 'warning');
+						});
+					}
+					break;
+			}
+		}
+
+		// Replace the existing populateConfigFromData function with populateEnhancedConfigFromData
+		// Replace the existing gatherConfigData function with gatherEnhancedConfigData
+		// Replace the existing validateConfig function with validateEnhancedConfig
+
+
+
+
+
+
+
+	</script>
+</body>
+</html>
