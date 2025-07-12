@@ -3468,7 +3468,7 @@ class MessageReceiver:
 				return  # Invalid frame
 
 			# Step 2: Try to reassemble COBS frame (Paul's key insight!)
-			complete_cobs_frame = self.reassembler.add_fragment(fragment_payload)
+			complete_cobs_frame = self.reassembler.add_frame_payload(fragment_payload)
 
 			if complete_cobs_frame:
 				# Step 3: COBS decode to get original IP frame
@@ -3482,7 +3482,7 @@ class MessageReceiver:
 					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
 
 			# Periodic cleanup of expired partial frames
-			self.reassembler.cleanup_expired_frames()
+			# self.reassembler.cleanup_expired_frames()  !!! is this needed?
 
 		except Exception as e:
 			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
