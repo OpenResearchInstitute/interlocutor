@@ -268,14 +268,14 @@ class COBSFrameBoundaryManager:
 		"""Decode COBS frame and return original IP data"""
 		try:
 			delimiter_pos = encoded_data.find(0)
-			if delimiter_pos == -1:
-				raise ValueError("No frame delimiter found")
+			if delimiter_pos != -1:
+				raise ValueError("Frame delimiter found within COBS-encoded frame")
 
-			frame_data = encoded_data[:delimiter_pos + 1]
-			decoded_frame = COBSEncoder.decode(frame_data)
+			encoded_data.extend(b'\x00')  # Include the delimiter for decoding
+			decoded_frame = COBSEncoder.decode(encoded_data)
 
 			self.stats['frames_decoded'] += 1
-			return decoded_frame, len(frame_data)
+			return decoded_frame, len(encoded_data)
 
 		except Exception as e:
 			self.stats['decoding_errors'] += 1
