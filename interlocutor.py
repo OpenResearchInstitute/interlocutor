@@ -66,10 +66,10 @@ if not (hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base
 	sys.exit(1)
 
 try: 
-	import opuslib
-	print("opuslib ready")
+	import opuslib_next as opuslib
+	print("opuslib_next ready")
 except ImportError:
-	print("opuslib is missing: pip3 install opuslib")
+	print("opuslib_next is missing: pip3 install opuslib_next")
 	sys.exit()
 
 try:
@@ -2785,7 +2785,7 @@ class GPIOZeroPTTHandler:
 			self.encoder.bitrate = self.bitrate
 			# Set CBR mode
 			self.encoder.vbr = 0
-			DebugConfig.debug_print(f"✓ OPUS encoder ready: {self.bitrate}bps CBR")
+			DebugConfig.debug_print(f"✓ OPUS encoder ready: {self.encoder.bitrate}bps {'CBR' if self.encoder.vbr == 0 else 'VBR'}")
 		except Exception as e:
 			DebugConfig.system_print(f"✗ OPUS encoder error: {e}")
 			raise
