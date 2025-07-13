@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import re
 
 # Import your existing radio system components
 from config_manager import OpulentVoiceConfig
@@ -212,6 +213,8 @@ class EnhancedRadioWebInterface:
 				await self.handle_test_audio(websocket, data)
 			elif command == 'set_debug_mode':
 				await self.handle_debug_mode_change(data)
+			elif command == 'test_connection_with_form': 
+				await self.handle_test_connection_with_form(websocket, data) 
 		
 			# Chat commands (existing + enhanced)
 			elif command == 'send_text_message':
@@ -886,13 +889,192 @@ class EnhancedRadioWebInterface:
 
 
 
+	async def handle_test_connection_with_form(self, websocket: WebSocket, data: Dict):
+		"""Test system using current form values - validates form first"""
+		try:
+			form_config = data.get('form_config', {})
+			
+			# Step 1: Validate the form configuration
+			validation_result = self._validate_form_config(form_config)
+			
+			if not validation_result['valid']:
+				# Send validation failure immediately
+				await self.send_to_client(websocket, {
+					"type": "connection_test_with_form_result",
+					"data": {
+						"form_validation": validation_result,
+						"system_test": {"success": False, "message": "Form validation failed"}
+					}
+				})
+				return
+			
+			# Step 2: Temporarily apply form config for testing
+			original_config = self.config
+			try:
+				# Create temporary config with form values
+				temp_config = self._create_temp_config_from_form(form_config)
+				self.config = temp_config
+				
+				# Step 3: Run system tests with temporary config
+				system_test_result = await self._run_system_tests()
+				
+				# Step 4: Send combined results
+				await self.send_to_client(websocket, {
+					"type": "connection_test_with_form_result", 
+					"data": {
+						"form_validation": validation_result,
+						"system_test": system_test_result
+					}
+				})
+				
+			finally:
+				# Always restore original config
+				self.config = original_config
+				
+		except Exception as e:
+			self.logger.error(f"Error in test_connection_with_form: {e}")
+			await self.send_to_client(websocket, {
+				"type": "error",
+				"message": f"System test failed: {str(e)}"
+			})
 
+	def _validate_form_config(self, form_config: Dict) -> Dict:
+		"""Validate form configuration values"""
+		errors = []
+		field_errors = {}
+		
+		# Validate callsign
+		callsign = form_config.get('callsign', '').strip()
+		if not callsign or callsign == "NOCALL":
+			errors.append("Callsign is required")
+			field_errors['callsign'] = "Callsign is required"
+		elif not re.match(r'^[A-Z0-9\-\/.]+$', callsign.upper()):
+			errors.append("Callsign contains invalid characters")
+			field_errors['callsign'] = "Only A-Z, 0-9, -, /, . allowed"
+		
+		# Validate network settings
+		network = form_config.get('network', {})
+		
+		target_port = network.get('target_port')
+		if target_port and not (1 <= int(target_port) <= 65535):
+			errors.append("Invalid target port")
+			field_errors['target-port'] = "Port must be 1-65535"
+		
+		listen_port = network.get('listen_port') 
+		if listen_port and not (1 <= int(listen_port) <= 65535):
+			errors.append("Invalid listen port")
+			field_errors['listen-port'] = "Port must be 1-65535"
+		
+		# Validate GPIO pins
+		gpio = form_config.get('gpio', {})
+		ptt_pin = gpio.get('ptt_pin')
+		led_pin = gpio.get('led_pin')
+		
+		if ptt_pin and not (2 <= int(ptt_pin) <= 27):
+			errors.append("Invalid PTT pin")
+			field_errors['ptt-pin'] = "Pin must be 2-27"
+		
+		if led_pin and not (2 <= int(led_pin) <= 27):
+			errors.append("Invalid LED pin") 
+			field_errors['led-pin'] = "Pin must be 2-27"
+		
+		if ptt_pin and led_pin and int(ptt_pin) == int(led_pin):
+			errors.append("PTT and LED pins cannot be the same")
+			field_errors['ptt-pin'] = "Cannot be same as LED pin"
+			field_errors['led-pin'] = "Cannot be same as PTT pin"
+		
+		return {
+			'valid': len(errors) == 0,
+			'errors': errors,
+			'field_errors': field_errors
+		}
 
+	def _create_temp_config_from_form(self, form_config: Dict):
+		"""Create temporary config object from form values"""
+		from copy import deepcopy
+		
+		# Start with current config as base
+		temp_config = deepcopy(self.config)
+		
+		# Apply form values
+		if 'callsign' in form_config:
+			temp_config.callsign = form_config['callsign']
+		
+		if 'network' in form_config:
+			network = form_config['network']
+			if 'target_ip' in network:
+				temp_config.network.target_ip = network['target_ip']
+			if 'target_port' in network:
+				temp_config.network.target_port = int(network['target_port'])
+			if 'listen_port' in network:
+				temp_config.network.listen_port = int(network['listen_port'])
+		
+		if 'audio' in form_config:
+			audio = form_config['audio']
+			if 'sample_rate' in audio:
+				temp_config.audio.sample_rate = int(audio['sample_rate'])
+			if 'frame_duration_ms' in audio:
+				temp_config.audio.frame_duration_ms = int(audio['frame_duration_ms'])
+		
+		if 'gpio' in form_config:
+			gpio = form_config['gpio']
+			if 'ptt_pin' in gpio:
+				temp_config.gpio.ptt_pin = int(gpio['ptt_pin'])
+			if 'led_pin' in gpio:
+				temp_config.gpio.led_pin = int(gpio['led_pin'])
+		
+		if 'protocol' in form_config:
+			protocol = form_config['protocol']
+			if 'target_type' in protocol:
+				temp_config.protocol.target_type = protocol['target_type']
+			if 'keepalive_interval' in protocol:
+				temp_config.protocol.keepalive_interval = float(protocol['keepalive_interval'])
+		
+		if 'debug' in form_config:
+			debug = form_config['debug']
+			if 'verbose' in debug:
+				temp_config.debug.verbose = bool(debug['verbose'])
+			if 'quiet' in debug:
+				temp_config.debug.quiet = bool(debug['quiet'])
+			if 'log_level' in debug:
+				temp_config.debug.log_level = debug['log_level']
+		
+		return temp_config
 
-
-
-
-
+	async def _run_system_tests(self) -> Dict:
+		"""Run the actual system tests (extracted from existing handle_test_connection)"""
+		test_results = {
+			"network_available": True,
+			"target_reachable": False,
+			"audio_system": False,
+			"gpio_system": False,
+			"config_valid": True  # Already validated in form step
+		}
+		
+		# Test network connectivity if radio system available
+		if self.radio_system:
+			test_results["audio_system"] = hasattr(self.radio_system, 'audio_input_stream')
+			test_results["gpio_system"] = hasattr(self.radio_system, 'ptt_button')
+			
+			# Test network transmission
+			try:
+				if hasattr(self.radio_system, 'transmitter'):
+					test_data = b"TEST_CONNECTION_FORM"
+					test_results["target_reachable"] = self.radio_system.transmitter.send_frame(test_data)
+			except Exception as e:
+				self.logger.warning(f"Network test failed: {e}")
+		
+		overall_success = all([
+			test_results["network_available"],
+			test_results["target_reachable"],
+			test_results["config_valid"]
+		])
+		
+		return {
+			"success": overall_success,
+			"results": test_results,
+			"message": "System test completed" if overall_success else "System test found issues"
+		}
 
 
 

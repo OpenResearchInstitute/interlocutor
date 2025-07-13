@@ -83,10 +83,8 @@ try:
 	from gpiozero import Button, LED
 	print("gpiozero ready and standing by")
 except ImportError:
-	print("installing gpiozero...")
-	import subprocess
-	subprocess.run([sys.executable, '-m', 'pip', 'install', 'gpiozero'])
-	from gpiozero import Button, LED
+	print("Please install gpiozero.")
+	raise
 
 
 # Global debug configuration
@@ -270,14 +268,14 @@ class COBSFrameBoundaryManager:
 		"""Decode COBS frame and return original IP data"""
 		try:
 			delimiter_pos = encoded_data.find(0)
-			if delimiter_pos == -1:
-				raise ValueError("No frame delimiter found")
+			if delimiter_pos != -1:
+				raise ValueError("Frame delimiter found within COBS-encoded frame")
 
-			frame_data = encoded_data[:delimiter_pos + 1]
-			decoded_frame = COBSEncoder.decode(frame_data)
+			encoded_data.extend(b'\x00')  # Include the delimiter for decoding
+			decoded_frame = COBSEncoder.decode(encoded_data)
 
 			self.stats['frames_decoded'] += 1
-			return decoded_frame, len(frame_data)
+			return decoded_frame, len(encoded_data)
 
 		except Exception as e:
 			self.stats['decoding_errors'] += 1
@@ -2251,41 +2249,48 @@ class SimpleFrameReassembler:
 			'bytes_buffered': 0
 		}
 	
-	def add_frame_payload(self, frame_payload: bytes) -> Optional[bytes]:
+	def add_frame_payload(self, frame_payload: bytes) -> List[bytes]:
 		"""
 		Add a 121-byte frame payload and return complete COBS frame if ready
 		
 		frame_payload: 121-byte payload from Opulent Voice frame (header removed)
-		Returns: Complete COBS-encoded frame if delimiter found, None otherwise
+		Returns: List of completed COBS-encoded frames
 		"""
+		# We will build a list of zero or more reassembled COBS frames
+		reassembled_frames = []
+
 		if len(frame_payload) != 121:
 			DebugConfig.debug_print(f"⚠ Expected 121-byte payload, got {len(frame_payload)}B")
-			return None
-		
-		self.stats['frames_received'] += 1
-		
+			return reassembled_frames
+				
 		# Add payload to buffer
 		self.buffer.extend(frame_payload)
+		self.stats['frames_received'] += 1		
+
+		while len(self.buffer) > 0:
+			# Look for COBS delimiter (0x00)
+			delimiter_pos = self.buffer.find(0)
+			if delimiter_pos != -1:
+				if delimiter_pos == 0:
+					# Delimiter at start, skip it
+					self.buffer = self.buffer[1:]
+					continue
+				# Found a non-empty complete COBS frame, add it to the list
+				reassembled_frames.append(self.buffer[:delimiter_pos])	# don't include the delimiter
+				self.stats['messages_completed'] += 1
+				# Remove processed data from buffer
+				self.buffer = self.buffer[delimiter_pos + 1:]	# don't include the delimiter
+
 		self.stats['bytes_buffered'] = len(self.buffer)
 		
-		# Look for COBS delimiter (0x00)
-		delimiter_pos = self.buffer.find(0)
+		if len(reassembled_frames) == 0:
+			DebugConfig.debug_print("📝 No complete COBS frames yet, buffering payload")
+		else:
+			DebugConfig.debug_print(f"✅ Reassembled {len(reassembled_frames)} complete COBS frames")
+			for frame in reassembled_frames:
+				DebugConfig.debug_print(f"✅ Reassembled complete COBS frame: {len(frame)}B")
 		
-		if delimiter_pos != -1:
-			# Found complete COBS frame
-			complete_cobs_frame = bytes(self.buffer[:delimiter_pos + 1])
-			
-			# Remove processed data from buffer
-			self.buffer = self.buffer[delimiter_pos + 1:]
-			self.stats['messages_completed'] += 1
-			self.stats['bytes_buffered'] = len(self.buffer)
-			
-			DebugConfig.debug_print(f"✅ Reassembled complete COBS frame: {len(complete_cobs_frame)}B")
-			return complete_cobs_frame
-		
-		# No complete frame yet
-		DebugConfig.debug_print(f"📝 Buffering frame payload, total buffered: {len(self.buffer)}B")
-		return None
+		return reassembled_frames
 	
 	def get_stats(self):
 		"""Get reassembly statistics"""
@@ -3356,54 +3361,56 @@ class MessageReceiver:
 
 		# NEW: Simple frame reassembler (no fragmentation headers)
 		self.reassembler = SimpleFrameReassembler()
+
+		# 
 		self.cobs_manager = COBSFrameBoundaryManager()
 
 		# For parsing complete frames
 		self.protocol = OpulentVoiceProtocolWithIP(StationIdentifier("TEMP"))
 
-	def _process_received_data(self, data, addr):
-		"""
-		Simple receiver processing - no fragmentation headers to worry about
-		"""
-		try:
-			# Step 1: Parse Opulent Voice header
-			if len(data) != 133:  # All frames must be exactly 133 bytes
-				DebugConfig.debug_print(f"⚠ Expected 133-byte frame, got {len(data)}B from {addr}")
-				return
+	# def _process_received_data(self, data, addr):
+	# 	"""
+	# 	Simple receiver processing - no fragmentation headers to worry about
+	# 	"""
+	# 	try:
+	# 		# Step 1: Parse Opulent Voice header
+	# 		if len(data) != 133:  # All frames must be exactly 133 bytes
+	# 			DebugConfig.debug_print(f"⚠ Expected 133-byte frame, got {len(data)}B from {addr}")
+	# 			return
 
-			ov_header = data[:12]
-			frame_payload = data[12:]  # Should be exactly 121 bytes
+	# 		ov_header = data[:12]
+	# 		frame_payload = data[12:]  # Should be exactly 121 bytes
 
-			# Parse OV header
-			station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
+	# 		# Parse OV header
+	# 		station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
 
-			DebugConfig.debug_print(f"📥 Received 133B frame from {addr}")
+	# 		DebugConfig.debug_print(f"📥 Received 133B frame from {addr}")
 
-			if token != OpulentVoiceProtocolWithIP.TOKEN:
-				DebugConfig.debug_print(f"⚠ Invalid token from {addr}")
-				return  # Invalid frame
+	# 		if token != OpulentVoiceProtocolWithIP.TOKEN:
+	# 			DebugConfig.debug_print(f"⚠ Invalid token from {addr}")
+	# 			return  # Invalid frame
 
-			# Step 2: Try to reassemble COBS frame
-			complete_cobs_frame = self.reassembler.add_frame_payload(frame_payload)
+	# 		# Step 2: Try to reassemble COBS frame
+	# 		complete_cobs_frame = self.reassembler.add_frame_payload(frame_payload)
 
-			if complete_cobs_frame:
-				DebugConfig.debug_print(f"✅ Reassembled complete COBS frame: {len(complete_cobs_frame)}B")
+	# 		if complete_cobs_frame:
+	# 			DebugConfig.debug_print(f"✅ Reassembled complete COBS frame: {len(complete_cobs_frame)}B")
 
-				# Step 3: COBS decode to get original IP frame
-				try:
-					ip_frame, _ = self.cobs_manager.decode_frame(complete_cobs_frame)
-					DebugConfig.debug_print(f"✅ COBS decoded to IP frame: {len(ip_frame)}B")
+	# 			# Step 3: COBS decode to get original IP frame
+	# 			try:
+	# 				ip_frame, _ = self.cobs_manager.decode_frame(complete_cobs_frame)
+	# 				DebugConfig.debug_print(f"✅ COBS decoded to IP frame: {len(ip_frame)}B")
 
-					# Step 4: Process the complete IP frame
-					self._process_complete_ip_frame(ip_frame, station_bytes, addr)
+	# 				# Step 4: Process the complete IP frame
+	# 				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
 
-				except Exception as e:
-					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
-			else:
-				DebugConfig.debug_print(f"📝 Frame payload added to buffer...")
+	# 			except Exception as e:
+	# 				DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
+	# 		else:
+	# 			DebugConfig.debug_print(f"📝 Frame payload added to buffer...")
 
-		except Exception as e:
-			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
+	# 	except Exception as e:
+	# 		DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
 
 
 
@@ -3467,22 +3474,21 @@ class MessageReceiver:
 			if token != OpulentVoiceProtocolWithIP.TOKEN:
 				return  # Invalid frame
 
-			# Step 2: Try to reassemble COBS frame (Paul's key insight!)
-			complete_cobs_frame = self.reassembler.add_fragment(fragment_payload)
+			# Step 2: Try to reassemble COBS frames
+			cobs_frames = self.reassembler.add_frame_payload(fragment_payload)
 
-			if complete_cobs_frame:
-				# Step 3: COBS decode to get original IP frame
+			# Step 3: Process all the reassembled COBS frames
+			for frame in cobs_frames:
+				DebugConfig.debug_print(f"📥 Received COBS frame from {addr}: {len(frame)}B")
+
+				# Step 4: COBS decode to get original IP frame
 				try:
-					ip_frame, _ = self.cobs_manager.decode_frame(complete_cobs_frame)
-
-					# Step 4: Process the complete IP frame
-					self._process_complete_ip_frame(ip_frame, station_bytes, addr)
-
+					ip_frame, _ = self.cobs_manager.decode_frame(frame)
 				except Exception as e:
 					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
+					continue
 
-			# Periodic cleanup of expired partial frames
-			self.reassembler.cleanup_expired_frames()
+				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
 
 		except Exception as e:
 			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
