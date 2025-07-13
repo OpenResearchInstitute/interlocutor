@@ -24,7 +24,7 @@ import re
 from config_manager import OpulentVoiceConfig
 
 class EnhancedRadioWebInterface:
-	"""Enhanced bridge between web GUI and radio system with chat integration"""
+	"""Enhanced bridge between web GUI and radio system with chat and voice integration"""
 	
 	def __init__(self, radio_system=None, config: OpulentVoiceConfig = None, config_manager=None):
 		self.radio_system = radio_system
@@ -188,6 +188,192 @@ class EnhancedRadioWebInterface:
 		# Clean up disconnected clients
 		self.websocket_clients -= disconnected
 
+
+
+
+
+
+
+	async def on_audio_received(self, audio_data: Dict):
+		"""Handle received audio data for web interface"""
+		try:
+			# Store audio for potential replay
+			audio_id = f"audio_{int(time.time() * 1000)}_{hash(audio_data.get('from_station', '')) % 10000}"
+		
+			# Limit stored audio messages
+			if len(self.audio_messages) >= self.max_audio_messages:
+				# Remove oldest audio message
+				oldest_id = next(iter(self.audio_messages))
+				del self.audio_messages[oldest_id]
+			
+			self.audio_messages[audio_id] = {
+				**audio_data,
+				'audio_id': audio_id,
+				'received_at': datetime.now().isoformat()
+			}
+		
+			# Broadcast audio notification to web clients
+			await self.broadcast_to_all({
+				"type": "audio_received",
+				"data": {
+					"from_station": audio_data.get('from_station', 'UNKNOWN'),
+					"timestamp": audio_data.get('timestamp', datetime.now().isoformat()),
+					"audio_id": audio_id,
+					"audio_length": audio_data.get('audio_length', 0),
+					"sample_rate": audio_data.get('sample_rate', 48000),
+					"duration_ms": self._calculate_audio_duration(audio_data)
+				}
+			})
+		
+		
+		except Exception as e:
+			self.logger.error(f"Error handling received audio: {e}")
+
+	async def on_message_received(self, message_data: Dict):
+		"""Enhanced message received handler"""
+		try:
+			# Process the message data (existing logic enhanced)
+			processed_message = {
+				"type": message_data.get("type", "text"),
+				"direction": "incoming",
+				"content": message_data.get("content", ""),
+				"timestamp": message_data.get("timestamp", datetime.now().isoformat()),
+				"from": message_data.get("from", "UNKNOWN"),
+				"metadata": message_data.get("metadata", {}),
+				"message_id": f"msg_{int(time.time() * 1000)}_{hash(message_data.get('content', '')) % 10000}"
+			}
+		
+			# Add to history
+			self.message_history.append(processed_message)
+		
+			# Limit history size
+			if len(self.message_history) > 1000:
+				self.message_history = self.message_history[-500:]
+			
+			# Broadcast to all web clients immediately
+			await self.broadcast_to_all({
+				"type": "message_received",
+				"data": processed_message
+			})
+		
+			self.logger.info(f"Message received from {processed_message['from']}: {processed_message['content'][:50]}...")
+		
+		except Exception as e:
+			self.logger.error(f"Error handling received message: {e}")
+
+	async def handle_get_audio_stream(self, websocket: WebSocket):
+		"""Stream audio data to web interface"""
+		try:
+			# Get audio data from receiver if available
+			if (hasattr(self.radio_system, 'receiver') and 
+				hasattr(self.radio_system.receiver, 'get_audio_stream_data')):
+				
+				audio_packets = self.radio_system.receiver.get_audio_stream_data()
+				
+				await self.send_to_client(websocket, {
+					"type": "audio_stream_data",
+					"data": {
+						"packets": len(audio_packets),
+						"audio_available": len(audio_packets) > 0
+					}
+				})
+			else:
+				await self.send_to_client(websocket, {
+					"type": "audio_stream_data", 
+					"data": {
+						"packets": 0,
+						"audio_available": False,
+						"error": "Audio receiver not available"
+					}
+				})
+			
+		except Exception as e:
+			self.logger.error(f"Error getting audio stream: {e}")
+			await self.send_to_client(websocket, {
+				"type": "error",
+				"message": f"Audio stream error: {str(e)}"
+			})
+
+	async def handle_audio_playback_request(self, websocket: WebSocket, data: Dict):
+		"""Handle request to play back received audio"""
+		try:
+			audio_id = data.get('audio_id')
+			if not audio_id or audio_id not in self.audio_messages:
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "Audio message not found"
+				})
+				return
+			
+			audio_info = self.audio_messages[audio_id]
+		
+			# Send audio info for playback
+			await self.send_to_client(websocket, {
+				"type": "audio_playback_data",
+				"data": {
+					"audio_id": audio_id,
+					"from_station": audio_info.get('from_station'),
+					"timestamp": audio_info.get('timestamp'),
+					"sample_rate": audio_info.get('sample_rate', 48000),
+					"duration_ms": self._calculate_audio_duration(audio_info)
+				}
+			})
+		
+		except Exception as e:
+			self.logger.error(f"Error handling audio playback request: {e}")
+
+	def _calculate_audio_duration(self, audio_data):
+		"""Calculate audio duration in milliseconds"""
+		try:
+			audio_length = audio_data.get('audio_length', 0)
+			sample_rate = audio_data.get('sample_rate', 48000)
+			
+			# Assuming 16-bit mono PCM
+			samples = audio_length // 2
+			duration_ms = (samples / sample_rate) * 1000
+		
+			return int(duration_ms)
+		except:
+			return 40  # Default 40ms frame
+
+	async def get_reception_stats(self):
+		"""Get reception statistics for web interface"""
+		stats = {
+			'audio_messages_stored': len(self.audio_messages),
+			'message_history_count': len(self.message_history),
+			'last_received_message': None,
+			'last_received_audio': None
+		}
+	
+		# Get last received message
+		incoming_messages = [m for m in self.message_history if m.get('direction') == 'incoming']
+		if incoming_messages:
+			stats['last_received_message'] = incoming_messages[-1]
+			
+		# Get last received audio
+		if self.audio_messages:
+			latest_audio = max(self.audio_messages.values(), key=lambda x: x.get('received_at', ''))
+			stats['last_received_audio'] = {
+				'from_station': latest_audio.get('from_station'),
+				'timestamp': latest_audio.get('timestamp'),
+				'audio_id': latest_audio.get('audio_id')
+			}
+		
+		# Get receiver stats if available
+		if (hasattr(self.radio_system, 'receiver') and 
+			hasattr(self.radio_system.receiver, 'get_stats')):
+			stats['receiver_stats'] = self.radio_system.receiver.get_stats()
+		
+		return stats
+
+
+
+
+
+
+
+
+
 	async def handle_gui_command(self, websocket: WebSocket, command_data: Dict):
 		"""Process commands from GUI - Enhanced with new message commands"""
 		try:
@@ -215,6 +401,21 @@ class EnhancedRadioWebInterface:
 				await self.handle_debug_mode_change(data)
 			elif command == 'test_connection_with_form': 
 				await self.handle_test_connection_with_form(websocket, data) 
+
+
+			# Voice comamnds (enhanced)
+			elif command == 'get_audio_stream':
+				await self.handle_get_audio_stream(websocket)
+			elif command == 'request_audio_playback':
+				await self.handle_audio_playback_request(websocket, data)
+			elif command == 'get_reception_stats':
+				stats = await self.get_reception_stats()
+				await self.send_to_client(websocket, {
+					"type": "reception_stats",
+					"data": stats
+				})
+
+
 		
 			# Chat commands (existing + enhanced)
 			elif command == 'send_text_message':

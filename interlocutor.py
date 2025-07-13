@@ -55,6 +55,42 @@ from audio_device_manager import (
 import asyncio
 from web_interface import initialize_web_interface, run_web_server
 
+from enhanced_receiver import integrate_enhanced_receiver
+
+# Replace your existing class definitions with imports from radio_protocol
+from radio_protocol import (
+	SimpleFrameReassembler,
+	COBSFrameBoundaryManager, 
+	OpulentVoiceProtocolWithIP,
+	StationIdentifier,
+	encode_callsign,
+	decode_callsign,
+	MessageType,
+	QueuedMessage,
+	RTPHeader,
+	RTPAudioFrameBuilder,
+	UDPHeader,
+	UDPAudioFrameBuilder,
+	UDPTextFrameBuilder,
+	UDPControlFrameBuilder,
+	IPHeader,
+	IPAudioFrameBuilder,
+	IPTextFrameBuilder,
+	IPControlFrameBuilder,
+	SimpleFrameSplitter,
+	SimpleFrameReassembler,
+	FrameType,
+	FramePriority,
+	NetworkTransmitter,
+	DebugConfig
+)
+
+# Keep your existing imports
+from enhanced_receiver import integrate_enhanced_receiver
+# The above classes were renamed _remove
+
+
+
 # global variable for GUI
 web_interface_instance = None
 
@@ -88,7 +124,7 @@ except ImportError:
 
 
 # Global debug configuration
-class DebugConfig:
+class DebugConfig_remove:
 	"""Centralized debug configuration"""
 	VERBOSE = False
 	QUIET = False
@@ -233,7 +269,7 @@ class COBSEncoder:
 		return bytes(decoded)
 
 
-class COBSFrameBoundaryManager:
+class COBSFrameBoundaryManager_remove:
 	"""
 	Domain model for managing frame boundaries in Opulent Voice Protocol
 	"""
@@ -309,7 +345,7 @@ class COBSFrameBoundaryManager:
 
 
 
-def encode_callsign(callsign: str) -> int:
+def encode_callsign_remove(callsign: str) -> int:
 	"""
 	Encodes a callsign into a 6-byte binary format using base-40 encoding.
 
@@ -342,7 +378,7 @@ def encode_callsign(callsign: str) -> int:
 	return encoded
 
 
-def decode_callsign(encoded: int) -> str:
+def decode_callsign_remove(encoded: int) -> str:
 	"""
 	Decodes a 6-byte binary callsign back to string format.
 	
@@ -367,7 +403,7 @@ def decode_callsign(encoded: int) -> str:
 	return decoded[::-1]  # Reverse to get the correct order
 
 
-class MessageType(Enum):
+class MessageType_remove(Enum):
 	"""Message types with priority ordering"""
 	VOICE = (1, "VOICE")
 	CONTROL = (2, "CONTROL") 
@@ -379,7 +415,7 @@ class MessageType(Enum):
 		self.message_name = name
 
 
-class QueuedMessage:
+class QueuedMessage_remove:
 	"""Container for queued messages with priority and metadata"""
 	def __init__(self, msg_type: MessageType, data: bytes, timestamp: float = None):
 		self.msg_type = msg_type
@@ -449,7 +485,7 @@ class MessagePriorityQueue:
 			self._stats['dropped'] += 1
 
 
-class StationIdentifier:
+class StationIdentifier_remove:
 	"""Domain model for flexible station identification using base-40 encoding"""
 	
 	def __init__(self, callsign):
@@ -520,7 +556,7 @@ class StationIdentifier:
 
 
 
-class OpulentVoiceProtocolWithIP:
+class OpulentVoiceProtocolWithIP_remove:
 	"""
 	Opulent Voice Protocol with IP support
 
@@ -971,7 +1007,7 @@ class OpulentVoiceProtocolWithIP:
 
 
 
-class NetworkTransmitter:
+class NetworkTransmitter_remove:
 	"""UDP Network Transmitter for Opulent Voice"""
 
 	def __init__(self, target_ip="192.168.1.100", target_port=57372):
@@ -1217,7 +1253,7 @@ class TerminalChatInterface:
 		self._show_prompt()
 
 
-class RTPHeader:
+class RTPHeader_remove:
 	"""
 	RTP Header implmentation for Opulent Voice Protocol
 	"""
@@ -1316,7 +1352,7 @@ class RTPHeader:
 
 
 
-class RTPAudioFrameBuilder:
+class RTPAudioFrameBuilder_remove:
 	"""
 	Combines RTP headers with Opus payloads for Opulent Voice transmission.
 	"""
@@ -1380,7 +1416,7 @@ class RTPAudioFrameBuilder:
 
 
 
-class UDPHeader:
+class UDPHeader_remove:
 	"""
 	UDP Header implementation following RFC 768
 
@@ -1608,7 +1644,7 @@ class UDPHeader:
 
 
 
-class UDPAudioFrameBuilder:
+class UDPAudioFrameBuilder_remove:
 	"""
 	Creates UDP frames for RTP audio data (Voice)
 	Frame structure: [UDP Header][RTP Header][OPUS Payload]
@@ -1672,7 +1708,7 @@ class UDPAudioFrameBuilder:
 
 
 
-class UDPTextFrameBuilder:
+class UDPTextFrameBuilder_remove:
 	"""
 	Creates UDP frames for keyboard chat data (No RTP)
 	Frame structure: [UDP Header][Text Payload]
@@ -1725,7 +1761,7 @@ class UDPTextFrameBuilder:
 
 
 
-class UDPControlFrameBuilder:
+class UDPControlFrameBuilder_remove:
 	"""
 	Creates UDP frames for control data (No RTP)
 	Frame structure: [UDP Header][Control Payload]
@@ -1777,7 +1813,7 @@ class UDPControlFrameBuilder:
 
 
 
-class IPHeader:
+class IPHeader_remove:
 	"""
 	IPv4 Header implementation following RFC 791
 	Diagram from RFC 791
@@ -2001,7 +2037,7 @@ class IPHeader:
 
 
 
-class IPAudioFrameBuilder:
+class IPAudioFrameBuilder_remove:
 	"""
 	Create IP frames for UDP+RTP audio data
 	Frame structure: [IP Header][UDP Header][RTP Header][Opus Payload]
@@ -2059,7 +2095,7 @@ class IPAudioFrameBuilder:
 		}
 
 
-class IPTextFrameBuilder:
+class IPTextFrameBuilder_remove:
 	"""
 	Create IP frames for UDP+text data (Chat)
 	Frame structure: [IP Header][UDP Header][Text payload]
@@ -2102,7 +2138,7 @@ class IPTextFrameBuilder:
 		}
 
 
-class IPControlFrameBuilder:
+class IPControlFrameBuilder_remove:
 	"""
 	Creates IP frames for UDP+control data
 	Frame structure: [IP Header][UDP Header][Control Payload]
@@ -2148,7 +2184,7 @@ class IPControlFrameBuilder:
 
 
 
-class FrameType(Enum):
+class FrameType_remove(Enum):
 	"""Types of 40ms frames"""
 	VOICE = 1      # Audio/voice transmission
 	CONTROL = 2    # Control messages (A5 auth, system commands)
@@ -2156,7 +2192,7 @@ class FrameType(Enum):
 	DATA = 4       # Data transfer (skip for now)
 	KEEPALIVE = 5  # Background keepalive
 
-class FramePriority(Enum):
+class FramePriority_remove(Enum):
 	"""Frame priority levels - Voice > Control > Text > Data"""
 	VOICE = 1      # Highest - interrupts everything
 	CONTROL = 2    # High - A5 auth, system control
@@ -2179,7 +2215,7 @@ class StreamFrame:
 
 
 
-class SimpleFrameSplitter:
+class SimpleFrameSplitter_remove:
 	"""
 	Simple COBS frame splitter - no fragmentation headers, just splits COBS data
 	Maintains 138-byte Opulent Voice frames for specification compliance
@@ -2235,7 +2271,7 @@ class SimpleFrameSplitter:
 
 
 
-class SimpleFrameReassembler:
+class SimpleFrameReassembler_remove:
 	"""
 	Simple frame reassembler - concatenates 121-byte payloads until COBS delimiter found
 	No fragmentation headers to worry about
@@ -3642,6 +3678,72 @@ def setup_web_interface_callbacks(radio_system, web_interface):
 
 
 
+def setup_enhanced_reception(radio_system, web_interface=None):
+	"""Setup enhanced message reception with web interface integration"""
+	
+	print("🔄 Setting up enhanced reception with web interface integration...")
+	
+	# Replace the existing receiver with enhanced version
+	enhanced_receiver = integrate_enhanced_receiver(radio_system, web_interface)
+	
+	# Connect web interface callbacks if provided
+	if web_interface:
+		setup_web_reception_callbacks(radio_system, web_interface, enhanced_receiver)
+	
+	print("✅ Enhanced reception setup complete")
+	return enhanced_receiver
+
+def setup_web_reception_callbacks(radio_system, web_interface, receiver):
+	"""Setup callbacks between radio system and web interface for reception"""
+	
+	# Store original methods if they exist
+	original_display = None
+	if (hasattr(radio_system, 'chat_interface') and 
+		hasattr(radio_system.chat_interface, 'display_received_message')):
+		original_display = radio_system.chat_interface.display_received_message
+	
+	# Enhanced display method that also notifies web interface
+	def enhanced_display_received_message(from_station, message):
+		# Call original display for CLI
+		if original_display:
+			original_display(from_station, message)
+		else:
+			print(f"\n📨 [{from_station}]: {message}")
+		
+		# Notify web interface asynchronously
+		def notify_web():
+			try:
+				loop = asyncio.new_event_loop()
+				asyncio.set_event_loop(loop)
+				loop.run_until_complete(web_interface.on_message_received({
+					"content": message,
+					"from": str(from_station),
+					"type": "text",
+					"timestamp": datetime.now().isoformat(),
+					"direction": "incoming"
+				}))
+				loop.close()
+			except Exception as e:
+				print(f"Error notifying web interface: {e}")
+		
+		threading.Thread(target=notify_web, daemon=True).start()
+	
+	# Replace the display method if chat interface exists
+	if hasattr(radio_system, 'chat_interface'):
+		radio_system.chat_interface.display_received_message = enhanced_display_received_message
+		print("✅ Chat interface enhanced for web notifications")
+	
+	print("✅ Web reception callbacks configured")
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3708,33 +3810,30 @@ if __name__ == "__main__":
 			DebugConfig.debug_print("💡 Configuration loaded from file and CLI overrides")
 		DebugConfig.system_print("")
 
-		# Create message receiver using config
-		receiver = MessageReceiver(listen_port=config.network.listen_port)
-		receiver.start()
-
-		# FIXED: Check for web interface mode first
+		# Check for web interface mode first
 		if hasattr(config, 'ui') and hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
 			# WEB INTERFACE MODE - FIXED VERSION
-			print("🌐 Starting in web interface mode...")
+			print("🌐 Starting in web interface mode ...")
 
 			# Initialize radio system
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
 			)
-			
+
+			# Setup web interface
+			web_interface_instance = initialize_web_interface(radio, config, config_manager)
+	
+			# Setup enhanced reception (this creates and starts the receiver)
+			enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
+			receiver = enhanced_receiver
+	
 			# Connect receiver to radio's chat interface
 			receiver.chat_interface = radio.chat_interface
-
-			# IMPORTANT: Pass the config manager to web interface
-			web_interface_instance = initialize_web_interface(radio, config, config_manager)
-			
-			# Setup web interface callbacks with fixed async handling
-			setup_web_interface_callbacks(radio, web_interface_instance)
-			
+	
 			# Start radio system
 			radio.start()
-			
+
 			print("🚀 Web interface starting on http://localhost:8000")
 			print("🌐 Press Ctrl+C to stop the web interface")
 			
@@ -3781,16 +3880,24 @@ if __name__ == "__main__":
 				print("\n🛑 Chat system shutting down...")
 				chat_system.stop()
 			
+
+
+
+
 		else:
 			# FULL CLI RADIO MODE
-			print("📻 Starting full radio system with GPIO and audio...")
-			
+			print("📻 Starting full radio system with enhanced reception...")
+	
 			# Initialize full radio system
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
 			)
 
+			# ENHANCED: Setup enhanced reception for CLI mode
+			enhanced_receiver = setup_enhanced_reception(radio, None)  # No web interface
+			receiver = enhanced_receiver
+	
 			# Connect receiver to chat interface
 			receiver.chat_interface = radio.chat_interface
 
@@ -3800,10 +3907,11 @@ if __name__ == "__main__":
 			radio.test_chat()
 			radio.start()
 
-			print(f"\n✅ {station_id} System Ready!")
+			print(f"\n✅ {station_id} Enhanced System Ready!")
 			print("🎤 Press PTT for voice transmission (highest priority)")
 			print("💬 Type chat messages in terminal")
-			print("📊 Voice and chat statistics shown after each PTT release")
+			print("🎧 Audio reception active for incoming voice")
+			print("📊 Enhanced statistics shown after each PTT release")
 			print("⌨️  Press Ctrl+C to exit")
 
 			# CLI Main loop
@@ -3811,7 +3919,11 @@ if __name__ == "__main__":
 				while True:
 					time.sleep(0.1)
 			except KeyboardInterrupt:
-				print("\n🛑 CLI radio system shutting down...")
+				print("\n🛑 Enhanced CLI radio system shutting down...")
+
+
+
+
 
 	except KeyboardInterrupt:
 		print("\nShutting down...")
