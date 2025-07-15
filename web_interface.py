@@ -171,20 +171,35 @@ class EnhancedRadioWebInterface:
 			self.logger.warning(f"Failed to send to client: {e}")
 			self.websocket_clients.discard(websocket)
 	
-	async def broadcast_to_all(self, message: Dict):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	async def broadcast_to_all_temp_replace_with_debug_below(self, message: Dict):
 		"""Broadcast message to all connected clients"""
 		if not self.websocket_clients:
 			return
-			
+
 		disconnected = set()
-		
+
 		for websocket in self.websocket_clients.copy():
 			try:
 				await websocket.send_text(json.dumps(message))
 			except Exception as e:
 				self.logger.warning(f"Failed to broadcast to client: {e}")
 				disconnected.add(websocket)
-		
+
 		# Clean up disconnected clients
 		self.websocket_clients -= disconnected
 
@@ -194,7 +209,128 @@ class EnhancedRadioWebInterface:
 
 
 
+
+
+
+
+
+
+
 	async def on_audio_received(self, audio_data: Dict):
+		"""Handle received audio data for web interface with debugging"""
+		try:
+			# DEBUG: Audio notification received
+			print(f"🌐 WEB DEBUG 1: Audio notification received")
+			print(f"   From station: {audio_data.get('from_station', 'UNKNOWN')}")
+			print(f"   Audio length: {audio_data.get('audio_length', 0)} bytes")
+			print(f"   Sample rate: {audio_data.get('sample_rate', 0)} Hz")
+			print(f"   Duration: {audio_data.get('duration_ms', 0)} ms")
+			print(f"   Timestamp: {audio_data.get('timestamp', 'No timestamp')}")
+        
+			# Store audio for potential replay
+			audio_id = f"audio_{int(time.time() * 1000)}_{hash(audio_data.get('from_station', '')) % 10000}"
+			print(f"🌐 WEB DEBUG 2: Generated audio ID: {audio_id}")
+        
+			# Limit stored audio messages
+			if len(self.audio_messages) >= self.max_audio_messages:
+				# Remove oldest audio message
+				oldest_id = next(iter(self.audio_messages))
+				del self.audio_messages[oldest_id]
+				print(f"🌐 WEB DEBUG 2: Removed oldest audio: {oldest_id}")
+        
+			self.audio_messages[audio_id] = {
+				**audio_data,
+				'audio_id': audio_id,
+				'received_at': datetime.now().isoformat()
+			}
+			print(f"🌐 WEB DEBUG 2: Audio stored. Total stored: {len(self.audio_messages)}")
+        
+			# Broadcast audio notification to web clients
+			notification_data = {
+				"from_station": audio_data.get('from_station', 'UNKNOWN'),
+				"timestamp": audio_data.get('timestamp', datetime.now().isoformat()),
+				"audio_id": audio_id,
+				"audio_length": audio_data.get('audio_length', 0),
+				"sample_rate": audio_data.get('sample_rate', 48000),
+				"duration_ms": self._calculate_audio_duration(audio_data)
+			}
+        
+			print(f"🌐 WEB DEBUG 3: Broadcasting to web clients")
+			print(f"   Connected clients: {len(self.websocket_clients)}")
+			print(f"   Notification data: {notification_data}")
+        
+			await self.broadcast_to_all({
+				"type": "audio_received",
+				"data": notification_data
+			})
+        
+			print(f"🌐 WEB DEBUG 3: Broadcast complete")
+			print("-" * 50)
+    
+		except Exception as e:
+			print(f"🌐 WEB DEBUG ERROR: Error handling received audio: {e}")
+			import traceback
+			traceback.print_exc()
+			print("-" * 50)
+
+
+
+
+
+
+
+	# Also add debug to the broadcast method (just above)
+	async def broadcast_to_all(self, message: Dict):
+		"""Broadcast message to all connected clients with debugging"""
+		if not self.websocket_clients:
+			print(f"🌐 BROADCAST DEBUG: No clients connected")
+			return
+        
+		print(f"🌐 BROADCAST DEBUG: Broadcasting {message.get('type', 'unknown')} to {len(self.websocket_clients)} clients")
+    
+		disconnected = set()
+		successful_sends = 0
+    
+		for websocket in self.websocket_clients.copy():
+			try:
+				await websocket.send_text(json.dumps(message))
+				successful_sends += 1
+			except Exception as e:
+				print(f"🌐 BROADCAST DEBUG: Failed to send to client: {e}")
+				disconnected.add(websocket)
+    
+		# Clean up disconnected clients
+		self.websocket_clients -= disconnected
+    
+		print(f"🌐 BROADCAST DEBUG: Sent to {successful_sends}/{len(self.websocket_clients) + len(disconnected)} clients")
+		if disconnected:
+			print(f"🌐 BROADCAST DEBUG: Removed {len(disconnected)} disconnected clients")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	async def on_audio_received_temp_replace_with_above(self, audio_data: Dict):
 		"""Handle received audio data for web interface"""
 		try:
 			# Store audio for potential replay
@@ -229,6 +365,8 @@ class EnhancedRadioWebInterface:
 		except Exception as e:
 			self.logger.error(f"Error handling received audio: {e}")
 
+
+#1
 	async def on_message_received(self, message_data: Dict):
 		"""Enhanced message received handler"""
 		try:
@@ -237,7 +375,7 @@ class EnhancedRadioWebInterface:
 				"type": message_data.get("type", "text"),
 				"direction": "incoming",
 				"content": message_data.get("content", ""),
-				"timestamp": message_data.get("timestamp", datetime.now().isoformat()),
+				"timestamp": message_data.get("timestamp", datetime.now().isoformat()),	
 				"from": message_data.get("from", "UNKNOWN"),
 				"metadata": message_data.get("metadata", {}),
 				"message_id": f"msg_{int(time.time() * 1000)}_{hash(message_data.get('content', '')) % 10000}"
@@ -525,34 +663,6 @@ class EnhancedRadioWebInterface:
 	
 		self.logger.info(f"Cleared {cleared_count} messages from history")
 
-	# Enhanced event handlers for chat integration
-	async def on_message_received(self, message_data: Dict):
-		"""Called when radio system receives a message - Enhanced"""
-		# Process the message data
-		processed_message = {
-			"type": message_data.get("type", "text"),
-			"direction": "incoming",
-			"content": message_data.get("content", ""),
-			"timestamp": datetime.now().isoformat(),
-			"from": message_data.get("from", "UNKNOWN"),
-			"metadata": message_data.get("metadata", {}),
-			"message_id": f"msg_{int(time.time() * 1000)}_{hash(message_data.get('content', '')) % 10000}"
-		}
-	
-		# Add to history
-		self.message_history.append(processed_message)
-	
-		# Limit history size
-		if len(self.message_history) > 1000:
-			self.message_history = self.message_history[-500:]  # Keep last 500
-	
-		# Broadcast to all clients
-		await self.broadcast_to_all({
-			"type": "message_received",
-			"data": processed_message
-		})
-	
-		self.logger.info(f"Received message from {processed_message['from']}: {processed_message['content'][:50]}...")
 
 	async def on_ptt_state_changed(self, active: bool):
 		"""Called when PTT state changes from radio system"""

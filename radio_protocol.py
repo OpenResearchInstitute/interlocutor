@@ -203,6 +203,11 @@ class StationIdentifier:
 		return instance
 
 
+
+
+
+
+
 class COBSEncoder:
 	"""
 	COBS encoder for Opulent Voice Protocol
@@ -221,9 +226,13 @@ class COBSEncoder:
 
 	@staticmethod
 	def encode(data: bytes) -> bytes:
-		"""Encode data using COBS algorithm"""
+		"""Encode data using COBS algorithm
+		
+		This version of the COBS encoder returns the encoded data with the
+		COBS separator byte (0x00) included at the end.
+		"""
 		if not data:
-			return b'\x01\x00'
+			return b'\x01\x00'	# 01 encodes the implied zero byte, followed by the separator byte
 
 		encoded = bytearray()
 		pos = 0
@@ -252,27 +261,31 @@ class COBSEncoder:
 
 			pos = zero_pos + 1
 
-			# If we've reached the end, break
-			if zero_pos >= len(data):
-				break
+			# is this right?
+			if pos == len(data):
+				# If we reached the end, append the implied zero byte
+				encoded.append(1)
 
-		encoded.append(0)  # COBS terminating delimiter
+		encoded.append(0)  # COBS separator byte
 		return bytes(encoded)
+
+
+	# FIXED COBS Decoder - Replace the decode method in radio_protocol.py
 
 	@staticmethod  
 	def decode(encoded_data: bytes) -> bytes:
-		"""Decode COBS-encoded data"""
+		"""Decode COBS-encoded data - FIXED VERSION"""
 		if not encoded_data or encoded_data[-1] != 0:
 			raise ValueError("COBS data must end with zero byte")
 
-		data = encoded_data[:-1]
+		data = encoded_data[:-1]  # Remove separator byte
+		if data.find(b"\x00") != -1:
+			raise ValueError("Unexpected zero byte in COBS data")
+		
 		decoded = bytearray()
 		pos = 0
 
 		while pos < len(data):
-			if pos >= len(data):
-				break
-
 			code = data[pos]
 			pos += 1
 
@@ -280,17 +293,48 @@ class COBSEncoder:
 				raise ValueError("Unexpected zero byte in COBS data")
 
 			block_len = code - 1
-            
+    
 			if pos + block_len > len(data):
+				# print(f"⚠️ COBS decode error: pos={pos} block_len={block_len} extends beyond data length {len(data)} in {data}")
 				raise ValueError("COBS block extends beyond data")
-                
+        
+			# Add the data block
 			decoded.extend(data[pos:pos + block_len])
 			pos += block_len
-            
-			if code <= COBSEncoder.MAX_BLOCK_SIZE and pos < len(data):
+    
+			# FIXED: Add zero byte if this wasn't a max-length block AND we're not at the end
+			if code < 255 and pos < len(data):
 				decoded.append(0)
-        
+
 		return bytes(decoded)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class COBSFrameBoundaryManager:
@@ -324,22 +368,78 @@ class COBSFrameBoundaryManager:
 			self.stats['encoding_errors'] += 1
 			raise ValueError(f"COBS encoding failed: {e}")
 
+
+
+
+	# 2. In COBSFrameBoundaryManager class, replace the decode_frame method:
 	def decode_frame(self, encoded_data: bytes) -> Tuple[bytes, int]:
+		"""Decode COBS frame and return original IP data - FIXED FOR 1-BYTE LOSS"""
+		try:
+			print(f"🔍 FRAME MANAGER DEBUG: Input frame size: {len(encoded_data)} bytes")
+			print(f"🔍 FRAME MANAGER DEBUG: Input preview: {encoded_data[:16].hex()}...")
+        
+			# The encoded_data should be pure COBS data without terminator
+			# Add terminator for decoding
+			if encoded_data.endswith(b'\x00'):
+				print(f"🔍 FRAME MANAGER DEBUG: Frame already has terminator")
+				cobs_data_with_terminator = encoded_data
+			else:
+				print(f"🔍 FRAME MANAGER DEBUG: Adding terminator to frame")
+				cobs_data_with_terminator = encoded_data + b'\x00'
+        
+			print(f"🔍 FRAME MANAGER DEBUG: Data for decode: {len(cobs_data_with_terminator)} bytes")
+        
+			# Decode the COBS data
+			decoded_frame = COBSEncoder.decode(cobs_data_with_terminator)
+        
+			print(f"🔍 FRAME MANAGER DEBUG: Decoded frame size: {len(decoded_frame)} bytes")
+			print(f"🔍 FRAME MANAGER DEBUG: Expected size: 120 bytes for audio")
+        
+			self.stats['frames_decoded'] += 1
+			return decoded_frame, len(cobs_data_with_terminator)
+        
+		except Exception as e:
+			print(f"🔍 FRAME MANAGER DEBUG: Decode failed: {e}")
+			self.stats['decoding_errors'] += 1
+			raise ValueError(f"COBS decoding failed: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+	def decode_frame_temp_replace_with_debug_version_above(self, encoded_data: bytes) -> Tuple[bytes, int]:
 		"""Decode COBS frame and return original IP data"""
 		try:
-			delimiter_pos = encoded_data.find(0)
-			if delimiter_pos != -1:
-				raise ValueError("Frame delimiter found within COBS-encoded frame")
-
-			encoded_data.extend(b'\x00')  # Include the delimiter for decoding
-			decoded_frame = COBSEncoder.decode(encoded_data)
-
+			# Check if frame already has delimiter (shouldn't happen from reassembler)
+			if encoded_data.endswith(b'\x00'):
+ 				# Frame already has terminator, use as-is
+				cobs_data_with_terminator = encoded_data
+			else:
+				# Add terminator for COBS decoding (correct way for bytes)
+				cobs_data_with_terminator = encoded_data + b'\x00'
+        
+			# Decode the COBS data
+			decoded_frame = COBSEncoder.decode(cobs_data_with_terminator)
+        
 			self.stats['frames_decoded'] += 1
-			return decoded_frame, len(encoded_data)
-
+			return decoded_frame, len(cobs_data_with_terminator)
+        
 		except Exception as e:
 			self.stats['decoding_errors'] += 1
 			raise ValueError(f"COBS decoding failed: {e}")
+
+
+
+
+
+
 
 	def get_stats(self) -> dict:
 		"""Get encoding statistics"""
@@ -351,58 +451,96 @@ class COBSFrameBoundaryManager:
 		return stats
 
 
+
+
+
 class SimpleFrameSplitter:
 	"""
-	Simple COBS frame splitter - no fragmentation headers, just splits COBS data
-	Maintains 138-byte Opulent Voice frames for specification compliance
+	FIXED: Frame splitter with correct 134-byte frames for all content types
 	"""
-	
-	def __init__(self, opulent_voice_frame_size: int = 133):
+    
+	def __init__(self, opulent_voice_frame_size: int = 134):  # CHANGED: 133 → 134
 		"""
 		opulent_voice_frame_size: Total size of each Opulent Voice frame (including 12-byte header)
+		FIXED: Now correctly sized for audio frames without splitting
 		"""
 		self.opulent_voice_frame_size = opulent_voice_frame_size
-		self.payload_size = opulent_voice_frame_size - 12  # 121 bytes available for COBS data
+		self.payload_size = opulent_voice_frame_size - 12  # 134 - 12 = 122 bytes
+        
+		print(f"📏 FIXED Frame splitter: {self.opulent_voice_frame_size}B total, {self.payload_size}B payload")
+		print(f"📏 Audio frame budget: IP(120B) + COBS(2B) = {self.payload_size}B ✅")
+        
 		self.stats = {
 			'single_frame_messages': 0,
 			'multi_frame_messages': 0,
-			'total_frames_created': 0
+			'total_frames_created': 0,
+			'audio_frames_split': 0,  # Should always be 0!
+			'text_frames_created': 0,
+			'control_frames_created': 0
 		}
 
-	def split_cobs_frame(self, cobs_encoded_data: bytes) -> List[bytes]:
+	def split_cobs_frame(self, cobs_encoded_data: bytes, frame_type: str = "unknown") -> List[bytes]:
 		"""
-		Split a COBS-encoded frame into 121-byte chunks (no fragmentation headers)
-		
-		cobs_encoded_data: Complete COBS frame (with delimiter)
-		Returns: List of 121-byte payloads (without Opulent Voice headers)
+		ENHANCED: Split COBS frame with frame type tracking and split detection
 		"""
 		if len(cobs_encoded_data) <= self.payload_size:
-			# Single frame - pad to exactly 121 bytes for specification compliance
+			# Single frame - pad to exactly payload_size bytes
 			padded_data = cobs_encoded_data + b'\x00' * (self.payload_size - len(cobs_encoded_data))
 			self.stats['single_frame_messages'] += 1
 			self.stats['total_frames_created'] += 1
+            
+			print(f"📦 {frame_type}: {len(cobs_encoded_data)}B COBS → 1 frame ({len(padded_data)}B) ✅")
 			return [padded_data]
-		
-		# Multi-frame - split into 121-byte chunks
+        
+		# Multi-frame - this should NOT happen for audio!
+		if frame_type == "audio":
+			self.stats['audio_frames_split'] += 1
+			print(f"🚨 CRITICAL ERROR: Audio frame split!")
+			print(f"🚨 {len(cobs_encoded_data)}B COBS > {self.payload_size}B limit")
+			print(f"🚨 This violates Opulent Voice Protocol timing requirements!")
+			# Could raise exception here if you want to catch this in testing
+        
 		self.stats['multi_frame_messages'] += 1
 		frames = []
-		
+        
 		for i in range(0, len(cobs_encoded_data), self.payload_size):
 			chunk = cobs_encoded_data[i:i + self.payload_size]
-			
-			# Pad last chunk to exactly 121 bytes if needed
+            
+			# Pad last chunk to exactly payload_size bytes if needed
 			if len(chunk) < self.payload_size:
 				chunk = chunk + b'\x00' * (self.payload_size - len(chunk))
-			
+            
 			frames.append(chunk)
 			self.stats['total_frames_created'] += 1
-		
-		print(f"📦 Split {len(cobs_encoded_data)}B COBS frame into {len(frames)} frames of 126B each")
+        
+		# Track frame type statistics
+		if frame_type == "text":
+			self.stats['text_frames_created'] += len(frames)
+		elif frame_type == "control":
+			self.stats['control_frames_created'] += len(frames)
+        
+		print(f"📦 {frame_type}: {len(cobs_encoded_data)}B COBS → {len(frames)} frames")
 		return frames
 
 	def get_stats(self):
-		"""Get frame splitting statistics"""
-		return self.stats.copy()
+		"""Enhanced statistics with frame type breakdown"""
+		stats = self.stats.copy()
+        
+		# Add derived statistics
+		if stats['total_frames_created'] > 0:
+			stats['avg_frames_per_message'] = stats['total_frames_created'] / (
+				stats['single_frame_messages'] + stats['multi_frame_messages']
+			)
+		else:
+			stats['avg_frames_per_message'] = 0
+
+		stats['audio_split_rate'] = (stats['audio_frames_split'] / max(1, stats['total_frames_created'])) * 100
+
+		return stats
+
+
+
+
 
 
 class SimpleFrameReassembler:
@@ -1343,13 +1481,26 @@ class IPControlFrameBuilder:
 		}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 class OpulentVoiceProtocolWithIP:
 	"""
 	Opulent Voice Protocol with IP support
 
 	Frame structures:
 	- Audio:   [OV Header][COBS([IP Header][UDP Header][RTP Header][OPUS Payload])]
-	133		12	1	20		8	12	80
+	134             12      1       20              8       12      80
 	- Text:    [OV Header][COBS([IP Header][UDP Header][Text Payload])]
 	- Control: [OV Header][COBS([IP Header][UDP Header][Control Payload])]
 	- Data:    [OV Header][Data Payload] This goes to network stack - not implemented fully yet
@@ -1392,15 +1543,319 @@ class OpulentVoiceProtocolWithIP:
 		self.ip_text_builder = IPTextFrameBuilder(source_ip=self.source_ip, dest_ip=dest_ip)
 		self.ip_control_builder = IPControlFrameBuilder(source_ip=self.source_ip, dest_ip=dest_ip)
 
-		# NEW: Simple frame splitter (specification compliant)
-		self.frame_splitter = SimpleFrameSplitter(opulent_voice_frame_size=133)
-
+		# FIXED: Use 134-byte frames with 122-byte payload
+		self.frame_splitter = SimpleFrameSplitter(opulent_voice_frame_size=134)
+        
+		# Validate audio frame sizing
+		self._validate_audio_frame_sizing()
+        
 		print(f"📻 Station ID: {self.station_id} (Base-40: 0x{self.station_id.encoded_value:012X})")
 		print(f"🎵 RTP SSRC: 0x{self.rtp_builder.rtp_header.ssrc:08X}")
 		print(f"📦 UDP Ports: Audio/Text/Control → {self.PROTOCOL_PORT_VOICE}/{self.PROTOCOL_PORT_TEXT}/{self.PROTOCOL_PORT_CONTROL}")
 		print(f"🌐 IP Destination: {dest_ip}")
 		print(f"🌐 IP Source: {self.source_ip}")
-		print(f"📏 Frame Size: 133 bytes (12B header + 121B payload)")
+		print(f"📏 Frame Size: 134 bytes (12B header + 122B payload) - FIXED")
+
+	def _validate_audio_frame_sizing(self):
+		"""Validate that audio frames will never split"""
+		audio_ip_size = 20 + 8 + 12 + 80  # IP + UDP + RTP + OPUS = 120 bytes
+		max_cobs_overhead = 2  # 1 encoding + 1 delimiter
+		required_payload = audio_ip_size + max_cobs_overhead  # 122 bytes
+        
+		print(f"📊 Audio frame validation:")
+		print(f"   IP frame size: {audio_ip_size}B")
+		print(f"   COBS overhead: {max_cobs_overhead}B") 
+		print(f"   Required payload: {required_payload}B")
+		print(f"   Available payload: {self.frame_splitter.payload_size}B")
+        
+		if required_payload <= self.frame_splitter.payload_size:
+			print(f"   ✅ Audio frames will NOT split")
+		else:
+			print(f"   🚨 ERROR: Audio frames WILL split!")
+			print(f"   🚨 Need {required_payload}B but only have {self.frame_splitter.payload_size}B")
+			raise ValueError("Frame size configuration error: Audio frames will split!")
+
+	def create_audio_frames(self, opus_packet, is_start_of_transmission=False):
+		"""
+		ENHANCED: Audio frame creation with split detection and validation
+		"""
+		rtp_frame = self.rtp_builder.create_rtp_audio_frame(
+			opus_packet,
+			is_start_of_transmission
+		)
+        
+		udp_frame = self.udp_audio_builder.create_udp_audio_frame(
+			rtp_frame,
+			source_ip=self.source_ip,
+			dest_ip=self.dest_ip
+		)
+        
+		ip_frame = self.ip_audio_builder.create_ip_audio_frame(udp_frame)
+        
+		# COBS encode the complete IP frame
+		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
+        
+		print(f"🔍 Audio frame sizes: RTP({len(rtp_frame)}B) → UDP({len(udp_frame)}B) → IP({len(ip_frame)}B) → COBS({len(cobs_frame)}B)")
+        
+		# CRITICAL: Split with frame type tracking
+		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame, frame_type="audio")
+        
+		# ASSERT: Audio must never split
+		if len(frame_payloads) > 1:
+			error_msg = f"CRITICAL ERROR: Audio frame split into {len(frame_payloads)} parts!"
+			print(f"🚨 {error_msg}")
+			print(f"🚨 IP: {len(ip_frame)}B, COBS: {len(cobs_frame)}B, Limit: {self.frame_splitter.payload_size}B")
+			raise RuntimeError(error_msg)
+        
+		# Add Opulent Voice headers
+		ov_frames = []
+		for payload in frame_payloads:
+			ov_header = struct.pack(
+				'>6s 3s 3s',
+				self.station_id_bytes,
+				self.TOKEN,
+				self.RESERVED
+			)
+			ov_frame = ov_header + payload
+            
+			# Validate frame size
+			if len(ov_frame) != 134:
+				raise RuntimeError(f"Frame size error: {len(ov_frame)}B != 134B")
+                
+			ov_frames.append(ov_frame)
+
+		return ov_frames
+
+	def create_text_frames(self, text_data):
+		"""ENHANCED: Text frame creation with frame type tracking"""
+		if isinstance(text_data, str):
+			text_data = text_data.encode('utf-8')
+
+		udp_frame = self.udp_text_builder.create_udp_text_frame(
+			text_data,
+			source_ip=self.source_ip,
+			dest_ip=self.dest_ip
+		)
+
+		ip_frame = self.ip_text_builder.create_ip_text_frame(udp_frame)
+		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
+        
+		# Split with frame type tracking
+		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame, frame_type="text")
+
+		# Add Opulent Voice headers
+		ov_frames = []
+		for payload in frame_payloads:
+			ov_header = struct.pack(
+				'>6s 3s 3s',
+				self.station_id_bytes,
+				self.TOKEN,
+				self.RESERVED
+			)
+			ov_frame = ov_header + payload
+            
+			# Validate frame size
+			if len(ov_frame) != 134:
+				raise RuntimeError(f"Frame size error: {len(ov_frame)}B != 134B")
+                
+			ov_frames.append(ov_frame)
+
+		return ov_frames
+
+	def create_control_frames(self, control_data):
+		"""ENHANCED: Control frame creation with frame type tracking"""
+		if isinstance(control_data, str):
+			control_data = control_data.encode('utf-8')
+
+		udp_frame = self.udp_control_builder.create_udp_control_frame(
+			control_data,
+			source_ip=self.source_ip,
+			dest_ip=self.dest_ip
+		)
+
+		ip_frame = self.ip_control_builder.create_ip_control_frame(udp_frame)
+		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
+        
+		# Split with frame type tracking  
+		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame, frame_type="control")
+
+		# Add Opulent Voice headers
+		ov_frames = []
+		for payload in frame_payloads:
+			ov_header = struct.pack(
+				'>6s 3s 3s',
+				self.station_id_bytes,
+				self.TOKEN,
+				self.RESERVED
+			)
+			ov_frame = ov_header + payload
+            
+			# Validate frame size
+			if len(ov_frame) != 134:
+				raise RuntimeError(f"Frame size error: {len(ov_frame)}B != 134B")
+                
+			ov_frames.append(ov_frame)
+
+		return ov_frames
+
+
+
+	def parse_audio_frame(self, frame_data):
+		"""
+		Parse Opulent Voice audio frame and extract IP + UDP + RTP + OPUS
+		Expected: [OV Header][IP Header][UDP Header][RTP Header][OPUS Payload]
+		"""
+		min_size = self.HEADER_SIZE + IPHeader.HEADER_SIZE + UDPHeader.HEADER_SIZE + 12
+		if len(frame_data) < min_size:
+			return None
+
+		try:
+			# Parse Opulent Voice header
+			ov_header = struct.unpack('>2s 6s B 3s B', frame_data[:self.HEADER_SIZE])
+			synch, station_bytes, frame_type, token, reserved = ov_header
+
+			if synch != self.STREAM_SYNCH_WORD or frame_type != self.FRAME_TYPE_AUDIO:
+				return None
+
+			# Extract IP frame (everything after OV header)
+			ip_frame = frame_data[self.HEADER_SIZE:]
+
+			# Parse IP header
+			ip_header_obj = IPHeader()
+			ip_info = ip_header_obj.parse_header(ip_frame[:IPHeader.HEADER_SIZE])
+
+			# Extract UDP frame (after IP header)
+			udp_frame = ip_frame[IPHeader.HEADER_SIZE:]
+
+			# Parse UDP header
+			udp_header_obj = UDPHeader()
+			udp_info = udp_header_obj.parse_header(udp_frame[:UDPHeader.HEADER_SIZE])
+
+			# Extract RTP frame (after UDP header)
+			rtp_frame = udp_frame[UDPHeader.HEADER_SIZE:]
+
+			# Parse RTP header
+			rtp_header_obj = RTPHeader()
+			rtp_info = rtp_header_obj.parse_header(rtp_frame)
+
+			# Extract OPUS payload
+			opus_payload = rtp_frame[rtp_info['header_size']:]
+
+			return {
+				'ov_synch': synch,
+				'ov_station_bytes': station_bytes,
+				'ov_frame_type': frame_type,
+				'ov_token': token,
+				'ip_info': ip_info,
+				'udp_info': udp_info,
+				'rtp_info': rtp_info,
+				'opus_payload': opus_payload,
+				'total_size': len(frame_data)
+			}
+
+		except struct.error:
+			return None
+
+
+	def parse_text_frame(self, frame_data):
+		"""
+		Parse Opulent Voice text frame and extract IP + UDP + text
+		Expected: [OV Header][IP Header][UDP Header][Text Payload]
+		"""
+		min_size = self.HEADER_SIZE + IPHeader.HEADER_SIZE + UDPHeader.HEADER_SIZE
+		if len(frame_data) < min_size:
+			return None
+
+		try:
+			# Parse Opulent Voice header
+			ov_header = struct.unpack('>2s 6s B 3s B', frame_data[:self.HEADER_SIZE])
+			synch, station_bytes, frame_type, token, reserved = ov_header
+
+			if synch != self.STREAM_SYNCH_WORD or frame_type != self.FRAME_TYPE_TEXT:
+				return None
+
+			# Extract IP frame
+			ip_frame = frame_data[self.HEADER_SIZE:]
+
+			# Parse IP header
+			ip_header_obj = IPHeader()
+			ip_info = ip_header_obj.parse_header(ip_frame[:IPHeader.HEADER_SIZE])
+
+			# Extract UDP frame
+			udp_frame = ip_frame[IPHeader.HEADER_SIZE:]
+
+			# Parse UDP header
+			udp_header_obj = UDPHeader()
+			udp_info = udp_header_obj.parse_header(udp_frame[:UDPHeader.HEADER_SIZE])
+
+			# Extract text payload
+			text_payload = udp_frame[UDPHeader.HEADER_SIZE:]
+
+			return {
+				'ov_synch': synch,
+				'ov_station_bytes': station_bytes,
+				'ov_frame_type': frame_type,
+				'ov_token': token,
+				'ip_info': ip_info,
+				'udp_info': udp_info,
+				'text_payload': text_payload,
+				'total_size': len(frame_data)
+			}
+
+		except struct.error:
+			return None
+
+
+
+
+	def parse_control_frame(self, frame_data):
+		"""
+		Parse Opulent Voice control frame and extract IP + UDP + control data
+		Expected: [OV Header][IP Header][UDP Header][Control Payload]
+		"""
+		min_size = self.HEADER_SIZE + IPHeader.HEADER_SIZE + UDPHeader.HEADER_SIZE
+		if len(frame_data) < min_size:
+			return None
+		try:
+			# Parse Opulent Voice header
+			ov_header = struct.unpack('>2s 6s B 3s B', frame_data[:self.HEADER_SIZE])
+			synch, station_bytes, frame_type, token, reserved = ov_header
+
+			if synch != self.STREAM_SYNCH_WORD or frame_type != self.FRAME_TYPE_CONTROL:
+				return None
+
+			# Extract IP frame
+			ip_frame = frame_data[self.HEADER_SIZE:]
+
+			# Parse IP header
+			ip_header_obj = IPHeader()
+			ip_info = ip_header_obj.parse_header(ip_frame[:IPHeader.HEADER_SIZE])
+
+			# Extract UDP frame
+			udp_frame = ip_frame[IPHeader.HEADER_SIZE:]
+
+			# Parse UDP header
+			udp_header_obj = UDPHeader()
+			udp_info = udp_header_obj.parse_header(udp_frame[:UDPHeader.HEADER_SIZE])
+
+			# Extract control payload
+			control_payload = udp_frame[UDPHeader.HEADER_SIZE:]
+
+			return {
+				'ov_synch': synch,
+				'ov_station_bytes': station_bytes,
+				'ov_frame_type': frame_type,
+				'ov_token': token,
+				'ip_info': ip_info,
+				'udp_info': udp_info,
+				'control_payload': control_payload,
+				'total_size': len(frame_data)
+			}
+
+		except struct.error:
+			return None
+
+
 
 	def _get_local_ip_once(self):
 		"""Get local IP address once at startup"""
@@ -1411,124 +1866,7 @@ class OpulentVoiceProtocolWithIP:
 		except:
 			return "127.0.0.1"
 
-	def create_audio_frames(self, opus_packet, is_start_of_transmission=False):
-		"""
-		Create complete IP frame, COBS encode, then split into 138-byte frames
-		Returns: List of 138-byte Opulent Voice frames ready to send
-		"""
-		# Step 1: Create complete RTP frame (RTP header + OPUS payload)
-		rtp_frame = self.rtp_builder.create_rtp_audio_frame(
-			opus_packet,
-			is_start_of_transmission
-		)
-		print(f"🔍 RTP frame: {len(rtp_frame)}B")
 
-		# Step 2: Wrap RTP frame in UDP
-		udp_frame = self.udp_audio_builder.create_udp_audio_frame(
-			rtp_frame,
-			source_ip=self.source_ip,
-			dest_ip=self.dest_ip
-		)
-		print(f"🔍 UDP frame: {len(udp_frame)}B")
-
-		# Step 3: Wrap UDP frame in IP
-		ip_frame = self.ip_audio_builder.create_ip_audio_frame(udp_frame)
-		print(f"🔍 IP frame: {len(ip_frame)}B")
-
-		# Step 4: COBS encode the complete IP frame
-		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
-		print(f"🔍 COBS frame: {len(cobs_frame)}B (should be ≤121)")
-
-		# Step 5: Split the COBS frame into 126-byte chunks
-		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame)
-		print(f"🔍 Split into {len(frame_payloads)} frames - SHOULD BE 1 FOR AUDIO!")
-
-		# Step 6: Add Opulent Voice headers to each chunk (138 bytes total)
-		ov_frames = []
-		for payload in frame_payloads:
-			ov_header = struct.pack(
-				'>6s 3s 3s',
-				self.station_id_bytes,
-				self.TOKEN,
-				self.RESERVED
-			)
-			ov_frames.append(ov_header + payload)
-
-		return ov_frames
-
-	def create_text_frames(self, text_data):
-		"""
-		Create complete IP frame, COBS encode, then split into 138-byte frames
-		Returns: List of 138-byte Opulent Voice frames ready to send
-		"""
-		if isinstance(text_data, str):
-			text_data = text_data.encode('utf-8')
-
-		# Step 1: Wrap text in UDP
-		udp_frame = self.udp_text_builder.create_udp_text_frame(
-			text_data,
-			source_ip=self.source_ip,
-			dest_ip=self.dest_ip
-		)
-
-		# Step 2: Wrap UDP frame in IP
-		ip_frame = self.ip_text_builder.create_ip_text_frame(udp_frame)
-
-		# Step 3: COBS encode the complete IP frame
-		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
-
-		# Step 4: Split the COBS frame into 126-byte chunks
-		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame)
-
-		# Step 5: Add Opulent Voice headers to each chunk (138 bytes total)
-		ov_frames = []
-		for payload in frame_payloads:
-			ov_header = struct.pack(
-				'>6s 3s 3s',
-				self.station_id_bytes,
-				self.TOKEN,
-				self.RESERVED
-			)
-			ov_frames.append(ov_header + payload)
-
-		return ov_frames
-
-	def create_control_frames(self, control_data):
-		"""
-		Create complete IP frame, COBS encode, then split into 138-byte frames
-		Returns: List of 138-byte Opulent Voice frames ready to send
-		"""
-		if isinstance(control_data, str):
-			control_data = control_data.encode('utf-8')
-
-		# Step 1: Wrap control data in UDP
-		udp_frame = self.udp_control_builder.create_udp_control_frame(
-			control_data,
-			source_ip=self.source_ip,
-			dest_ip=self.dest_ip
-		)
-
-		# Step 2: Wrap UDP frame in IP
-		ip_frame = self.ip_control_builder.create_ip_control_frame(udp_frame)
-
-		# Step 3: COBS encode the complete IP frame
-		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
-
-		# Step 4: Split the COBS frame into 126-byte chunks
-		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame)
-
-		# Step 5: Add Opulent Voice headers to each chunk (138 bytes total)
-		ov_frames = []
-		for payload in frame_payloads:
-			ov_header = struct.pack(
-				'>6s 3s 3s',
-				self.station_id_bytes,
-				self.TOKEN,
-				self.RESERVED
-			)
-			ov_frames.append(ov_header + payload)
-
-		return ov_frames
 
 	# Keep existing PTT notification methods
 	def notify_ptt_pressed(self):
@@ -1539,38 +1877,7 @@ class OpulentVoiceProtocolWithIP:
 		"""Call when PTT is released"""
 		self.rtp_builder.end_talk_spurt()
 
-	def get_protocol_stats(self):
-		"""Get comprehensive protocol statistics"""
-		rtp_stats = self.rtp_builder.get_rtp_stats()
-		udp_audio_stats = self.udp_audio_builder.get_udp_stats()
-		udp_text_stats = self.udp_text_builder.get_udp_stats()
-		udp_control_stats = self.udp_control_builder.get_udp_stats()
-		ip_audio_stats = self.ip_audio_builder.get_ip_stats()
-		ip_text_stats = self.ip_text_builder.get_ip_stats()
-		ip_control_stats = self.ip_control_builder.get_ip_stats()
-		
-		# Updated stats
-		cobs_stats = self.cobs_manager.get_stats()
-		splitter_stats = self.frame_splitter.get_stats()
 
-		return {
-			'station_id': str(self.station_id),
-			'rtp': rtp_stats,
-			'udp_audio': udp_audio_stats,
-			'udp_text': udp_text_stats,
-			'udp_control': udp_control_stats,
-			'ip_audio': ip_audio_stats,
-			'ip_text': ip_text_stats,
-			'ip_control': ip_control_stats,
-			'cobs': cobs_stats,
-			'frame_splitter': splitter_stats,
-			'frame_sizes': {
-				'opulent_voice_frame_size': 133,  # All frames are exactly 133 bytes
-				'ov_header_size': 12,
-				'payload_size': 121,
-				'audio_calculation': '12 + IP(20) + UDP(8) + RTP(12) + OPUS(80) + COBS(~6) = 133B'
-			}
-		}
 
 
 	def station_id_to_string(self, station_id_bytes):
@@ -1580,6 +1887,46 @@ class OpulentVoiceProtocolWithIP:
 			return str(station_id)
 		except:
 			return station_id_bytes.hex().upper()
+
+
+
+	def get_protocol_stats(self):
+		"""Enhanced protocol statistics with frame splitting info"""
+		# Existing stats...
+		stats = {
+			'station_id': str(self.station_id),
+			'cobs': self.cobs_manager.get_stats(),
+			'frame_splitter': self.frame_splitter.get_stats(),
+			'frame_sizes': {
+				'opulent_voice_frame_size': 134,  # FIXED: 133 → 134
+				'ov_header_size': 12,
+				'payload_size': 122,  # FIXED: 121 → 122
+				'audio_calculation': '12 + IP(120) + COBS(2) = 134B total'
+			}
+		}
+        
+		# Add frame splitting analysis
+		splitter_stats = self.frame_splitter.get_stats()
+		if splitter_stats['audio_frames_split'] > 0:
+			stats['CRITICAL_ERROR'] = f"Audio frames split {splitter_stats['audio_frames_split']} times!"
+        
+		return stats
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1673,3 +2020,51 @@ class NetworkTransmitter:
 		if self.socket:
 			self.socket.close()
 			self.socket = None
+
+
+if __name__ == '__main__':
+	roundtrip_errors = 0
+
+	def roundtrip(data, expected_cobs_encoding):
+		"""Test COBS encoding and decoding"""
+		print(f"Original data: {data}")
+		cobs_encoded = COBSEncoder.encode(data)
+		if cobs_encoded == expected_cobs_encoding:
+			print(f"COBS Encoded:  {cobs_encoded}, OK")
+		else:
+			print(f"COBS Encoded:  {cobs_encoded}, ERROR expected {expected_cobs_encoding}")
+			roundtrip_errors += 1
+		decoded = COBSEncoder.decode(cobs_encoded)
+		print(f"Decoded data:  {decoded}")
+		if data != decoded:
+			print(f"Mismatch. Original length {len(data)}, Decoded length {len(decoded)}")
+			roundtrip_errors
+		print()
+
+	roundtrip(b"ABCD\x00", b"\x05ABCD\x01\x00")
+	roundtrip(b"ABCD",     b"\x05ABCD\x00")
+
+	roundtrip(b"A"*253,    b"\xfe" + b"A"*253 + b"\x00")
+	roundtrip(b"B"*254,    b"\xff" + b"B"*254 + b"\x01" + b"\x00")
+	roundtrip(b"C"*255,    b"\xff" + b"C"*254 + b"\x02C" + b"\x00")
+
+	roundtrip(b"A"*253 + b"\x00", b"\xfe" + b"A"*253 + b"\x01" +b"\x00")
+	roundtrip(b"B"*254 + b"\x00", b"\xff" + b"B"*254 + b"\x01" + b"\x01" + b"\x00")
+	roundtrip(b"C"*255 + b"\x00", b"\xff" + b"C"*254 + b"\x02C" + b"\x01" + b"\x00")
+
+	roundtrip(b"A"*253 + b"aaaaa", b"\xff" + b"A"*253 + b"a" + b"\x05aaaa" + b"\x00")
+	roundtrip(b"B"*254 + b"bbbbb", b"\xff" + b"B"*254 + b"\x06bbbbb" + b"\x00")
+	roundtrip(b"C"*255 + b"ccccc", b"\xff" + b"C"*254 + b"\x07Cccccc" + b"\x00")
+
+	roundtrip(b"A"*253 + b"aaaaa\x00", b"\xff" + b"A"*253 + b"a" + b"\x05aaaa" + b"\x01" + b"\x00")
+	roundtrip(b"B"*254 + b"bbbbb\x00", b"\xff" + b"B"*254 + b"\x06bbbbb" + b"\x01" + b"\x00")
+	roundtrip(b"C"*255 + b"ccccc\x00", b"\xff" + b"C"*254 + b"\x07Cccccc" + b"\x01" + b"\x00")
+
+	roundtrip(b"", b"\x01" + b"\x00")  # Empty data should encode to 1 byte with 0x01, because of the implied zero byte
+	roundtrip(b"\x00"*1, b"\x01"*2 + b"\x00")
+	roundtrip(b"\x00"*2, b"\x01"*3 + b"\x00")
+	roundtrip(b"\x00"*3, b"\x01"*4 + b"\x00")
+	roundtrip(b"\x00"*4, b"\x01"*5 + b"\x00")
+	roundtrip(b"\x00"*5, b"\x01"*6 + b"\x00")
+
+	print(f"COBS roundtrip tests completed with {roundtrip_errors} errors.")
