@@ -38,10 +38,10 @@ import sounddevice
 from dataclasses import dataclass
 
 from config_manager import (
-    OpulentVoiceConfig, 
-    ConfigurationManager, 
-    create_enhanced_argument_parser, 
-    setup_configuration
+	OpulentVoiceConfig, 
+	ConfigurationManager, 
+	create_enhanced_argument_parser, 
+	setup_configuration
 )
 
 
@@ -98,7 +98,7 @@ web_interface_instance = None
 # check for virtual environment
 if not (hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)):
 	print("You need to run this code in a virtual environment:")
-	print("     source /LED_test/bin/activate")
+	print("	 source /LED_test/bin/activate")
 	sys.exit(1)
 
 try: 
@@ -382,7 +382,7 @@ class TerminalChatInterface:
 		if pending > 0:
 			DebugConfig.user_print(f"   📝 Pending messages:")
 			for i, msg in enumerate(self.chat_manager.pending_messages, 1):
-				DebugConfig.user_print(f"      {i}. {msg}")
+				DebugConfig.user_print(f"	  {i}. {msg}")
 	
 	def display_received_message(self, from_station, message):
 		"""Display received chat message"""
@@ -518,7 +518,7 @@ class ContinuousStreamManager:
 		self.stream_active = False
 
 		print(f"🛑 40ms stream STOPPED (ran for {stream_duration:.1f}s)")
-    
+	
 	def get_stream_status(self) -> Dict:
 		"""Get current stream status"""
 		current_time = time.time()
@@ -871,6 +871,9 @@ class ChatManagerAudioDriven:
 
 class GPIOZeroPTTHandler:
 	def __init__(self, station_identifier, config: OpulentVoiceConfig):
+		# cleanup flag
+		self._cleanup_done = False
+
 		# Store configuration
 		self.config = config
 
@@ -967,46 +970,35 @@ class GPIOZeroPTTHandler:
 
 
 	def setup_audio(self, force_device_selection=False):
-		"""Setup audio input with optional device selection"""
-        
-		# Create device manager with our config
-		mode=AudioManagerMode.INTERACTIVE, # always interactive for normal operation
-		device_manager = AudioDeviceManager(
-		config_file="audio_config.yaml", 
-		radio_config=self.config
-		)
-
-
-		DebugConfig.debug_print(f"🔍 DEBUG: AudioDeviceManager mode = {device_manager.mode}")
-		DebugConfig.debug_print(f"🔍 DEBUG: About to call setup_audio_devices...")
-		DebugConfig.debug_print(f"🔍 DEBUG: Creating AudioDeviceManager with mode = {AudioManagerMode.INTERACTIVE}")
+		"""Setup audio input and output with optional device selection"""
+		# create device manager with our config
 		device_manager = AudioDeviceManager(
 			mode=AudioManagerMode.INTERACTIVE,
 			config_file="audio_config.yaml", 
 			radio_config=self.config
 		)
-		DebugConfig.debug_print(f"🔍 DEBUG: AudioDeviceManager created with mode = {device_manager.mode}")
 
-        
+
 		try:
 			# Device selection based on force flag or first-time setup
 			input_device, output_device = device_manager.setup_audio_devices(
 				force_selection=force_device_selection
 			)
-            
-			# Use the SAME parameters for actual audio setup
+			
+			# get audio parameters from device manager
 			params = device_manager.audio_params
-            
+			
 			# Update our instance variables to match selected params
 			self.sample_rate = params['sample_rate']
 			self.samples_per_frame = params['frames_per_buffer']
 			self.bytes_per_frame = self.samples_per_frame * 2
-            
+			
 			DebugConfig.debug_print(f"🎵 Audio config: {params['sample_rate']}Hz, {params['frame_duration_ms']}ms frames")
 			DebugConfig.debug_print(f"   Samples per frame: {params['frames_per_buffer']}")
 			DebugConfig.debug_print(f"   Selected input device: {input_device}")
-            
-			# Rest of previous audio setup here.
+
+
+			# set up input stream for the microphone
 			try:
 				self.audio_input_stream = self.audio.open(
 					format=pyaudio.paInt16,
@@ -1017,14 +1009,121 @@ class GPIOZeroPTTHandler:
 					frames_per_buffer=params['frames_per_buffer'],
 					stream_callback=self.audio_callback
 				)
-				DebugConfig.debug_print("✓ Audio input stream ready with selected device")
-				DebugConfig.debug_print(f"Buffer latency: {self.audio_input_stream.get_input_latency():.3f}s")
+				DebugConfig.debug_print("✓ Audio input stream ready with selected microphone")
 			except Exception as e:
-				DebugConfig.debug_print(f"✗ Audio setup error: {e}")
+				DebugConfig.debug_print(f"✗ Audio input device setup error: {e}")
 				raise
-                
+
+			# Store both devices and parameters for enhanced receiver
+			self.selected_input_device = input_device	# For reference
+			self.selected_output_device = output_device  # For received audio playback
+			self.audio_params = params
+			DebugConfig.debug_print("✅ Audio setup complete - input and output devices independently selected")
+
 		finally:
 			device_manager.cleanup()
+
+
+
+
+
+	def setup_enhanced_receiver_with_audio(self):
+		"""Setup enhanced receiver with audio output using independently selected output device"""
+		try:
+			from enhanced_receiver import EnhancedMessageReceiver
+		
+			# Create enhanced receiver (UNCHANGED)
+			self.enhanced_receiver = EnhancedMessageReceiver(
+				listen_port=self.config.network.listen_port,
+				chat_interface=self.chat_interface
+			)
+		
+			# CORRECTED: Setup audio output with the independently selected OUTPUT device
+			if hasattr(self, 'selected_output_device') and hasattr(self, 'audio_params'):
+				print(f"🔊 Setting up received audio playback:")
+				print(f"   Using output device: {self.selected_output_device}")
+				print(f"   Audio parameters: {self.audio_params['sample_rate']}Hz, {self.audio_params['channels']} channel(s)")
+
+				# Create audio output manager directly
+				from enhanced_receiver import AudioOutputManager
+				self.enhanced_receiver.audio_output = AudioOutputManager(self.audio_params)
+
+				# Use your existing setup_with_device method
+				if self.enhanced_receiver.audio_output.setup_with_device(self.selected_output_device):
+					if self.enhanced_receiver.audio_output.start_playback():
+						print(f"✅ Enhanced receiver: real-time audio output active")
+					else:
+						print(f"⚠️  Audio playback start failed")
+				else:
+					print(f"⚠️  Audio device setup failed")
+			else:
+				print("⚠️  No output device selected - voice reception will be web-only")
+
+			# Start the receiver (UNCHANGED)
+			self.enhanced_receiver.start()
+			return self.enhanced_receiver
+		
+		except Exception as e:
+			print(f"✗ Enhanced receiver setup failed: {e}")
+			return None
+
+
+
+
+
+
+	def setup_enhanced_receiver_for_cli(self):
+		"""Setup enhanced receiver with audio output - CLI MODE ONLY (no web interface)"""
+		try:
+			from enhanced_receiver import EnhancedMessageReceiver
+		
+			# Create enhanced receiver (same as web interface mode)
+			self.enhanced_receiver = EnhancedMessageReceiver(
+				listen_port=self.config.network.listen_port,
+				chat_interface=self.chat_interface
+			)
+		
+			# Setup audio output if we have device info (same as web interface mode)
+			if hasattr(self, 'selected_output_device') and hasattr(self, 'audio_params'):
+				print(f"🔊 Setting up received audio playback for CLI mode:")
+				print(f"   Using output device: {self.selected_output_device}")
+				print(f"   Audio parameters: {self.audio_params['sample_rate']}Hz, {self.audio_params['channels']} channel(s)")
+				
+				# Create audio output manager directly (same as web interface mode)
+				from enhanced_receiver import AudioOutputManager
+				self.enhanced_receiver.audio_output = AudioOutputManager(self.audio_params)
+				
+				# Use existing setup_with_device method (same as web interface mode)
+				if self.enhanced_receiver.audio_output.setup_with_device(self.selected_output_device):
+					if self.enhanced_receiver.audio_output.start_playback():
+						print(f"✅ CLI mode: real-time audio output active")
+					else:
+						print(f"⚠️  CLI mode: Audio playback start failed")
+				else:
+					print(f"⚠️  CLI mode: Audio device setup failed")
+			else:
+				print("⚠️  CLI mode: No output device selected - voice reception disabled")
+				print("   (Use --setup-audio to configure audio devices)")
+		
+			# Start the receiver (same as web interface mode)
+			self.enhanced_receiver.start()
+			
+			# IMPORTANT: Do NOT set web interface - this is CLI mode only
+			print("✅ Enhanced receiver ready for CLI mode (no web interface)")
+			return self.enhanced_receiver
+		
+		except Exception as e:
+			print(f"✗ CLI audio setup failed: {e}")
+			import traceback
+			traceback.print_exc()
+			return None
+
+
+
+
+
+
+
 
 
 
@@ -1068,7 +1167,7 @@ class GPIOZeroPTTHandler:
 	def audio_callback_minimal(self, in_data, frame_count, time_info, status):
 		if status:
 			print(f"⚠ Audio status flags: {status}")
-    
+	
 		# Do absolutely nothing else - just return
 		return (None, pyaudio.paContinue)
 
@@ -1255,8 +1354,8 @@ class GPIOZeroPTTHandler:
 
 			if self.transmitter.send_frame(test_frame):
 				print("   ✓ Test RTP audio frame sent successfully")
-				DebugConfig.debug_print("     Special note: random test data is maximum COBS overhead.")
-				DebugConfig.debug_print("     Did you see the audio frame split?")
+				DebugConfig.debug_print("	 Special note: random test data is maximum COBS overhead.")
+				DebugConfig.debug_print("	 Did you see the audio frame split?")
 				rtp_stats = self.protocol.rtp_builder.get_rtp_stats()
 				DebugConfig.debug_print(f"   📡 Frame structure: OV(12B) + COBS(1B) + IP(20B) + UDP(8B) + RTP(12B) + OPUS(80B) = {len(test_frame)}B total")
 				DebugConfig.debug_print(f"   📡 RTP SSRC: 0x{rtp_stats['ssrc']:08X}")
@@ -1339,10 +1438,6 @@ class GPIOZeroPTTHandler:
 
 
 
-
-
-
-
 	def start(self):
 		"""Start the continuous stream system"""
 		if self.audio_input_stream:
@@ -1375,11 +1470,27 @@ class GPIOZeroPTTHandler:
 
 
 	def cleanup(self):
-		"""Clean shutdown"""
-		self.stop()
+		"""Clean shutdown - FIXED to prevent duplicate cleanup"""
+		if self._cleanup_done:
+			DebugConfig.debug_print("🔄 Cleanup already completed - skipping")
+			return
+
+		self._cleanup_done = True
+
+		self.chat_interface.stop()
+		if self.audio_input_stream:
+			self.audio_input_stream.stop_stream()
+			self.audio_input_stream.close()
+		self.audio.terminate()
+
+		if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver:
+			self.enhanced_receiver.stop_audio_output()
+			self.enhanced_receiver.stop()
+
 		self.transmitter.close()
 		self.led.off()
 		print(f"Thank you for shopping at Omega Mart. {self.station_id} cleanup complete.")
+
 
 
 
@@ -1590,14 +1701,14 @@ def test_base40_encoding():
 	print("🧪 Testing Base-40 Encoding/Decoding...")
 
 	test_callsigns = [
-		"W1ABC",      # Traditional US callsign
-		"VE3XYZ",     # Canadian callsign
-		"G0ABC",      # UK callsign
-		"JA1ABC",     # Japanese callsign
+		"W1ABC",	  # Traditional US callsign
+		"VE3XYZ",	 # Canadian callsign
+		"G0ABC",	  # UK callsign
+		"JA1ABC",	 # Japanese callsign
 		"TACTICAL1",  # Tactical callsign
-		"TEST/P",     # Portable operation
-		"NODE-1",     # Network node
-		"RELAY.1",    # Relay station
+		"TEST/P",	 # Portable operation
+		"NODE-1",	 # Network node
+		"RELAY.1",	# Relay station
 	]
 
 	for callsign in test_callsigns:
@@ -1613,9 +1724,9 @@ def test_base40_encoding():
 			recovered = StationIdentifier.from_bytes(station_bytes)
 
 			if str(recovered) == callsign:
-				print(f"      ✓ StationIdentifier round-trip successful")
+				print(f"	  ✓ StationIdentifier round-trip successful")
 			else:
-				print(f"      ✗ StationIdentifier round-trip failed: {recovered}")
+				print(f"	  ✗ StationIdentifier round-trip failed: {recovered}")
 
 		except Exception as e:
 			print(f"   ✗ {callsign} → Error: {e}")
@@ -1642,28 +1753,28 @@ def parse_arguments():
 
 def setup_web_interface_callbacks(radio_system, web_interface):
 	"""Connect radio system callbacks to web interface for real-time updates"""
-    
+	
 	# Store original PTT methods
 	original_ptt_pressed = radio_system.ptt_pressed
 	original_ptt_released = radio_system.ptt_released
-    
+	
 	# Wrap PTT methods to notify web interface
 	async def ptt_pressed_with_web():
 		original_ptt_pressed()
 		await web_interface.on_ptt_state_changed(True)
-    
+	
 	async def ptt_released_with_web():
 		original_ptt_released() 
 		await web_interface.on_ptt_state_changed(False)
-    
+	
 	# Replace methods (note: this is simplified - you may need async handling)
 	radio_system.ptt_pressed = lambda: asyncio.create_task(ptt_pressed_with_web())
 	radio_system.ptt_released = lambda: asyncio.create_task(ptt_released_with_web())
-    
-    # TODO: Add other callbacks as needed
-    # - Message received callbacks
-    # - Status change callbacks
-    # - Audio message callbacks (Phase 2)
+	
+	# TODO: Add other callbacks as needed
+	# - Message received callbacks
+	# - Status change callbacks
+	# - Audio message callbacks (Phase 2)
 
 
 
@@ -1824,8 +1935,15 @@ if __name__ == "__main__":
 			web_interface_instance = initialize_web_interface(radio, config, config_manager)
 	
 			# Setup enhanced reception (this creates and starts the receiver)
-			enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
+			# enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
+			enhanced_receiver = radio.setup_enhanced_receiver_with_audio()
 			receiver = enhanced_receiver
+
+			# Connect to web interface
+			if web_interface_instance and enhanced_receiver:
+				enhanced_receiver.set_web_interface(web_interface_instance)
+				setup_web_reception_callbacks(radio, web_interface_instance, enhanced_receiver)
+
 	
 			# Connect receiver to radio's chat interface
 			receiver.chat_interface = radio.chat_interface
@@ -1894,11 +2012,12 @@ if __name__ == "__main__":
 			)
 
 			# ENHANCED: Setup enhanced reception for CLI mode
-			enhanced_receiver = setup_enhanced_reception(radio, None)  # No web interface
+			enhanced_receiver = radio.setup_enhanced_receiver_for_cli()
 			receiver = enhanced_receiver
 	
 			# Connect receiver to chat interface
-			# receiver.chat_interface = radio.chat_interface # !!!AI testing
+			if receiver:
+				receiver.chat_interface = radio.chat_interface
 
 			# Run tests and start
 			radio.test_gpio()

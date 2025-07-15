@@ -10,6 +10,7 @@ import time
 import struct
 import json
 import socket  # 🔧 FIXED: Missing socket import
+import pyaudio
 from queue import Queue, Empty
 from typing import Optional, Dict, List, Callable
 from datetime import datetime
@@ -21,6 +22,7 @@ from radio_protocol import (
     StationIdentifier,
     DebugConfig
 )
+
 
 
 class WebSocketBridge:
@@ -74,6 +76,15 @@ class WebSocketBridge:
                 print(f"Error in audio callback: {e}")
 
 
+
+
+
+
+
+
+
+
+
 class EnhancedMessageReceiver:
     """Enhanced MessageReceiver with web interface integration"""
     
@@ -83,6 +94,8 @@ class EnhancedMessageReceiver:
         self.socket = None
         self.running = False
         self.receive_thread = None
+        self._stopped = False
+        self._audio_stopped = False
         
         # Audio and message processing
         self.reassembler = SimpleFrameReassembler()
@@ -95,6 +108,7 @@ class EnhancedMessageReceiver:
         # Audio reception components
         self.audio_decoder = AudioDecoder()
         self.audio_queue = Queue(maxsize=100)  # Buffer for web streaming
+        self.audio_output = None
         
         # Statistics
         self.stats = {
@@ -129,8 +143,12 @@ class EnhancedMessageReceiver:
             print(f"✗ Failed to start enhanced receiver: {e}")
             
     def stop(self):
-        """Stop the enhanced message receiver"""
+        if self._stopped:
+            return
+            
+        self._stopped = True
         self.running = False
+        
         if self.receive_thread:
             self.receive_thread.join(timeout=2.0)
         if self.socket:
@@ -156,20 +174,6 @@ class EnhancedMessageReceiver:
             except Exception as e:
                 if self.running:
                     print(f"Receive error: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -433,131 +437,111 @@ class EnhancedMessageReceiver:
 
 
 
-
-
-
-
-
-
-
-
-
-
+    def stop_audio_output(self):
+        """Stop audio output"""
+        if self._audio_stopped:
+            return
+            
+        self._audio_stopped = True
+        
+        if hasattr(self, 'audio_output') and self.audio_output:
+            self.audio_output.stop_playback()
+            print("🔊 Audio output stopped")
 
 
 
 
     def _handle_audio_packet(self, udp_payload, from_station, timestamp):
-        """Handle received audio packet with comprehensive debugging"""
+        """
+        Handle received audio packet with:
+            real-time playback
+            web notifications
+            debugging
+        """
         self.stats['audio_packets'] += 1
-    
-        # DEBUG 1: Basic packet info
-        print(f"🎤 DEBUG 1: Audio packet received")
+
+        print(f"🎤 AUDIO RX DEBUG 1: Received audio packet")
         print(f"   From: {from_station}")
         print(f"   UDP payload size: {len(udp_payload)} bytes")
-        print(f"   Expected: ≥12 bytes (RTP header)")
-    
+        print(f"   Expected: 92 bytes (RTP + OPUS)")
+
         try:
-            # DEBUG 2: RTP header extraction
+            # Extract RTP header and Opus payload
             if len(udp_payload) >= 12:  # RTP header size
                 rtp_payload = udp_payload[12:]  # Skip RTP header
-                print(f"🎤 DEBUG 2: RTP processing")
+
+                print(f"🎤 AUDIO RX DEBUG 2: RTP parsing")
                 print(f"   RTP header: {udp_payload[:12].hex()}")
-                print(f"   RTP payload size: {len(rtp_payload)} bytes")
-                print(f"   Expected OPUS: ~80 bytes")
-            
-                # DEBUG 3: RTP header parsing (optional detailed check)
-                if len(udp_payload) >= 12:
-                    rtp_header = udp_payload[:12]
-                    version = (rtp_header[0] >> 6) & 0x3
-                    marker = (rtp_header[1] >> 7) & 0x1
-                    payload_type = rtp_header[1] & 0x7F
-                    sequence = int.from_bytes(rtp_header[2:4], 'big')
-                    timestamp_rtp = int.from_bytes(rtp_header[4:8], 'big')
-                    ssrc = int.from_bytes(rtp_header[8:12], 'big')
-                
-                    print(f"🎤 DEBUG 3: RTP Header Details")
-                    print(f"   Version: {version} (should be 2)")
-                    print(f"   Marker: {marker}")
-                    print(f"   Payload Type: {payload_type} (should be 96 for OPUS)")
-                    print(f"   Sequence: {sequence}")
-                    print(f"   RTP Timestamp: {timestamp_rtp}")
-                    print(f"   SSRC: 0x{ssrc:08X}")
-            
-                # DEBUG 4: OPUS decoding attempt
-                if len(rtp_payload) > 0:
-                    print(f"🎤 DEBUG 4: OPUS decoding attempt")
-                    print(f"   OPUS data endview: ...{rtp_payload[-4:].hex()}")
-                    #print(f"   OPUS data preview: {rtp_payload[:16].hex()}...")
-                
-                    # Check if decoder is available
-                    if hasattr(self, 'audio_decoder') and self.audio_decoder.decoder_available:
-                        print(f"   OPUS decoder: Available")
-                        audio_pcm = self.audio_decoder.decode_opus(rtp_payload)
-                    
-                        print(f"🎤 DEBUG 5: OPUS decode result")
-                        if audio_pcm:
-                            print(f"   PCM data produced: {len(audio_pcm)} bytes")
-                            print(f"   Sample rate: 48000 Hz")
-                            print(f"   Duration: {len(audio_pcm) / 2 / 48000 * 1000:.1f} ms (assuming 16-bit)")
-                            print(f"   PCM preview: {audio_pcm[:16].hex()}...")
-                        
-                            # DEBUG 6: Queue for web streaming
-                            try:
-                                audio_data = {
-                                    'audio_data': audio_pcm,
-                                    'from_station': from_station,
-                                    'timestamp': timestamp,
-                                    'sample_rate': 48000,
-                                    'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
-                                }
-                                self.audio_queue.put_nowait(audio_data)
-                                print(f"🎤 DEBUG 6: Audio queued for web streaming")
-                                print(f"   Queue size: {self.audio_queue.qsize()}")
-                            except Exception as e:
-                                print(f"🎤 DEBUG 6: Queue failed: {e}")
+                print(f"   OPUS payload size: {len(rtp_payload)} bytes")
+                print(f"   OPUS data preview: {rtp_payload[:8].hex()}...")
+
+                # Check if decoder is available and decode Opus audio
+                if hasattr(self, 'audio_decoder') and self.audio_decoder.decoder_available:
+
+                    print(f"🎤 AUDIO RX DEBUG 3: OPUS decoder available")
+
+                    audio_pcm = self.audio_decoder.decode_opus(rtp_payload)
+                    if audio_pcm:
+
+                        print(f"🎤 AUDIO RX DEBUG 4: OPUS decoded successfully")
+                        print(f"   PCM size: {len(audio_pcm)} bytes")
+                        print(f"   Expected: 3840 bytes (40ms at 48kHz, 16-bit)")
+
+                        # REAL-TIME PLAYBACK THROUGH HEADPHONES
+                        if self.audio_output and self.audio_output.playing:
+
+                            print(f"🎤 AUDIO RX DEBUG 5: Audio output available and playing")
+                            print(f"   Has audio_output: {hasattr(self, 'audio_output') and self.audio_output is not None}")
+
+                            self.audio_output.queue_audio_for_playback(audio_pcm, from_station)
+
+                            print(f"🔊 Audio queued for headphone playback")
+                        else:
+                            print(f"🎤 AUDIO RX DEBUG 5: Audio output NOT available")
+                            print(f"   Has audio_output: {hasattr(self, 'audio_output') and self.audio_output is not None}")
+                            if hasattr(self, 'audio_output') and self.audio_output:
+                                print(f"   Audio output playing: {self.audio_output.playing}")
+                            else:
+                                print(f"   Audio output is None")
+                            print(f"🔊 Audio output not active - voice will be silent")
+
+                        # Queue audio for web streaming
+                        try:
+                            audio_data = {
+                                'audio_data': audio_pcm,
+                                'from_station': from_station,
+                                'timestamp': timestamp,
+                                'sample_rate': 48000,
+                                'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
+                            }
+                            self.audio_queue.put_nowait(audio_data)
+                            print(f"🎤 Audio queued for web streaming")
+                        except Exception as e:
+                                print(f"🎤 Queue failed: {e}")
+                                pass # web queue being full is not critical
                             
-                            # DEBUG 7: Web interface notification
-                            web_notification_data = {
+                        # Web interface notification
+                        self._notify_web_async('audio_received', {
                                 'from_station': from_station,
                                 'timestamp': timestamp,
                                 'audio_length': len(audio_pcm),
                                 'sample_rate': 48000,
                                 'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
-                            }
-                            print(f"🎤 DEBUG 7: Sending web notification")
-                            print(f"   Notification data: {web_notification_data}")
+                        })
                         
-                            self._notify_web_async('audio_received', web_notification_data)
-                            print(f"🎤 DEBUG 7: Web notification sent")
-                        
-                        else:
-                            print(f"   PCM data: None (decode failed)")
-                            print(f"   This suggests OPUS decoding issue")
                     else:
-                        print(f"   OPUS decoder: NOT AVAILABLE")
-                        print(f"   Decoder object: {getattr(self, 'audio_decoder', 'Missing')}")
-                        if hasattr(self, 'audio_decoder'):
-                            print(f"   Decoder available flag: {getattr(self.audio_decoder, 'decoder_available', 'Missing')}")
+                        print(f"🎤 AUDIO RX DEBUG 4: OPUS decode failed")
                 else:
-                    print(f"🎤 DEBUG 4: No RTP payload to decode")
+                    print(f"🎤 AUDIO RX DEBUG 3: OPUS decoder NOT available")
+                    print(f"   Has audio_decoder: {hasattr(self, 'audio_decoder')}")
+                    if hasattr(self, 'audio_decoder'):
+                        print(f"   Decoder available: {self.audio_decoder.decoder_available}")
             else:
-                print(f"🎤 DEBUG 2: Packet too small for RTP header")
-            
-            # DEBUG 8: Summary
-            print(f"🎤 DEBUG 8: Processing complete")
-            print(f"   Audio packets processed: {self.stats['audio_packets']}")
-            print(f"   Web notifications sent: {self.stats.get('web_notifications', 0)}")
-            print("-" * 50)
-            
+                print(f"🎤 AUDIO RX DEBUG 2: UDP payload too small for RTP header")
         except Exception as e:
-            print(f"🎤 DEBUG ERROR: Exception in audio processing: {e}")
+            print(f"🎤 Audio processing error: {e}")
             import traceback
             traceback.print_exc()
-            print("-" * 50)
-
-
-
 
 
 
@@ -715,6 +699,198 @@ class EnhancedMessageReceiver:
     def get_stats(self):
         """Get enhanced receiver statistics"""
         return self.stats.copy()
+
+
+
+
+
+
+
+
+
+
+class AudioOutputManager:
+    """Audio output manager focused on real-time playback"""
+    
+    def __init__(self, audio_params):
+        # Use exact parameters from radio system
+        self.sample_rate = audio_params['sample_rate']
+        self.channels = audio_params['channels'] 
+        self.buffer_size = audio_params['frames_per_buffer']
+        self._stopped = False
+        
+        # Audio output setup with PyAudio initialization
+
+        try:
+            import pyaudio  # Make sure pyaudio is available
+            self.audio = pyaudio.PyAudio()
+            self.output_stream = None
+            self.output_device = None
+            DebugConfig.debug_print(f"✅ PyAudio initialized successfully")
+        except ImportError as e:
+            print(f"❌ PyAudio import failed: {e}")
+            self.audio = None
+            return
+        except Exception as e:
+            print(f"❌ PyAudio initialization failed: {e}")
+            self.audio = None
+            return
+
+        # Simple playback queue
+        self.playback_queue = Queue(maxsize=10)  # Small buffer for real-time
+        self.playback_thread = None
+        self.playing = False
+        
+        # Basic statistics
+        self.stats = {
+            'packets_queued': 0,
+            'packets_played': 0,
+            'total_samples_played': 0
+        }
+        
+        print("🔊 Simplified AudioOutputManager ready")
+    
+    def setup_with_device(self, output_device_index):
+        """Setup using pre-selected device index"""
+        try:
+            self.output_device = output_device_index
+            print(f"🔊 Output device set: {output_device_index}")
+            return True
+        except Exception as e:
+            print(f"✗ Output device setup failed: {e}")
+            return False
+    
+    def start_playback(self):
+        """Start audio output stream and playback thread"""
+        if self.playing:
+            return True
+            
+        try:
+            # Create output stream
+            self.output_stream = self.audio.open(
+                format=pyaudio.paInt16,
+                channels=self.channels,
+                rate=self.sample_rate,
+                output=True,
+                output_device_index=self.output_device,
+                frames_per_buffer=self.buffer_size
+            )
+            
+            # Start playback thread
+            self.playing = True
+            self.playback_thread = threading.Thread(target=self._playback_loop, daemon=True)
+            self.playback_thread.start()
+            
+            print(f"🔊 Audio output started: {self.sample_rate}Hz, device {self.output_device}")
+            print(f"   Output latency: {self.output_stream.get_output_latency():.3f}s")
+            return True
+            
+        except Exception as e:
+            print(f"✗ Failed to start audio output: {e}")
+            self.playing = False
+            return False
+    
+    def stop_playback(self):
+        if self._stopped:
+            return
+            
+        self._stopped = True
+        self.playing = False
+        
+        if self.playback_thread:
+            self.playback_thread.join(timeout=2.0)
+            
+        if self.output_stream:
+            self.output_stream.stop_stream()
+            self.output_stream.close()
+            self.output_stream = None
+            
+        print("🔊 Audio playback loop stopped")
+    
+    def queue_audio_for_playback(self, pcm_data, from_station="UNKNOWN"):
+        """Queue PCM audio data for playback"""
+        try:
+            audio_packet = {
+                'pcm_data': pcm_data,
+                'from_station': from_station,
+                'timestamp': time.time(),
+                'sample_count': len(pcm_data) // 2  # 16-bit samples
+            }
+            
+            self.playback_queue.put_nowait(audio_packet)
+            self.stats['packets_queued'] += 1
+            
+            print(f"🔊 Queued audio: {len(pcm_data)}B from {from_station} "
+                  f"(queue: {self.playback_queue.qsize()})")
+            
+        except Exception as e:
+            self.stats['buffer_overruns'] += 1
+            print(f"🔊 Audio queue full, dropping packet from {from_station}")
+    
+    def _playback_loop(self):
+        """Main playback loop - runs in separate thread"""
+        print("🔊 Audio playback loop started")
+        
+        while self.playing:
+            try:
+                # Get audio packet from queue
+                audio_packet = self.playback_queue.get(timeout=0.1)
+                
+                # Play the audio
+                pcm_data = audio_packet['pcm_data']
+                from_station = audio_packet['from_station']
+                
+                if self.output_stream and self.output_stream.is_active():
+                    # Write PCM data to output stream
+                    self.output_stream.write(pcm_data)
+                    
+                    # Update statistics
+                    self.stats['packets_played'] += 1
+                    self.stats['total_samples_played'] += audio_packet['sample_count']
+                    
+                    print(f"🔊 Playing audio from {from_station}: "
+                          f"{len(pcm_data)}B ({audio_packet['sample_count']} samples)")
+                
+            except Empty:
+                # No audio to play - normal timeout
+                continue
+            except Exception as e:
+                print(f"🔊 Playback error: {e}")
+                time.sleep(0.01)  # Brief pause on error
+        
+    
+    def get_stats(self):
+        """Get audio output statistics"""
+        stats = self.stats.copy()
+        stats['queue_size'] = self.playback_queue.qsize()
+        stats['playing'] = self.playing
+        stats['output_latency'] = (self.output_stream.get_output_latency() 
+                                  if self.output_stream else 0)
+        return stats
+    
+    def cleanup(self):
+        """Cleanup audio resources"""
+        self.stop_playback()
+        if hasattr(self, 'audio'):
+            self.audio.terminate()
+        print("🔊 AudioOutputManager cleanup complete")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class AudioDecoder:
