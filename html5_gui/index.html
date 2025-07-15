@@ -1138,7 +1138,7 @@
 	0%, 100% { opacity: 1; }
 	50% { opacity: 0.7; }
 }
-}
+
 
 .audio-icon {
 	font-size: 1.2rem;
@@ -2030,7 +2030,7 @@
 
 
 
-function handleWebSocketMessage(message) {
+function handleWebSocketMessage_temp_replace(message) {
 	addLogEntry(`Received: ${message.type}`, 'info');
 	console.log('🔍 MAIN HANDLER DEBUG: Message type:', message.type);
 
@@ -2513,8 +2513,32 @@ function handleWebSocketMessage(message) {
 				`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 		}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		// Event listeners
 		document.addEventListener('DOMContentLoaded', function() {
+
+			initializeReceptionFeatures();
 			// Message form handling
 			const messageForm = document.getElementById('message-form');
 			const messageInput = document.getElementById('message-input');
@@ -2595,8 +2619,73 @@ function handleWebSocketMessage(message) {
 
 			// Initialize connection
 			addLogEntry('Starting Opulent Voice Web Interface', 'info');
-			connectWebSocket();
+			connectWebSocketEnhanced();
 		});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// Handle page visibility for WebSocket reconnection
 		document.addEventListener('visibilitychange', function() {
@@ -2606,7 +2695,490 @@ function handleWebSocketMessage(message) {
 			}
 		});
 
-		// Make functions globally available for debugging
+
+
+
+
+
+
+
+
+
+	// ========================================
+	// ADDED THESE AUDIO RECEPTION FUNCTIONS
+	// Inserted before the "Make functions globally available" section
+	// ========================================
+
+	// Global audio context for web audio
+	let audioContext = null;
+	let audioQueue = [];
+	let isPlayingAudio = false;
+
+	// Initialize Web Audio API
+	function initializeWebAudio() {
+		try {
+			// Create audio context (user interaction required)
+			audioContext = new (window.AudioContext || window.webkitAudioContext)();
+			addLogEntry('Web Audio initialized', 'success');
+			return true;
+		} catch (error) {
+			addLogEntry(`Web Audio initialization failed: ${error.message}`, 'error');
+			return false;
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Handle received audio notifications
+	function handleReceivedAudio_temp_replaced_with_debug(audioData) {
+		console.log('🎤 Audio received:', audioData);
+		
+		// Ensure audio context is initialized
+		if (!audioContext) {
+			// Request user to click for audio permission
+			showAudioPermissionRequest();
+			return;
+		}
+		
+		// Add audio indicator to chat
+		addAudioIndicatorToChat(audioData);
+		
+		// Update statistics
+		updateAudioReceptionStats(audioData);
+		
+		// Attempt to play audio if enabled
+		if (document.getElementById('auto-play-audio')?.checked) {
+			requestAudioPlayback(audioData.audio_id);
+		}
+		
+		addLogEntry(`Audio received from ${audioData.from_station}: ${audioData.duration_ms}ms`, 'info');
+		
+		// Show notification
+		showNotification(`🎤 Audio from ${audioData.from_station}`, 'info');
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Add visual indicator for received audio in chat
+	function addAudioIndicatorToChat(audioData) {
+		const messageHistory = document.getElementById('message-history');
+		
+		// Create audio message element
+		const audioMessage = document.createElement('div');
+		audioMessage.className = 'message incoming audio-message message-new';
+		audioMessage.setAttribute('data-audio-id', audioData.audio_id);
+		audioMessage.innerHTML = `
+			<div class="audio-content">
+				<div class="audio-header">
+					<span class="audio-icon">🎤</span>
+					<span class="message-type-indicator">VOICE</span>
+					<span class="audio-from">${audioData.from_station}</span>
+					<span class="audio-duration">${audioData.duration_ms}ms</span>
+				</div>
+				<div class="audio-controls">
+					<button class="audio-play-btn" onclick="playReceivedAudio('${audioData.audio_id}')">
+						▶️ Play Audio
+					</button>
+					<div class="audio-waveform"></div>
+				</div>
+			</div>
+			<div class="message-meta">
+				<span>${audioData.from_station}</span>
+				<span>${new Date(audioData.timestamp).toLocaleTimeString()}</span>
+			</div>
+		`;
+		
+		messageHistory.appendChild(audioMessage);
+		scrollToBottom(messageHistory);
+		
+		// Animate appearance
+		audioMessage.style.opacity = '0';
+		audioMessage.style.transform = 'translateY(20px)';
+		setTimeout(() => {
+			audioMessage.style.transition = 'all 0.3s ease';
+			audioMessage.style.opacity = '1';
+			audioMessage.style.transform = 'translateY(0)';
+		}, 10);
+		
+		// Remove the 'new' animation class after animation
+		setTimeout(() => {
+			audioMessage.classList.remove('message-new');
+		}, 2000);
+	}
+
+
+	// Request audio playback from server
+	function requestAudioPlayback(audioId) {
+		if (!audioId) return;
+		
+		addLogEntry(`Requesting audio playback: ${audioId}`, 'info');
+		sendWebSocketMessage('request_audio_playback', { audio_id: audioId });
+	}
+
+	// Play received audio (called by button click)
+	function playReceivedAudio(audioId) {
+		if (!audioContext) {
+			if (initializeWebAudio()) {
+				// Retry after initialization
+				setTimeout(() => playReceivedAudio(audioId), 100);
+			}
+			return;
+		}
+		
+		requestAudioPlayback(audioId);
+	}
+
+	// Handle audio playback data from server
+	function handleAudioPlaybackData(audioData) {
+		console.log('🎵 Audio playback data:', audioData);
+		
+		// Find the audio message element
+		const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
+		if (audioElement) {
+			const playButton = audioElement.querySelector('.audio-play-btn');
+			if (playButton) {
+				playButton.textContent = '⏸️ Playing...';
+				playButton.disabled = true;
+				
+				// Re-enable after estimated duration
+				setTimeout(() => {
+					playButton.textContent = '▶️ Play Audio';
+					playButton.disabled = false;
+				}, audioData.duration_ms || 2000);
+			}
+		}
+		
+		// Note: Actual audio data streaming would require additional implementation
+		// For now, we'll show a visual indication that audio is "playing"
+		showNotification(`Playing audio from ${audioData.from_station}`, 'info');
+		addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
+	}
+
+	// Handle audio stream data
+	function handleAudioStreamData(streamData) {
+		console.log('🔊 Audio stream data:', streamData);
+		
+		if (streamData.audio_available && streamData.packets > 0) {
+			addLogEntry(`Audio stream: ${streamData.packets} packets available`, 'info');
+			
+			// Request audio stream periodically if enabled
+			if (document.getElementById('enable-audio-streaming')?.checked) {
+				setTimeout(() => {
+					sendWebSocketMessage('get_audio_stream');
+				}, 100);
+			}
+		}
+	}
+
+	// Show audio permission request
+	function showAudioPermissionRequest() {
+		const existingRequest = document.getElementById('audio-permission-request');
+		if (existingRequest) return;
+		
+		const permissionDiv = document.createElement('div');
+		permissionDiv.id = 'audio-permission-request';
+		permissionDiv.className = 'audio-permission-request';
+		permissionDiv.innerHTML = `
+			<div class="permission-content">
+				<h3>🎤 Audio Reception Available</h3>
+				<p>Click to enable audio playback for received voice messages</p>
+				<button onclick="enableAudioReception()" class="btn btn-primary">
+					Enable Audio
+				</button>
+				<button onclick="dismissAudioRequest()" class="btn">
+					Not Now
+				</button>
+			</div>
+		`;
+		
+		document.body.appendChild(permissionDiv);
+	}
+
+	// Enable audio reception
+	function enableAudioReception() {
+		if (initializeWebAudio()) {
+			showNotification('Audio reception enabled', 'success');
+			dismissAudioRequest();
+			
+			// Request any pending audio
+			sendWebSocketMessage('get_audio_stream');
+		} else {
+			showNotification('Failed to enable audio - check browser permissions', 'error');
+		}
+	}
+
+	// Dismiss audio permission request
+	function dismissAudioRequest() {
+		const request = document.getElementById('audio-permission-request');
+		if (request) {
+			request.remove();
+		}
+	}
+
+	// Update reception statistics
+	function updateReceptionStats(stats) {
+		console.log('📊 Reception stats:', stats);
+		
+		// Update counters
+		if (stats.receiver_stats) {
+			const receiverStats = stats.receiver_stats;
+			
+			// Update existing stats or create new display
+			updateStatDisplay('audio-packets-received', receiverStats.audio_packets || 0);
+			updateStatDisplay('text-packets-received', receiverStats.text_packets || 0);
+			updateStatDisplay('total-packets-received', receiverStats.total_packets || 0);
+		}
+		
+		// Update audio message count
+		updateStatDisplay('audio-messages-stored', stats.audio_messages_stored || 0);
+	}
+
+	// Update individual stat display
+	function updateStatDisplay(statId, value) {
+		const statElement = document.getElementById(statId);
+		if (statElement) {
+			statElement.textContent = value;
+			
+			// Add visual feedback for new data
+			statElement.style.background = 'rgba(66, 165, 245, 0.2)';
+			setTimeout(() => {
+				statElement.style.background = '';
+			}, 500);
+		}
+	}
+
+	// Update audio reception statistics
+	function updateAudioReceptionStats(audioData) {
+		// Update audio reception counter
+		const audioCounter = document.getElementById('audio-received-count');
+		if (audioCounter) {
+			const current = parseInt(audioCounter.textContent) || 0;
+			audioCounter.textContent = current + 1;
+			
+			// Add notification dot
+			audioCounter.parentElement.classList.add('has-new-audio');
+			setTimeout(() => {
+				audioCounter.parentElement.classList.remove('has-new-audio');
+			}, 3000);
+		}
+		
+		// Update last received audio info
+		const lastAudioInfo = document.getElementById('last-audio-info');
+		if (lastAudioInfo) {
+			lastAudioInfo.textContent = `${audioData.from_station} (${audioData.duration_ms}ms)`;
+		}
+	}
+
+	// Play notification sound for incoming messages
+	function playNotificationSound() {
+		if (!audioContext || !document.getElementById('enable-message-sounds')?.checked) {
+			return;
+		}
+		
+		try {
+			// Create a simple notification beep
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+			
+			oscillator.connect(gainNode);
+			gainNode.connect(audioContext.destination);
+			
+			oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+			gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+			
+			oscillator.start(audioContext.currentTime);
+			oscillator.stop(audioContext.currentTime + 0.2);
+			
+		} catch (error) {
+			console.log('Notification sound failed:', error);
+		}
+	}
+
+	// Initialize reception features when DOM is loaded
+	function initializeReceptionFeatures() {
+		// Add audio controls to the interface
+		addAudioControls();
+		
+		// Add reception statistics display
+		addReceptionStatsDisplay();
+		
+		// Set up audio streaming if enabled
+		setupAudioStreaming();
+		
+		addLogEntry('Reception features initialized', 'info');
+	}
+
+	function addAudioControls() {
+		// Add audio control panel to the interface
+		const chatPanel = document.getElementById('chat-panel');
+		if (chatPanel) {
+			const audioControls = document.createElement('div');
+			audioControls.className = 'audio-controls-panel';
+			audioControls.innerHTML = `
+				<div class="control-group">
+					<input type="checkbox" id="auto-play-audio" checked>
+					<label for="auto-play-audio">Auto-play received audio</label>
+				</div>
+				<div class="control-group">
+					<input type="checkbox" id="enable-message-sounds" checked>
+					<label for="enable-message-sounds">Message notification sounds</label>
+				</div>
+				<div class="control-group">
+					<input type="checkbox" id="enable-audio-streaming">
+					<label for="enable-audio-streaming">Real-time audio streaming</label>
+				</div>
+			`;
+			
+			// Insert before chat container
+			const chatContainer = chatPanel.querySelector('.chat-container');
+			chatPanel.insertBefore(audioControls, chatContainer);
+		}
+	}
+
+	function addReceptionStatsDisplay() {
+		// Add reception stats to the status panel
+		const statusPanel = document.querySelector('.panel:last-child .status-grid');
+		if (statusPanel) {
+			const receptionStats = document.createElement('div');
+			receptionStats.className = 'stat-item';
+			receptionStats.innerHTML = `
+				<span class="stat-label">Audio Received</span>
+				<span id="audio-received-count" class="stat-value">0</span>
+			`;
+			statusPanel.appendChild(receptionStats);
+			
+			const lastAudioStat = document.createElement('div');
+			lastAudioStat.className = 'stat-item';
+			lastAudioStat.innerHTML = `
+				<span class="stat-label">Last Audio From</span>
+				<span id="last-audio-info" class="stat-value">None</span>
+			`;
+			statusPanel.appendChild(lastAudioStat);
+		}
+	}
+
+	function setupAudioStreaming() {
+		// Set up audio streaming checkbox handler
+		const streamingCheckbox = document.getElementById('enable-audio-streaming');
+		if (streamingCheckbox) {
+			streamingCheckbox.addEventListener('change', function() {
+				if (this.checked) {
+					if (!audioContext && !initializeWebAudio()) {
+						this.checked = false;
+						showNotification('Cannot enable streaming - audio not available', 'error');
+						return;
+					}
+					addLogEntry('Audio streaming enabled', 'info');
+					sendWebSocketMessage('get_audio_stream');
+				} else {
+					addLogEntry('Audio streaming disabled', 'info');
+				}
+			});
+		}
+	}
+
+	// Request browser notification permission
+	function requestNotificationPermission() {
+		if ('Notification' in window && Notification.permission === 'default') {
+			Notification.requestPermission().then(permission => {
+				if (permission === 'granted') {
+					showNotification('Browser notifications enabled', 'success');
+				}
+			});
+		}
+	}
+
+	// Flash browser tab for notifications
+	function flashBrowserTab(message) {
+		const originalTitle = document.title;
+		let isFlashing = false;
+		
+		const flashInterval = setInterval(() => {
+			document.title = isFlashing ? originalTitle : `📨 ${message}`;
+			isFlashing = !isFlashing;
+		}, 1000);
+		
+		// Stop flashing when tab becomes visible or after 10 seconds
+		const stopFlashing = () => {
+			clearInterval(flashInterval);
+			document.title = originalTitle;
+			document.removeEventListener('visibilitychange', stopFlashing);
+		};
+		
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) {
+				stopFlashing();
+			}
+		});
+		
+		setTimeout(stopFlashing, 10000);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		// ========================================
+		// UPDATE YOUR window.radioInterface OBJECT:
+		// Replace the existing one with this enhanced version:
+		// ========================================
 		window.radioInterface = {
 			connectWebSocket,
 			sendWebSocketMessage,
@@ -2617,8 +3189,14 @@ function handleWebSocketMessage(message) {
 			saveConfig,
 			showNotification,
 			addLogEntry,
-			attemptReconnect
-		};
+			attemptReconnect,
+			// New reception functions
+			initializeWebAudio,
+			enableAudioReception,
+			playReceivedAudio,
+			requestAudioPlayback,
+			initializeReceptionFeatures
+			};
 
 
 
@@ -3163,10 +3741,11 @@ document.head.insertAdjacentHTML('beforeend', additionalStyles);
 
 // Add these functions to your index.html <script> section for reception handling
 
-// Global audio context for web audio
-let audioContext = null;
-let audioQueue = [];
-let isPlayingAudio = false;
+// Global audio context for web audio caused problems, so we commented them out
+// they are elsewhere !!!
+//let audioContext = null;
+//let audioQueue = [];
+//let isPlayingAudio = false;
 
 // Initialize Web Audio API
 function initializeWebAudio() {
@@ -3181,38 +3760,92 @@ function initializeWebAudio() {
 	}
 }
 
-// Enhanced WebSocket message handler for reception
-function handleWebSocketMessage(message) {
-	addLogEntry(`Received: ${message.type}`, 'info');
-	console.log('🔍 MAIN HANDLER DEBUG: Message type:', message.type);
 
-	switch (message.type) {
-		// ... existing cases ...
-		
-		case 'audio_received':
-			handleReceivedAudio(message.data);
-			break;
-			
-		case 'audio_stream_data':
-			handleAudioStreamData(message.data);
-			break;
-			
-		case 'audio_playback_data':
-			handleAudioPlaybackData(message.data);
-			break;
-			
-		case 'reception_stats':
-			updateReceptionStats(message.data);
-			break;
-			
-		// Enhanced message_received handler
-		case 'message_received':
-			handleIncomingMessageEnhanced(message.data);
-			break;
-			
-		// ... rest of existing cases ...
+
+	// ========================================
+	// REPLACE YOUR EXISTING handleWebSocketMessage FUNCTION WITH THIS:
+	// ========================================
+	function handleWebSocketMessage(message) {
+		// Enhanced debugging for message handling
+		console.log('🔍 WebSocket message received:', message);
+		addLogEntry(`Received: ${message.type}`, 'info');
+
+		switch (message.type) {
+			case 'initial_status':
+				populateStatusFromData(message.data);
+				if (message.data.message_history) {
+					loadMessageHistory(message.data.message_history);
+				}
+				break;
+				
+			case 'current_config':
+				populateConfigFromData(message.data);
+				break;
+				
+			case 'message_received':
+				handleIncomingMessage(message.data);
+				break;
+				
+			case 'message_sent':
+				addLogEntry('Message confirmed sent', 'success');
+				break;
+				
+			case 'message_history':
+				loadMessageHistory(message.data);
+				break;
+				
+			case 'ptt_state_changed':
+				handlePTTStateChange(message.data.active);
+				break;
+				
+			case 'status_update':
+				updateSystemStatus(message.data);
+				break;
+				
+			case 'error':
+				showNotification(message.message || 'An error occurred', 'error');
+				addLogEntry(`Error: ${message.message}`, 'error');
+				break;
+				
+			// Enhanced config messages
+			case 'config_loaded':
+			case 'config_saved':
+			case 'config_updated':
+			case 'config_created':
+			case 'config_not_found':
+			case 'config_validation_warning':
+			case 'connection_test_result':
+			case 'connection_test_with_form_result':
+				console.log('🔍 Enhanced config message:', message.type);
+				handleEnhancedConfigMessage(message);
+				break;
+				
+			// NEW: Audio reception messages
+			case 'audio_received':
+				handleReceivedAudio(message.data);
+				break;
+				
+			case 'audio_stream_data':
+				handleAudioStreamData(message.data);
+				break;
+				
+			case 'audio_playback_data':
+				handleAudioPlaybackData(message.data);
+				break;
+				
+			case 'reception_stats':
+				updateReceptionStats(message.data);
+				break;
+				
+			default:
+				console.warn('🔍 Unknown message type:', message.type, 'Full message:', message);
+				addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+		}
 	}
-}
+
+
+
+
 
 // Handle received audio notifications
 function handleReceivedAudio(audioData) {
@@ -3582,6 +4215,7 @@ function requestNotificationPermission() {
 // Enhanced connection management with reception features
 function connectWebSocketEnhanced() {
 	// Use existing connectWebSocket but add reception setup
+	console.log("🔍 connectWebSocketEnhanced called!"); // ADD THIS LINE
 	connectWebSocket();
 	
 	// Set up periodic reception stats requests
@@ -3595,13 +4229,6 @@ function connectWebSocketEnhanced() {
 	setTimeout(requestNotificationPermission, 2000);
 }
 
-// Initialize reception features when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-	// ... existing initialization code ...
-	
-	// Add reception-specific initialization
-	initializeReceptionFeatures();
-});
 
 function initializeReceptionFeatures() {
 	// Add audio controls to the interface
@@ -3691,9 +4318,281 @@ function setupAudioStreaming() {
 	}
 }
 
-// Replace the original connectWebSocket call with enhanced version
-// (Update this in your main initialization code)
-window.connectWebSocket = connectWebSocketEnhanced;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Temporary debug functions
+//Replace handleWebSocketMessage function with the debug version
+//Replace your handleReceivedAudio function with the debug version
+//Add the addAudioIndicatorToChat debug function
+
+
+
+
+
+// Enhanced handleWebSocketMessage with audio debugging
+function handleWebSocketMessage(message) {
+    // Enhanced debugging for ALL message types
+    console.log('🔍 JS DEBUG: WebSocket message received:', message.type);
+    
+    // Special debugging for audio messages
+    if (message.type === 'audio_received') {
+        console.log('🎤 JS AUDIO DEBUG 1: Audio message received!');
+        console.log('   Full message:', message);
+        console.log('   Message data:', message.data);
+        console.log('   From station:', message.data?.from_station);
+        console.log('   Audio ID:', message.data?.audio_id);
+        console.log('   Duration:', message.data?.duration_ms, 'ms');
+    }
+    
+    addLogEntry(`Received: ${message.type}`, 'info');
+
+    switch (message.type) {
+        case 'initial_status':
+            populateStatusFromData(message.data);
+            if (message.data.message_history) {
+                loadMessageHistory(message.data.message_history);
+            }
+            break;
+            
+        case 'current_config':
+            populateConfigFromData(message.data);
+            break;
+            
+        case 'message_received':
+            handleIncomingMessage(message.data);
+            break;
+            
+        case 'message_sent':
+            addLogEntry('Message confirmed sent', 'success');
+            break;
+            
+        case 'message_history':
+            loadMessageHistory(message.data);
+            break;
+            
+        case 'ptt_state_changed':
+            handlePTTStateChange(message.data.active);
+            break;
+            
+        case 'status_update':
+            updateSystemStatus(message.data);
+            break;
+            
+        case 'error':
+            showNotification(message.message || 'An error occurred', 'error');
+            addLogEntry(`Error: ${message.message}`, 'error');
+            break;
+            
+        // Enhanced config messages
+        case 'config_loaded':
+        case 'config_saved':
+        case 'config_updated':
+        case 'config_created':
+        case 'config_not_found':
+        case 'config_validation_warning':
+        case 'connection_test_result':
+        case 'connection_test_with_form_result':
+            console.log('🔍 Enhanced config message:', message.type);
+            handleEnhancedConfigMessage(message);
+            break;
+            
+        // AUDIO RECEPTION MESSAGES WITH DEBUGGING
+        case 'audio_received':
+            console.log('🎤 JS AUDIO DEBUG 2: Calling handleReceivedAudio');
+            handleReceivedAudio(message.data);
+            break;
+            
+        case 'audio_stream_data':
+            console.log('🔊 JS AUDIO DEBUG: Audio stream data received');
+            handleAudioStreamData(message.data);
+            break;
+            
+        case 'audio_playback_data':
+            console.log('🎵 JS AUDIO DEBUG: Audio playback data received');
+            handleAudioPlaybackData(message.data);
+            break;
+            
+        case 'reception_stats':
+            console.log('📊 JS AUDIO DEBUG: Reception stats received');
+            updateReceptionStats(message.data);
+            break;
+            
+        default:
+            console.warn('🔍 Unknown message type:', message.type, 'Full message:', message);
+            addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+    }
+}
+
+// Enhanced handleReceivedAudio with debugging
+function handleReceivedAudio(audioData) {
+    console.log('🎤 JS AUDIO DEBUG 3: handleReceivedAudio called');
+    console.log('   Audio data:', audioData);
+    console.log('   From station:', audioData.from_station);
+    console.log('   Duration:', audioData.duration_ms, 'ms');
+    console.log('   Audio ID:', audioData.audio_id);
+    
+    // Check if audio context exists
+    console.log('🎤 JS AUDIO DEBUG 4: Audio context check');
+    console.log('   Audio context:', audioContext ? 'Available' : 'Not initialized');
+    
+    // Ensure audio context is initialized
+    if (!audioContext) {
+        console.log('🎤 JS AUDIO DEBUG 4: Audio context not available, showing permission request');
+        showAudioPermissionRequest();
+        return;
+    }
+    
+    // Add audio indicator to chat
+    console.log('🎤 JS AUDIO DEBUG 5: Adding audio indicator to chat');
+    addAudioIndicatorToChat(audioData);
+    
+    // Update statistics
+    console.log('🎤 JS AUDIO DEBUG 6: Updating audio reception stats');
+    updateAudioReceptionStats(audioData);
+    
+    // Check auto-play setting
+    const autoPlayCheckbox = document.getElementById('auto-play-audio');
+    const autoPlayEnabled = autoPlayCheckbox ? autoPlayCheckbox.checked : false;
+    console.log('🎤 JS AUDIO DEBUG 7: Auto-play check');
+    console.log('   Auto-play checkbox found:', !!autoPlayCheckbox);
+    console.log('   Auto-play enabled:', autoPlayEnabled);
+    
+    // Attempt to play audio if enabled
+    if (autoPlayEnabled) {
+        console.log('🎤 JS AUDIO DEBUG 7: Requesting audio playback');
+        requestAudioPlayback(audioData.audio_id);
+    } else {
+        console.log('🎤 JS AUDIO DEBUG 7: Auto-play disabled, not playing');
+    }
+    
+    addLogEntry(`Audio received from ${audioData.from_station}: ${audioData.duration_ms}ms`, 'info');
+    
+    // Show notification
+    showNotification(`🎤 Audio from ${audioData.from_station}`, 'info');
+    
+    console.log('🎤 JS AUDIO DEBUG 8: handleReceivedAudio complete');
+    console.log('-'.repeat(50));
+}
+
+// Enhanced addAudioIndicatorToChat with debugging
+function addAudioIndicatorToChat(audioData) {
+    console.log('🎤 JS UI DEBUG 1: Adding audio indicator to chat');
+    console.log('   Looking for message-history element');
+    
+    const messageHistory = document.getElementById('message-history');
+    if (!messageHistory) {
+        console.error('🎤 JS UI DEBUG 1: message-history element not found!');
+        return;
+    }
+    
+    console.log('🎤 JS UI DEBUG 1: message-history found, creating audio message');
+    
+    // Create audio message element
+    const audioMessage = document.createElement('div');
+    audioMessage.className = 'message incoming audio-message message-new';
+    audioMessage.setAttribute('data-audio-id', audioData.audio_id);
+    
+    const audioHTML = `
+        <div class="audio-content">
+            <div class="audio-header">
+                <span class="audio-icon">🎤</span>
+                <span class="message-type-indicator">VOICE</span>
+                <span class="audio-from">${audioData.from_station}</span>
+                <span class="audio-duration">${audioData.duration_ms}ms</span>
+            </div>
+            <div class="audio-controls">
+                <button class="audio-play-btn" onclick="playReceivedAudio('${audioData.audio_id}')">
+                    ▶️ Play Audio
+                </button>
+                <div class="audio-waveform"></div>
+            </div>
+        </div>
+        <div class="message-meta">
+            <span>${audioData.from_station}</span>
+            <span>${new Date(audioData.timestamp).toLocaleTimeString()}</span>
+        </div>
+    `;
+    
+    audioMessage.innerHTML = audioHTML;
+    console.log('🎤 JS UI DEBUG 2: Audio message HTML created');
+    
+    try {
+        messageHistory.appendChild(audioMessage);
+        console.log('🎤 JS UI DEBUG 2: Audio message added to DOM');
+        
+        scrollToBottom(messageHistory);
+        console.log('🎤 JS UI DEBUG 2: Scrolled to bottom');
+        
+        // Animate appearance
+        audioMessage.style.opacity = '0';
+        audioMessage.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            audioMessage.style.transition = 'all 0.3s ease';
+            audioMessage.style.opacity = '1';
+            audioMessage.style.transform = 'translateY(0)';
+            console.log('🎤 JS UI DEBUG 3: Animation applied');
+        }, 10);
+        
+        // Remove the 'new' animation class after animation
+        setTimeout(() => {
+            audioMessage.classList.remove('message-new');
+            console.log('🎤 JS UI DEBUG 3: Animation class removed');
+        }, 2000);
+        
+        console.log('🎤 JS UI DEBUG 3: Audio indicator successfully added to chat');
+        
+    } catch (error) {
+        console.error('🎤 JS UI DEBUG ERROR: Failed to add audio indicator:', error);
+    }
+}
+
+
+
+
+
+//END
+//Temporary debug functions
+//Replace handleWebSocketMessage function with the debug version
+//Replace your handleReceivedAudio function with the debug version
+//Add the addAudioIndicatorToChat debug function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
