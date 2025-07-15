@@ -545,7 +545,7 @@ class SimpleFrameSplitter:
 
 class SimpleFrameReassembler:
 	"""
-	Simple frame reassembler - concatenates 121-byte payloads until COBS delimiter found
+	Simple frame reassembler - concatenates 122-byte payloads until COBS delimiter found
 	No fragmentation headers to worry about
 	"""
 	
@@ -559,16 +559,16 @@ class SimpleFrameReassembler:
 	
 	def add_frame_payload(self, frame_payload: bytes) -> List[bytes]:
 		"""
-		Add a 121-byte frame payload and return complete COBS frame if ready
+		Add a 122-byte frame payload and return complete COBS frame if ready
 		
-		frame_payload: 121-byte payload from Opulent Voice frame (header removed)
+		frame_payload: 122-byte payload from Opulent Voice frame (header removed)
 		Returns: List of completed COBS-encoded frames
 		"""
 		# We will build a list of zero or more reassembled COBS frames
 		reassembled_frames = []
 
-		if len(frame_payload) != 121:
-			print(f"⚠ Expected 121-byte payload, got {len(frame_payload)}B")
+		if len(frame_payload) != 122:
+			print(f"⚠ Expected 122-byte payload, got {len(frame_payload)}B")
 			return reassembled_frames
 				
 		# Add payload to buffer
