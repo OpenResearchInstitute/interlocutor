@@ -1,0 +1,121 @@
+graph TB
+    %% Main System
+    Main[Main Entry Point<br/>interlocutor.py]
+    
+    %% Configuration System
+    ConfigMgr[Configuration Manager<br/>config_manager.py]
+    YAMLConfig[YAML Config File<br/>opulent_voice.yaml]
+    CLIArgs[CLI Arguments<br/>--verbose, --ip, etc.]
+    
+    %% Core Radio System
+    GPIOHandler[GPIOZeroPTTHandler<br/>Main Radio Controller]
+    
+    %% Audio System
+    AudioDevMgr[Audio Device Manager<br/>Device Selection & Setup]
+    MicInput[Microphone Input<br/>PyAudio Stream]
+    OpusEncoder[OPUS Encoder<br/>16kbps CBR]
+    OpusDecoder[OPUS Decoder<br/>Audio Reception]
+    AudioOutput[Audio Output Manager<br/>Headphone Playback]
+    
+    %% Protocol Stack
+    RTPBuilder[RTP Audio Frame Builder<br/>RTP Headers + OPUS]
+    UDPBuilder[UDP Frame Builder<br/>Voice/Text/Control Ports]
+    IPBuilder[IP Frame Builder<br/>Network Layer]
+    COBSMgr[COBS Frame Manager<br/>Boundary Detection]
+    OVProtocol[Opulent Voice Protocol<br/>134-byte Frames]
+    
+    %% Network System
+    NetworkTx[Network Transmitter<br/>UDP Socket]
+    NetworkRx[Enhanced Message Receiver<br/>Frame Reception]
+    
+    %% Frame Management
+    FrameMgr[Audio Driven Frame Manager<br/>40ms Frame Timing]
+    PriorityQueue[Priority Queue<br/>Voice > Control > Text]
+    StreamMgr[Continuous Stream Manager<br/>Activity Detection]
+    
+    %% Chat System
+    ChatMgr[Chat Manager Audio Driven<br/>Message Buffering]
+    TerminalUI[Terminal Chat Interface<br/>Keyboard Input]
+    
+    %% GPIO Hardware
+    PTTButton[PTT Button<br/>GPIO Input]
+    StatusLED[Status LED<br/>GPIO Output]
+    
+    %% Web Interface (Optional)
+    WebInterface[Enhanced Radio Web Interface<br/>WebSocket Bridge]
+    WebServer[FastAPI Web Server<br/>HTTP + WebSocket]
+    HTMLInterface[HTML5 GUI<br/>Browser Interface]
+    
+    %% Debug System
+    DebugConfig[Enhanced Debug Config<br/>Category-based Logging]
+    
+    %% Data Flow - Configuration
+    Main --> ConfigMgr
+    ConfigMgr --> YAMLConfig
+    ConfigMgr --> CLIArgs
+    ConfigMgr --> DebugConfig
+    
+    %% Data Flow - Main System Setup
+    Main --> GPIOHandler
+    GPIOHandler --> AudioDevMgr
+    GPIOHandler --> FrameMgr
+    GPIOHandler --> ChatMgr
+    GPIOHandler --> NetworkRx
+    
+    %% Data Flow - Audio Input (Transmission)
+    AudioDevMgr --> MicInput
+    MicInput --> OpusEncoder
+    PTTButton --> GPIOHandler
+    GPIOHandler --> FrameMgr
+    
+    %% Data Flow - Protocol Stack (Transmission)
+    OpusEncoder --> RTPBuilder
+    RTPBuilder --> UDPBuilder
+    UDPBuilder --> IPBuilder
+    IPBuilder --> COBSMgr
+    COBSMgr --> OVProtocol
+    OVProtocol --> NetworkTx
+    
+    %% Data Flow - Frame Management
+    FrameMgr --> PriorityQueue
+    FrameMgr --> StreamMgr
+    PriorityQueue --> RTPBuilder
+    
+    %% Data Flow - Chat System
+    TerminalUI --> ChatMgr
+    ChatMgr --> FrameMgr
+    
+    %% Data Flow - Reception
+    NetworkRx --> OVProtocol
+    OVProtocol --> COBSMgr
+    COBSMgr --> IPBuilder
+    IPBuilder --> UDPBuilder
+    UDPBuilder --> OpusDecoder
+    OpusDecoder --> AudioOutput
+    
+    %% Data Flow - GPIO
+    PTTButton --> GPIOHandler
+    GPIOHandler --> StatusLED
+    
+    %% Data Flow - Web Interface (Optional)
+    GPIOHandler -.-> WebInterface
+    NetworkRx -.-> WebInterface
+    WebInterface -.-> WebServer
+    WebServer -.-> HTMLInterface
+    
+    %% Styling
+    classDef configClass fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef audioClass fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef protocolClass fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef networkClass fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    classDef uiClass fill:#fce4ec,stroke:#880e4f,stroke-width:2px
+    classDef gpioClass fill:#f1f8e9,stroke:#33691e,stroke-width:2px
+    classDef webClass fill:#e0f2f1,stroke:#004d40,stroke-width:2px,stroke-dasharray: 5 5
+    
+    class ConfigMgr,YAMLConfig,CLIArgs,DebugConfig configClass
+    class AudioDevMgr,MicInput,OpusEncoder,OpusDecoder,AudioOutput audioClass
+    class RTPBuilder,UDPBuilder,IPBuilder,COBSMgr,OVProtocol protocolClass
+    class NetworkTx,NetworkRx networkClass
+    class ChatMgr,TerminalUI uiClass
+    class PTTButton,StatusLED gpioClass
+    class WebInterface,WebServer,HTMLInterface webClass
