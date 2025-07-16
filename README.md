@@ -15,6 +15,29 @@ pip3 install opuslib pyaudio gpiozero PyYAML numpy
 
 sudo apt install python3-pyaudio
 
+### 16 July 2025 Documentation
+
+ CASTLE ARCHIVES: MessagePriorityQueue (Legendary Magic Item - Retired)
+ 
+ Once upon a time, there was a magnificent MessagePriorityQueue class that served
+ as the Thread-Safe Message Arbitrator. This legendary item could:
+ - Manage different message types with full priority queuing
+ - Track detailed statistics (queued, sent, dropped, voice_preempted)
+ - Handle complex message preemption scenarios
+ - Thread-safe operations with proper locking
+
+ However, the realm evolved to use the simpler Audio-Driven architecture where:
+ - Voice flows directly through audio_callback timing (highest performance)
+ - Text/Control use simple Queue() objects (perfectly adequate)
+ - No complex arbitration needed (voice always wins, everything else waits)
+
+ The MessagePriorityQueue now rests in the castle archives, available should
+ future quests require sophisticated message arbitration beyond simple voice-first.
+ Its methods included: add_message(), get_next_message(), clear_lower_priority(),
+ get_stats(), mark_sent(), mark_dropped().
+
+ Honorably discharged: 16 July 2025 - "Served with distinction, evolved beyond need"
+
 ### 15 July 2025 Documentation
 
 Transmit: Our microphone to OPUS encoding to Network transmission
