@@ -15,6 +15,20 @@ pip3 install opuslib pyaudio gpiozero PyYAML numpy
 
 sudo apt install python3-pyaudio
 
+### 15 July 2025 Documentation
+
+Transmit: Our microphone to OPUS encoding to Network transmission
+Receive: Network reception to OPUS decoding to Our headphones
+Complete digital voice pipeline is working in real-time.
+
+We now have a fully functional amateur radio digital voice system.
+
+- Real-time OPUS voice codec (40ms frames, 16kbps)
+- Custom protocol stack (Opulent Voice Protocol with COBS framing)
+- Network audio streaming (RTP over UDP over IP)
+- Dual-mode interface (CLI terminal + Web GUI)
+- Full-duplex audio (can transmit and receive simultaneously)
+
 ### 10 July 2025 Documentation
 
 Major Update: Web-Based Configuration System
