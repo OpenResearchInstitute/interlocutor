@@ -18,7 +18,9 @@ sudo apt install python3-pyaudio
 ### 15 July 2025 Documentation
 
 Transmit: Our microphone to OPUS encoding to Network transmission
+
 Receive: Network reception to OPUS decoding to Our headphones
+
 Complete digital voice pipeline is working in real-time.
 
 We now have a fully functional amateur radio digital voice system.
