@@ -1074,7 +1074,94 @@ class GPIOZeroPTTHandler:
 
 		return (None, pyaudio.paContinue)
 
+
+
+
+
 	def ptt_pressed(self):
+		"""PTT button pressed - send control message IMMEDIATELY before voice"""
+
+		# Send PTT_START control message IMMEDIATELY
+		# Create and send the control frame directly, bypassing the queue
+		try:
+			control_frames = self.protocol.create_control_frames(b"PTT_START")
+			for frame in control_frames:
+				success = self.transmitter.send_frame(frame)
+				if success:
+					DebugConfig.user_print(f"📡 PTT_START sent immediately")
+				else:
+					DebugConfig.debug_print(f"✗ Failed to send immediate PTT_START")
+		except Exception as e:
+			DebugConfig.debug_print(f"✗ Error sending immediate PTT_START: {e}")
+    
+		# STEP 2: Brief delay to ensure control message is transmitted before voice
+		time.sleep(0.050)  # 50ms delay - more than one frame period
+    
+		# STEP 3: Enable voice transmission (existing code)
+		self.ptt_active = True
+		self.chat_manager.set_ptt_state(True)
+		self.audio_frame_manager.set_voice_active(True)
+
+		self.protocol.notify_ptt_pressed()
+		self._is_first_voice_frame = True
+		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT pressed - immediate control + audio-driven transmission")
+
+		# LED on
+		self.led.on()
+
+	def ptt_released(self):
+		"""PTT button released - send control message IMMEDIATELY after voice stops"""
+    
+		# STEP 1: Stop voice transmission immediately	
+		self.ptt_active = False
+		self.chat_manager.set_ptt_state(False)
+		self.audio_frame_manager.set_voice_active(False)
+		self.protocol.notify_ptt_released()
+    
+		# STEP 2: Brief delay to ensure last voice frame is sent
+		time.sleep(0.050)  # 50ms delay
+    
+		# STEP 3: Send PTT_STOP control message IMMEDIATELY
+		# Create and send the control frame directly, bypassing the queue
+		try:
+			control_frames = self.protocol.create_control_frames(b"PTT_STOP")
+			for frame in control_frames:
+				success = self.transmitter.send_frame(frame)
+				if success:
+					DebugConfig.user_print(f"📡 PTT_STOP sent immediately")
+				else:
+					DebugConfig.debug_print(f"✗ Failed to send immediate PTT_STOP")
+		except Exception as e:
+			DebugConfig.debug_print(f"✗ Error sending immediate PTT_STOP: {e}")
+
+		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT released - immediate control sent")
+
+		# Show stats and LED off (existing code)
+		time.sleep(0.1)
+		if DebugConfig.VERBOSE:
+			self.print_stats()
+
+		# LED off
+		self.led.off()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	def ptt_pressed_remove(self):
 		"""PTT button pressed - no more timer management needed"""
 		# Send PTT_START control message
 		self.audio_frame_manager.queue_control_message(b"PTT_START")
@@ -1091,7 +1178,7 @@ class GPIOZeroPTTHandler:
 		# LED on
 		self.led.on()
 
-	def ptt_released(self):
+	def ptt_released_remove(self):
 		"""PTT button released - no more timer management needed"""
 		self.ptt_active = False
 		self.chat_manager.set_ptt_state(False)
@@ -1657,3 +1744,4 @@ if __name__ == "__main__":
 			chat_system.stop()
 
 		print("Thank you for using Opulent Voice!")
+

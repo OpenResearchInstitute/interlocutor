@@ -24,7 +24,7 @@ import re
 from config_manager import OpulentVoiceConfig
 
 class EnhancedRadioWebInterface:
-	"""Enhanced bridge between web GUI and radio system with chat and voice integration"""
+	"""Enhanced bridge between web GUI and radio system with voice, control, and chat integration"""
 	
 	def __init__(self, radio_system=None, config: OpulentVoiceConfig = None, config_manager=None):
 		self.radio_system = radio_system
@@ -272,6 +272,44 @@ class EnhancedRadioWebInterface:
 			import traceback
 			traceback.print_exc()
 			print("-" * 50)
+
+
+
+
+
+
+	async def on_control_received(self, control_data: Dict):
+		"""Handle received control messages - especially PTT boundaries for transmission grouping"""
+		try:
+			control_msg = control_data.get('content', '')
+			from_station = control_data.get('from', 'UNKNOWN')
+			timestamp = control_data.get('timestamp', datetime.now().isoformat())
+        
+			print(f"🌐 WEB CONTROL DEBUG: Control received from {from_station}: {control_msg}")
+        
+			# Broadcast control message to all web clients with correct type
+			await self.broadcast_to_all({
+				"type": "control_received",  # This is the key - correct message type!
+				"data": {
+					"content": control_msg,
+					"from": from_station,
+					"timestamp": timestamp,
+					"type": "control",
+					"priority": "high" if control_msg.startswith('PTT_') else "normal"
+				}
+			})
+        
+			print(f"🌐 WEB CONTROL DEBUG: Control broadcast complete as control_received type")
+        
+		except Exception as e:
+			print(f"🌐 WEB CONTROL DEBUG ERROR: Error handling control message: {e}")
+			import traceback
+			traceback.print_exc()
+
+
+
+
+
 
 
 

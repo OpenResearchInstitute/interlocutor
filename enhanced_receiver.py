@@ -32,6 +32,7 @@ class WebSocketBridge:
         self.web_interface = None
         self.message_callbacks = []
         self.audio_callbacks = []
+        self.control_callbacks = []
         
     def set_web_interface(self, web_interface):
         """Connect to web interface instance"""
@@ -44,6 +45,10 @@ class WebSocketBridge:
     def add_audio_callback(self, callback):
         """Add callback for received audio"""
         self.audio_callbacks.append(callback)
+
+    def add_control_callback(self, callback):
+        """Add callback for received control messages"""
+        self.control_callbacks.append(callback)
         
     async def notify_message_received(self, message_data):
         """Notify web interface of received message"""
@@ -75,7 +80,29 @@ class WebSocketBridge:
             except Exception as e:
                 print(f"Error in audio callback: {e}")
 
-
+    async def notify_control_received(self, control_data):
+        """Notify web interface of received control messages"""
+        print(f"🌐 BRIDGE DEBUG: Control message bridge called")
+        
+        if self.web_interface:
+            try:
+                # Check if the web interface has the on_control_received method
+                if hasattr(self.web_interface, 'on_control_received'):
+                    await self.web_interface.on_control_received(control_data)
+                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_control_received")
+                else:
+                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_control_received method")
+                    # Fallback to regular message handling
+                    await self.web_interface.on_message_received(control_data)
+            except Exception as e:
+                print(f"Error notifying web interface of control: {e}")
+                
+        # Also notify other callbacks
+        for callback in self.control_callbacks:
+            try:
+                callback(control_data)
+            except Exception as e:
+                print(f"Error in control callback: {e}")
 
 
 
@@ -644,48 +671,133 @@ class EnhancedMessageReceiver:
             
         except UnicodeDecodeError:
             print(f"📨 [{from_station}]: <Binary text data: {len(udp_payload)}B>")
-            
+
+
+
+
+
+
+
+
+
+
     def _handle_control_packet(self, udp_payload, from_station, timestamp):
-        """Handle received control packet"""
+        """Handle received control packet with web interface notification"""
+        print(f"🎛️ CONTROL HANDLER DEBUG: Called with {udp_payload} from {from_station}")  # ADD THIS LINE
         self.stats['control_packets'] += 1
         
         try:
             control_msg = udp_payload.decode('utf-8')
+            print(f"🎛️ CONTROL HANDLER DEBUG: Decoded message: '{control_msg}'")  # ← Move this line here
             
-            # Only show non-keepalive control messages
-            if not control_msg.startswith('KEEPALIVE'):
-                DebugConfig.debug_print(f"📋 [{from_station}] Control: {control_msg}")
+            # Always process PTT Control Messages
+            if control_msg.startswith('PTT_'):
+                print(f"🎛️ CONTROL HANDLER DEBUG: PTT message detected, sending control_received")
+                DebugConfig.debug_print(f"📋 [{from_station}] PTT Control: {control_msg}")
+            
+                # Send to web interface immediately for transmission grouping
+                self._notify_web_async('control_received', {
+                    'type': 'control',
+                    'content': control_msg,
+                    'from': from_station,
+                    'timestamp': timestamp,
+                    'priority': 'high'
+                })
+                print(f"🎛️ CONTROL HANDLER DEBUG: Called _notify_web_async with control_received")
+
+                # Also send to web interface via the radio system if available
+                if hasattr(self, 'web_interface') and self.web_interface:
+                    def notify_web_control():
+                        try:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            loop.run_until_complete(self.web_interface.on_control_received({
+                                "content": control_msg,
+                                "from": from_station,
+                                "timestamp": timestamp,
+                                "type": "control"
+                            }))
+                            loop.close()
+                        except Exception as e:
+                            print(f"Error notifying web interface of control: {e}")
                 
+                    threading.Thread(target=notify_web_control, daemon=True).start()
+                
+            elif not control_msg.startswith('KEEPALIVE'):
+                # Show non-keepalive control messages
+                DebugConfig.debug_print(f"📋 [{from_station}] Control: {control_msg}")
+
                 # Notify web interface for important control messages
                 self._notify_web_async('control_received', {
                     'type': 'control',
                     'content': control_msg,
                     'from': from_station,
-                    'timestamp': timestamp
+                    'timestamp': timestamp,
+                    'priority': 'normal'
                 })
-                
+            
         except UnicodeDecodeError:
             DebugConfig.debug_print(f"📋 [{from_station}] Control: <Binary data: {len(udp_payload)}B>")
-            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def _notify_web_async(self, event_type, data):
         """Send async notification to web interface"""
         def notify():
             try:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
-                
+            
                 if event_type == 'audio_received':
                     loop.run_until_complete(self.web_bridge.notify_audio_received(data))
+                elif event_type == 'control_received':
+                    # NEW: Handle control messages separately
+                    loop.run_until_complete(self.web_bridge.notify_control_received(data))
                 else:
+                    # All other messages (text, etc.) go to message handler
                     loop.run_until_complete(self.web_bridge.notify_message_received(data))
-                    
+                
                 self.stats['web_notifications'] += 1
                 loop.close()
             except Exception as e:
                 DebugConfig.debug_print(f"Error in web notification: {e}")
-                
+            
         threading.Thread(target=notify, daemon=True).start()
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     def get_audio_stream_data(self):
         """Get queued audio data for web streaming"""
         audio_packets = []
