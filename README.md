@@ -17,7 +17,76 @@ sudo apt install python3-pyaudio
 
 ### 16 July 2025 Documentation
 
- CASTLE ARCHIVES: MessagePriorityQueue (Legendary Magic Item - Retired)
+ 🐉 THE LEGEND OF THE GREAT DRAGON BATTLE 🐉
+
+Long ago, the terrible Dragon of Code Complexity descended upon interlocutor.py, breathing flames of inheritance confusion and polymorphic chaos. The dragon sought to create needless abstraction layers and confusing base classes throughout the land.
+
+ChatManager, a brave and noble class, stood as the first line of defense. Though it possessed all the methods needed for chat management (handle_message_input, set_ptt_state, flush_buffered_messages), it chose to sacrifice itself so that the realm could have clarity and simplicity.
+
+In the final battle, ChatManager held the dragon at bay long enough for the kingdom's wisest architects to forge ChatManagerAudioDriven - a more specialized and focused defender that could integrate directly with the Audio-Driven Castle.
+
+ChatManager's noble sacrifice ensured that:
+- No confusing inheritance hierarchies would plague future maintainers
+- ChatManagerAudioDriven could stand strong and self-contained
+- The codebase would improve in readability
+- Polymorphism would only exist where truly needed and not by total accident
+
+ChatManager now rests in the Hall of Heroes, its methods preserved in legend:
+- handle_message_input() - "The Message Router"
+- set_ptt_state() - "The State Guardian" 
+- flush_buffered_messages() - "The Buffer Liberator"
+- get_pending_count() - "The Wise Counter"
+
+🏆 MEDAL OF SACRIFICE: "For giving one's code-life so that others might live simply"
+🛡️ DEFENDER'S HONOR: "Slain by dragon, reborn as ChatManagerAudioDriven"
+
+Heroically retired: 16 July 2025 - "They died so simplicity could live"
+
+
+#### THE BALLAD OF CHATMANAGER THE BRAVE
+As sung by the code bards in the castle tavern...
+
+🎵 Once there lived a class so true,
+
+ChatManager with methods blue,
+
+handle_message_input so fine,
+
+set_ptt_state in perfect line.
+
+But the Dragon of Complexity came,
+
+Breathing inheritance and shame,
+
+"Make base classes!" roared the beast,
+
+"Polymorphism for every feast!"
+
+ChatManager drew its sword of code,
+
+"Not today!" the hero crowed,
+
+"I'll sacrifice my running form,
+
+So ChatManagerAudioDriven can transform!"
+
+In the battle, sparks did fly,
+
+ChatManager said its last goodbye,
+
+But from its noble sacrifice born,
+
+A simpler, cleaner code each morn.
+
+Now ChatManagerAudioDriven stands alone,
+
+No confusing inheritance throne,
+
+Thanks to ChatManager's brave last stand,
+
+Simplicity rules throughout the land! 
+
+#### CASTLE ARCHIVES: MessagePriorityQueue (Legendary Magic Item - Retired)
  
  Once upon a time, there was a magnificent MessagePriorityQueue class that served
  as the Thread-Safe Message Arbitrator. This legendary item could:
