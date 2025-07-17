@@ -5,19 +5,70 @@ GPIO PTT Audio, Terminal Chat, Control Messages, and Config Files
 - Terminal-based keyboard chat interface
 - Priority queue system for message handling
 - Background thread for non-voice transmission
-- Point-to-point testing while maintaining voice quality
 - Debug/verbose mode for development
-- Modify fields of custom headers 
-- (EOS unimplemented, sequence and length removed)
-- Low Priority To Do: make audio test message real audio
-- Added RTP Headers, Added UDP Headers, Added IP Headers
 - UDP ports indicate data types
-- Added COBS
-- All data now handled through priority queue
-- All data now in 40 ms frames
-- Improved timer - everything in audio callback
-- Configuration Files in YAML
-- Audio Device Configuration in YAML
+- Operator and Audio Device Configuration files in YAML
+
+Text Input → ChatManagerAudioDriven → AudioDrivenFrameManager.queue_text_message() → Simple Queue()
+Voice Input → audio_callback → AudioDrivenFrameManager.process_voice_and_transmit() → Direct transmission
+
+Class Organization
+
+1. Foundation & Configuration "What do we need?"
+
+StreamFrame - Data container for the 40ms frame system
+
+2. Chat & User Interface Layer "How do users interact with chat?"
+
+TerminalChatInterface - Terminal-based user interaction
+ChatManagerAudioDriven - Audio-synchronized chat management
+
+3. Stream Management & Timing "How do we manage frame timing?"
+
+ContinuousStreamManager - Controls when the 40ms stream runs
+AudioDrivenFrameManager - The heart of frame transmission logic
+
+4. Network & Protocol "How do we connect to compouters or modems?"
+
+MessageReceiver - Handles incoming data parsing and reassembly
+
+5. Hardware Integration & Main System "How does it all come together?"
+
+GPIOZeroPTTHandler - The main radio system class that orchestrates everything
+
+Method Organization Within Classes
+
+1. Constructor Pattern
+
+def __init__(self)          # Always first
+def setup_*_methods(self)   # Configuration methods
+def _validate_config(self)  # Private validation helpers
+
+2. Core Operations (The Main Quest)
+
+We put the most important method first.
+They are Ordered by typical call sequence.
+We group related operations together.
+
+3. Interface Methods (Party Coordination)
+
+Public methods other classes call.
+Then, callback methods (when_, on_).
+Finally, event handlers.
+
+4. Utility & Testing (Skill Checks)
+
+Validation methods.
+Test methods.
+Helper functions.
+
+5. Status and Cleanup (Character Record Sheet)
+
+def get_stats(self)     # Status inquiry
+def print_stats(self)   # Status display
+def stop(self)          # Graceful shutdown
+def cleanup(self)       # Final cleanup
+
 """
 
 import sys
@@ -28,6 +79,7 @@ import threading
 import argparse
 import re
 from queue import PriorityQueue, Empty, Queue
+#from queue import Empty, Queue
 from enum import Enum
 from typing import Union, Tuple, Optional, List, Dict
 import select
@@ -46,7 +98,7 @@ from config_manager import (
 
 
 from audio_device_manager import (
-	AudioDeviceManager, 
+	AudioDeviceManager,
 	AudioManagerMode,
 	create_audio_manager_for_cli,
 	create_audio_manager_for_interactive
@@ -60,7 +112,7 @@ from enhanced_receiver import integrate_enhanced_receiver
 from radio_protocol import (
 	COBSEncoder,
 	SimpleFrameReassembler,
-	COBSFrameBoundaryManager, 
+	COBSFrameBoundaryManager,
 	OpulentVoiceProtocolWithIP,
 	StationIdentifier,
 	encode_callsign,
@@ -85,15 +137,10 @@ from radio_protocol import (
 	DebugConfig
 )
 
-# Keep your existing imports
 from enhanced_receiver import integrate_enhanced_receiver
-# The above classes were renamed _remove
-
-
 
 # global variable for GUI
 web_interface_instance = None
-
 
 # check for virtual environment
 if not (hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)):
@@ -123,160 +170,16 @@ except ImportError:
 	raise
 
 
+# ===================================================================
+# 1. FOUNDATION & CONFIGURATION
+# ===================================================================
 
 
 
 
-
-
-class MessagePriorityQueue:
-	"""Thread-safe priority queue for managing different message types"""
-	
-	def __init__(self):
-		self.queue = PriorityQueue()
-		self._stats = {
-			'queued': 0,
-			'sent': 0,
-			'dropped': 0,
-			'voice_preempted': 0
-		}
-		self._lock = threading.Lock()
-	
-	def add_message(self, msg_type: MessageType, data: bytes):
-		"""Add message to priority queue"""
-		message = QueuedMessage(msg_type, data)
-		self.queue.put(message)
-		
-		with self._lock:
-			self._stats['queued'] += 1
-			
-		return message
-	
-	def get_next_message(self, timeout=None):
-		"""Get next highest priority message"""
-		try:
-			return self.queue.get(timeout=timeout)
-		except Empty:
-			return None
-	
-	def clear_lower_priority(self, min_priority: int):
-		"""Clear messages below specified priority (for voice preemption)"""
-		# This is complex to implement efficiently with PriorityQueue
-		# For now, we'll rely on voice having highest priority
-		pass
-	
-	def get_stats(self):
-		"""Get queue statistics"""
-		with self._lock:
-			stats = self._stats.copy()
-			stats['queue_size'] = self.queue.qsize()
-			return stats
-	
-	def mark_sent(self):
-		"""Mark a message as successfully sent"""
-		with self._lock:
-			self._stats['sent'] += 1
-	
-	def mark_dropped(self):
-		"""Mark a message as dropped"""
-		with self._lock:
-			self._stats['dropped'] += 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class ChatManager:
-	"""Manages chat state and buffering - works for terminal and future HTML"""
-	
-	def __init__(self, station_id):
-		self.station_id = station_id
-		self.ptt_active = False
-		self.pending_messages = []
-		self.message_queue = None  # Will be set by radio system
-		
-	def set_message_queue(self, queue):
-		"""Set the message queue for sending"""
-		self.message_queue = queue
-	
-	def set_ptt_state(self, active):
-		"""Called when PTT state changes"""
-		was_active = self.ptt_active
-		self.ptt_active = active
-		
-		# If PTT just released, flush any buffered messages
-		if was_active and not active:
-			self.flush_buffered_messages()
-	
-	def handle_message_input(self, message_text):
-		"""Handle new message input - returns status for UI feedback"""
-		if not message_text.strip():
-			return {'status': 'empty', 'action': 'none'}
-		
-		if self.ptt_active:
-			# Buffer the message during PTT
-			self.pending_messages.append(message_text.strip())
-			return {
-				'status': 'buffered', 
-				'action': 'show_buffered',
-				'message': message_text.strip(),
-				'count': len(self.pending_messages)
-			}
-		else:
-			# Send immediately when PTT not active
-			self.send_message_immediately(message_text.strip())
-			return {
-				'status': 'sent',
-				'action': 'show_sent', 
-				'message': message_text.strip()
-			}
-	
-	def send_message_immediately(self, message_text):
-		"""Send message immediately"""
-		if self.message_queue:
-			self.message_queue.add_message(MessageType.TEXT, message_text.encode('utf-8'))
-	
-	def flush_buffered_messages(self):
-		"""Send all buffered messages after PTT release"""
-		if not self.pending_messages:
-			return []
-		
-		sent_messages = []
-		for message in self.pending_messages:
-			self.send_message_immediately(message)
-			sent_messages.append(message)
-		
-		# Show summary of what was sent
-		if len(sent_messages) == 1:
-			DebugConfig.user_print(f"💬 Sent buffered message: {sent_messages[0]}")
-		else:
-			DebugConfig.user_print(f"💬 Sent {len(sent_messages)} buffered messages:")
-			for i, msg in enumerate(sent_messages, 1):
-				DebugConfig.user_print(f"   {i}. {msg}")
-		
-		self.pending_messages.clear()
-		return sent_messages
-	
-	def get_pending_count(self):
-		"""Get number of pending messages"""
-		return len(self.pending_messages)
-	
-	def clear_pending(self):
-		"""Clear pending messages (for cancel operation)"""
-		cleared = len(self.pending_messages)
-		self.pending_messages.clear()
-		return cleared
-
+# ===================================================================
+# 2. CHAT & USER INTERFACE LAYER
+# ===================================================================
 
 class TerminalChatInterface:
 	"""Non-blocking terminal interface with PTT-aware buffering"""
@@ -390,147 +293,86 @@ class TerminalChatInterface:
 		self._show_prompt()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@dataclass
-class StreamFrame:
-	"""Container for data going into 40ms frames"""
-	frame_type: FrameType
-	priority: FramePriority
-	data: bytes
-	timestamp: float
-	is_continuation: bool = False
-	sequence_id: int = 0
-
-
-
-
-
-
-
-
-
-
-
-
-
-class ContinuousStreamManager:
-	#Manages the continuous 40ms frame stream
-
-	def __init__(self, idle_timeout_seconds: float = 5.0):
-		self.stream_active = False
-		self.idle_timeout = idle_timeout_seconds
-		self.last_activity_time = 0
-		self.stream_start_time = 0
-
-		# Activity tracking
-		self.activity_stats = {
-			'stream_starts': 0,
-			'stream_stops': 0,
-			'total_stream_time': 0,
-			'voice_starts': 0,
-			'non_voice_starts': 0
-		}
-
-	def activity_detected(self, activity_type: str = "unknown"):
-		"""Called whenever there's any activity that should maintain the stream"""
-		current_time = time.time()
-
-		# Start stream if not already running
-		if not self.stream_active:
-			self.start_stream(triggered_by=activity_type)
-
-		# Update activity timestamp
-		self.last_activity_time = current_time
-
-		# Track what starts the stream
-		if activity_type == "voice":
-			self.activity_stats['voice_starts'] += 1
-		else:
-			self.activity_stats['non_voice_starts'] += 1
-
-
-
-	def start_stream(self, triggered_by: str = "unknown"):
-		"""Start the continuous 40ms frame stream"""
-		if self.stream_active:
-			return  # Already running
-
-		self.stream_active = True
-		self.stream_start_time = time.time()
-		self.last_activity_time = self.stream_start_time
-		self.activity_stats['stream_starts'] += 1
-
-		# ADD: Debug what's starting the stream
-		#DebugConfig.debug_print(f"🚀 40ms stream STARTED (triggered by: {triggered_by})")
-		#DebugConfig.debug_print("DEBUG: Stream started by:")
-		#traceback.print_stack()
-
-
-
-
-
-
-
-
-
-	def start_stream_old(self, triggered_by: str = "unknown"):
-		"""Start the continuous 40ms frame stream"""
-		if self.stream_active:
-			return  # Already running
-
-		self.stream_active = True
-		self.stream_start_time = time.time()
-		self.last_activity_time = self.stream_start_time
-		self.activity_stats['stream_starts'] += 1
-
-		print(f"🚀 40ms stream STARTED (triggered by: {triggered_by})")
-
-	def should_stop_stream(self) -> bool:
-		"""Check if stream should stop due to inactivity"""
-		if not self.stream_active:
-			return False
-
-		time_since_activity = time.time() - self.last_activity_time
-		return time_since_activity >= self.idle_timeout
-
-	def stop_stream(self):
-		"""Stop the continuous 40ms frame stream"""
-		if not self.stream_active:
-			return
-
-		stream_duration = time.time() - self.stream_start_time
-		self.activity_stats['total_stream_time'] += stream_duration
-		self.activity_stats['stream_stops'] += 1
-		self.stream_active = False
-
-		print(f"🛑 40ms stream STOPPED (ran for {stream_duration:.1f}s)")
+class ChatManagerAudioDriven:
+	"""
+	Modified chat manager for audio-driven system
+	"""
 	
-	def get_stream_status(self) -> Dict:
-		"""Get current stream status"""
-		current_time = time.time()
-		status = {
-			'stream_active': self.stream_active,
-			'time_since_activity': current_time - self.last_activity_time if self.stream_active else 0,
-			'current_stream_duration': current_time - self.stream_start_time if self.stream_active else 0,
-			'stats': self.activity_stats.copy()
-		}
-		return status
+	def __init__(self, station_id, audio_frame_manager):
+		self.station_id = station_id
+		self.audio_frame_manager = audio_frame_manager  # Instead of frame_transmitter
+		self.ptt_active = False
+		self.pending_messages = []
+	
+	def handle_message_input(self, message_text):
+		"""Handle message input (same interface as before)"""
+		if not message_text.strip():
+			return {'status': 'empty', 'action': 'none'}
+		
+		if self.ptt_active:
+			# Buffer during PTT
+			self.pending_messages.append(message_text.strip())
+			return {
+				'status': 'buffered',
+				'action': 'show_buffered', 
+				'message': message_text.strip(),
+				'count': len(self.pending_messages)
+			}
+		else:
+			# Queue immediately for audio-driven transmission
+			self.queue_message_for_transmission(message_text.strip())
+			return {
+				'status': 'queued_audio_driven',
+				'action': 'show_queued',
+				'message': message_text.strip()
+			}
+	
+	def queue_message_for_transmission(self, message_text):
+		"""Queue message for audio-driven transmission"""
+		self.audio_frame_manager.queue_text_message(message_text)
+	
+	def set_ptt_state(self, active):
+		"""Called when PTT state changes"""
+		was_active = self.ptt_active
+		self.ptt_active = active
+		
+		# If PTT just released, flush buffered messages
+		if was_active and not active:
+			self.flush_buffered_messages()
+	
+	def flush_buffered_messages(self):
+		"""Send all buffered messages to audio-driven system after PTT release"""
+		if not self.pending_messages:
+			return []
+		
+		sent_messages = []
+		for message in self.pending_messages:
+			self.queue_message_for_transmission(message)
+			sent_messages.append(message)
+		
+		# Show summary
+		if len(sent_messages) == 1:
+			print(f"💬 Queued buffered message for audio-driven transmission: {sent_messages[0]}")
+		else:
+			print(f"💬 Queued {len(sent_messages)} buffered messages for audio-driven transmission")
+		
+		self.pending_messages.clear()
+		return sent_messages
+	
+	def get_pending_count(self):
+		"""Get number of pending messages"""
+		return len(self.pending_messages)
+	
+	def clear_pending(self):
+		"""Clear pending messages"""
+		cleared = len(self.pending_messages)
+		self.pending_messages.clear()
+		return cleared
 
 
+# ===================================================================
+# 3. STREAM MANAGEMENT & TIMING
+# ===================================================================
 
 class AudioDrivenFrameManager:
 	'''Handles all frame logic within audio callback timing'''
@@ -540,19 +382,19 @@ class AudioDrivenFrameManager:
 		self.network_transmitter = network_transmitter
 		self.config = config
 		
-		# Frame queues (keep existing structure)
+		# Frame queues
 		self.control_queue = Queue()
 		self.text_queue = Queue()
 		
-		# Voice state (simplified - no buffer needed)
+		# Voice state (no buffer needed)
 		self.voice_active = False
 		self.pending_voice_frame = None
 		
 		# Non-voice transmission throttling
 		self.frames_since_nonvoice = 0
-		self.nonvoice_send_interval = 1  # Send non-voice every N frames when no voice
+		self.nonvoice_send_interval = 1  # Send non-voice every N frames when no voice !!!
 		
-		# Keepalive management - ALWAYS initialize ALL attributes
+		# Keepalive management - ALWAYS initialize ALL attributes !!!
 		self.target_type = config.protocol.target_type
 		self.last_keepalive_time = 0  # Always initialize this
 		self.keepalive_interval = config.protocol.keepalive_interval  # Always initialize this
@@ -564,7 +406,7 @@ class AudioDrivenFrameManager:
 			self.send_keepalives = False
 			DebugConfig.debug_print(f"📻 Target: Modem - keepalives disabled, modem handles hang-time")
 		
-		# Statistics (compatible with existing stats)
+		# Statistics
 		self.stats = {
 			'total_frames_sent': 0,
 			'voice_frames_sent': 0,
@@ -576,39 +418,13 @@ class AudioDrivenFrameManager:
 			'target_type': self.target_type
 		}
 
-
-
-
-	def get_transmission_stats(self):
-		"""Get stats (updated for simple frame splitting)"""
-		return {
-			'scheduler_stats': self.stats,
-			'queue_status': {
-				'voice_active': self.voice_active,
-				'control_queue': self.control_queue.qsize(),
-				'text_queue': self.text_queue.qsize(),
-				'frames_since_nonvoice': self.frames_since_nonvoice
-			},
-			'frame_info': {
-				'frame_size': 133,
-				'header_size': 12,
-				'payload_size': 121
-			},
-			'running': self.voice_active or not (self.control_queue.empty() and self.text_queue.empty())
-		}
-
-
-
-
-
 	def process_voice_and_transmit(self, opus_packet, current_time):
 		"""
 		PAUL'S APPROACH: Process voice - may generate multiple frames per opus packet
 		"""
 		try:
 			# NEW: Create potentially multiple OV frames (Paul's approach)
-			ov_frames = self.protocol.create_audio_frames(opus_packet, 
-										is_start_of_transmission=False)
+			ov_frames = self.protocol.create_audio_frames(opus_packet, is_start_of_transmission=False)
 
 			frames_sent = 0
 			for frame in ov_frames:
@@ -632,10 +448,6 @@ class AudioDrivenFrameManager:
 		except Exception as e:
 			DebugConfig.debug_print(f"✗ Voice frame transmission error: {e}")
 			return False
-
-
-
-
 
 	# Debugging version to find the keepalive issue:
 
@@ -715,9 +527,6 @@ class AudioDrivenFrameManager:
 		self.stats['skipped_frames'] += 1
 		self.frames_since_nonvoice += 1
 		return False
-	
-
-
 
 	# Interface methods (compatible with existing code)
 	def set_voice_active(self, active):
@@ -725,7 +534,6 @@ class AudioDrivenFrameManager:
 		self.voice_active = active
 		if not active:
 			self.pending_voice_frame = None
-
 
 	def queue_text_message(self, text_data):
 		"""
@@ -750,7 +558,6 @@ class AudioDrivenFrameManager:
 		except Exception as e:
 			DebugConfig.debug_print(f"✗ Error queuing text message: {e}")
 
-
 	def queue_control_message(self, control_data):
 		"""
 		PAUL'S APPROACH: Queue control message - creates complete OV frames
@@ -774,100 +581,174 @@ class AudioDrivenFrameManager:
 		except Exception as e:
 			DebugConfig.debug_print(f"✗ Error queuing control message: {e}")
 
+	def get_transmission_stats(self):
+		"""Get stats (updated for simple frame splitting)"""
+		return {
+			'scheduler_stats': self.stats,
+			'queue_status': {
+				'voice_active': self.voice_active,
+				'control_queue': self.control_queue.qsize(),
+				'text_queue': self.text_queue.qsize(),
+				'frames_since_nonvoice': self.frames_since_nonvoice
+			},
+			'frame_info': {
+				'frame_size': 133,
+				'header_size': 12,
+				'payload_size': 121
+			},
+			'running': self.voice_active or not (self.control_queue.empty() and self.text_queue.empty())
+		}
 
 
+# ===================================================================
+# 4. NETWORK & PROTOCOL
+# ===================================================================
+
+class MessageReceiver:
+	"""Handles receiving and parsing incoming messages"""
+	def __init__(self, listen_port=57372, chat_interface=None):
+		self.listen_port = listen_port
+		self.chat_interface = chat_interface
+		self.socket = None
+		self.running = False
+		self.receive_thread = None
+
+		# Simple frame reassembler (no fragmentation headers)
+		self.reassembler = SimpleFrameReassembler()
+		self.cobs_manager = COBSFrameBoundaryManager()
+
+		# For parsing complete frames
+		self.protocol = OpulentVoiceProtocolWithIP(StationIdentifier("TEMP"))
+
+	def start(self):
+		"""Start the message receiver"""
+		try:
+			self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			self.socket.bind(('', self.listen_port))
+			self.socket.settimeout(1.0)  # Allow periodic checking of running flag
+
+			self.running = True
+			self.receive_thread = threading.Thread(target=self._receive_loop, daemon=True)
+			self.receive_thread.start()
+
+			print(f"👂 Message receiver listening on port {self.listen_port}")
+
+		except Exception as e:
+			print(f"✗ Failed to start receiver: {e}")
+
+	def stop(self):
+		"""Stop the message receiver"""
+		self.running = False
+		if self.receive_thread:
+			self.receive_thread.join(timeout=2.0)
+		if self.socket:
+			self.socket.close()
+		print("👂 Message receiver stopped")
+
+	def _receive_loop(self):
+		"""Main receive loop"""
+		while self.running:
+			try:
+				data, addr = self.socket.recvfrom(4096)
+				self._process_received_data(data, addr)
+
+			except socket.timeout:
+				continue  # Normal timeout, check running flag
+			except Exception as e:
+				if self.running:  # Only log errors if we're supposed to be running
+					print(f"Receive error: {e}")
+
+	def _process_received_data(self, data, addr):
+		"""
+		PAUL'S APPROACH: Much simpler receiver processing!
+		"""
+		try:
+			# Step 1: Parse Opulent Voice header
+			if len(data) < 12:
+				return
+
+			ov_header = data[:12]
+			fragment_payload = data[12:]
+
+			# Parse OV header
+			station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
+
+			if token != OpulentVoiceProtocolWithIP.TOKEN:
+				return  # Invalid frame
+
+			# Step 2: Try to reassemble COBS frames
+			cobs_frames = self.reassembler.add_frame_payload(fragment_payload)
+
+			# Step 3: Process all the reassembled COBS frames
+			for frame in cobs_frames:
+				DebugConfig.debug_print(f"📥 Received COBS frame from {addr}: {len(frame)}B")
+
+				# Step 4: COBS decode to get original IP frame
+				try:
+					ip_frame, _ = self.cobs_manager.decode_frame(frame)
+				except Exception as e:
+					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
+					continue
+
+				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
+
+		except Exception as e:
+			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
+
+	def _process_complete_ip_frame(self, ip_frame, station_bytes, addr):
+		"""
+		Process a complete, decoded IP frame - much simpler now!
+		"""
+		try:
+			# Get station identifier
+			try:
+				from_station = StationIdentifier.from_bytes(station_bytes)
+			except:
+				from_station = f"UNKNOWN-{station_bytes.hex()[:8]}"
+
+			# Parse IP header to get protocol info
+			if len(ip_frame) < 20:
+				return
+
+			# Quick IP header parse to get UDP payload
+			ip_header_length = (ip_frame[0] & 0x0F) * 4
+			if len(ip_frame) < ip_header_length + 8:  # Need at least UDP header
+				return
+
+			udp_payload = ip_frame[ip_header_length + 8:]  # Skip IP + UDP headers
+
+			# Parse UDP header to determine port/type
+			udp_dest_port = struct.unpack('!H', ip_frame[ip_header_length + 2:ip_header_length + 4])[0]
+
+			# Route based on UDP port
+			if udp_dest_port == 57373:  # Voice
+				DebugConfig.debug_print(f"🎤 [{from_station}] Voice: {len(udp_payload)}B")
+			elif udp_dest_port == 57374:  # Text  
+				try:
+					message = udp_payload.decode('utf-8')
+					print(f"\n📨 [{from_station}]: {message}")
+					if self.chat_interface:
+						# Re-display chat prompt
+						print(f"[{self.chat_interface.station_id}] Chat> ", end='', flush=True)
+				except UnicodeDecodeError:
+					print(f"📨 [{from_station}]: <Binary text data: {len(udp_payload)}B>")
+			elif udp_dest_port == 57375:  # Control
+				try:
+					control_msg = udp_payload.decode('utf-8')
+					if not control_msg.startswith('KEEPALIVE'):  # Don't spam with keepalives
+						print(f"📋 [{from_station}] Control: {control_msg}")
+				except UnicodeDecodeError:
+					print(f"📋 [{from_station}] Control: <Binary data: {len(udp_payload)}B>")
+			else:
+				print(f"❓ [{from_station}] Unknown port {udp_dest_port}: {len(udp_payload)}B")
+
+		except Exception as e:
+			DebugConfig.debug_print(f"Error processing IP frame: {e}")
 
 
-
-
-
-
-
-class ChatManagerAudioDriven:
-	"""
-	Modified chat manager for audio-driven system
-	"""
-	
-	def __init__(self, station_id, audio_frame_manager):
-		self.station_id = station_id
-		self.audio_frame_manager = audio_frame_manager  # Instead of frame_transmitter
-		self.ptt_active = False
-		self.pending_messages = []
-	
-	def handle_message_input(self, message_text):
-		"""Handle message input (same interface as before)"""
-		if not message_text.strip():
-			return {'status': 'empty', 'action': 'none'}
-		
-		if self.ptt_active:
-			# Buffer during PTT
-			self.pending_messages.append(message_text.strip())
-			return {
-				'status': 'buffered',
-				'action': 'show_buffered', 
-				'message': message_text.strip(),
-				'count': len(self.pending_messages)
-			}
-		else:
-			# Queue immediately for audio-driven transmission
-			self.queue_message_for_transmission(message_text.strip())
-			return {
-				'status': 'queued_audio_driven',
-				'action': 'show_queued',
-				'message': message_text.strip()
-			}
-	
-	def queue_message_for_transmission(self, message_text):
-		"""Queue message for audio-driven transmission"""
-		self.audio_frame_manager.queue_text_message(message_text)
-	
-	def set_ptt_state(self, active):
-		"""Called when PTT state changes"""
-		was_active = self.ptt_active
-		self.ptt_active = active
-		
-		# If PTT just released, flush buffered messages
-		if was_active and not active:
-			self.flush_buffered_messages()
-	
-	def flush_buffered_messages(self):
-		"""Send all buffered messages to audio-driven system after PTT release"""
-		if not self.pending_messages:
-			return []
-		
-		sent_messages = []
-		for message in self.pending_messages:
-			self.queue_message_for_transmission(message)
-			sent_messages.append(message)
-		
-		# Show summary
-		if len(sent_messages) == 1:
-			print(f"💬 Queued buffered message for audio-driven transmission: {sent_messages[0]}")
-		else:
-			print(f"💬 Queued {len(sent_messages)} buffered messages for audio-driven transmission")
-		
-		self.pending_messages.clear()
-		return sent_messages
-	
-	def get_pending_count(self):
-		"""Get number of pending messages"""
-		return len(self.pending_messages)
-	
-	def clear_pending(self):
-		"""Clear pending messages"""
-		cleared = len(self.pending_messages)
-		self.pending_messages.clear()
-		return cleared
-
-
-
-
-
-
-
-
-
-
+# ===================================================================
+# 5. HARDWARE INTEGRATION & MAIN SYSTEM
+# ===================================================================
 
 class GPIOZeroPTTHandler:
 	def __init__(self, station_identifier, config: OpulentVoiceConfig):
@@ -929,7 +810,7 @@ class GPIOZeroPTTHandler:
 			config  # Pass the config object
 		)
 
-		# Modified chat manager (uses audio-driven manager)
+		# Audio-driven chat manager (evolved from the heroically retired ChatManager)
 		self.chat_manager = ChatManagerAudioDriven(self.station_id, self.audio_frame_manager)
 
 		# Rest of existing initialization...
@@ -950,14 +831,11 @@ class GPIOZeroPTTHandler:
 		self.setup_gpio_callbacks()
 		self.setup_audio()
 
-
-
 	def setup_gpio_callbacks(self):
 		"""Setup PTT button callbacks"""
 		self.ptt_button.when_pressed = self.ptt_pressed
 		self.ptt_button.when_released = self.ptt_released
 		DebugConfig.debug_print(f"✓ GPIO setup: PTT=GPIO{self.ptt_button.pin}, LED=GPIO{self.led.pin}")
-
 
 	def list_audio_devices(self):
 		"""List all available audio devices"""
@@ -967,8 +845,6 @@ class GPIOZeroPTTHandler:
 			if info['maxInputChannels'] > 0:  # Has input capability
 				DebugConfig.debug_print(f"   Device {i}: {info['name']} (inputs: {info['maxInputChannels']}, rate: {info['defaultSampleRate']})")
 
-
-
 	def setup_audio(self, force_device_selection=False):
 		"""Setup audio input and output with optional device selection"""
 		# create device manager with our config
@@ -977,7 +853,6 @@ class GPIOZeroPTTHandler:
 			config_file="audio_config.yaml", 
 			radio_config=self.config
 		)
-
 
 		try:
 			# Device selection based on force flag or first-time setup
@@ -996,7 +871,6 @@ class GPIOZeroPTTHandler:
 			DebugConfig.debug_print(f"🎵 Audio config: {params['sample_rate']}Hz, {params['frame_duration_ms']}ms frames")
 			DebugConfig.debug_print(f"   Samples per frame: {params['frames_per_buffer']}")
 			DebugConfig.debug_print(f"   Selected input device: {input_device}")
-
 
 			# set up input stream for the microphone
 			try:
@@ -1022,10 +896,6 @@ class GPIOZeroPTTHandler:
 
 		finally:
 			device_manager.cleanup()
-
-
-
-
 
 	def setup_enhanced_receiver_with_audio(self):
 		"""Setup enhanced receiver with audio output using independently selected output device"""
@@ -1066,11 +936,6 @@ class GPIOZeroPTTHandler:
 		except Exception as e:
 			print(f"✗ Enhanced receiver setup failed: {e}")
 			return None
-
-
-
-
-
 
 	def setup_enhanced_receiver_for_cli(self):
 		"""Setup enhanced receiver with audio output - CLI MODE ONLY (no web interface)"""
@@ -1118,21 +983,6 @@ class GPIOZeroPTTHandler:
 			traceback.print_exc()
 			return None
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	def validate_audio_frame(self, audio_data):
 		"""Validate audio data before encoding"""
 		if len(audio_data) != self.bytes_per_frame:
@@ -1146,7 +996,6 @@ class GPIOZeroPTTHandler:
 
 		return True
 
-
 	def validate_opus_packet(self, opus_packet):
 		"""Validate OPUS packet meets Opulent Voice Protocol requirements"""
 		expected_size = 80  # Opulent Voice Protocol constraint
@@ -1158,9 +1007,6 @@ class GPIOZeroPTTHandler:
 			return False
 		return True
 
-
-
-
 	# minimal audio_callback to see where audio overflow problem was
 	# swap in for audio_callback to test things
 	# results were: problem is not in our code
@@ -1170,10 +1016,6 @@ class GPIOZeroPTTHandler:
 	
 		# Do absolutely nothing else - just return
 		return (None, pyaudio.paContinue)
-
-
-
-
 
 	def audio_callback(self, in_data, frame_count, time_info, status):
 		"""
@@ -1195,9 +1037,6 @@ class GPIOZeroPTTHandler:
 		#	if interval_ms < 35 or interval_ms > 45:  # Outside normal range
 		#		DebugConfig.debug_print(f"🕒 Audio callback: {interval_ms:.1f}ms")
 		#self.last_callback_time = current_time
-
-
-
 
 		# PART 1: Process incoming audio (existing logic)
 		if self.ptt_active:
@@ -1235,15 +1074,6 @@ class GPIOZeroPTTHandler:
 
 		return (None, pyaudio.paContinue)
 
-
-
-
-
-
-
-
-
-
 	def ptt_pressed(self):
 		"""PTT button pressed - no more timer management needed"""
 		# Send PTT_START control message
@@ -1279,43 +1109,23 @@ class GPIOZeroPTTHandler:
 		# LED off
 		self.led.off()
 
+	def start(self):
+		"""Start the continuous stream system"""
+		if self.audio_input_stream:
+			self.audio_input_stream.start_stream()
 
+		# Start chat interface
+		self.chat_interface.start()
 
-
-
-
-	def print_stats(self):
-		"""Print transmission statistics"""
-		audio_stats = self.audio_stats
-		net_stats = self.transmitter.get_stats()
-
-		# CHANGE: Get stats from frame transmitter instead of message queue
-		stream_stats = self.audio_frame_manager.get_transmission_stats()
-
-		print(f"\n📊 {self.station_id} Transmission Statistics:")
-		print(f"   Voice frames encoded: {audio_stats['frames_encoded']}")
-		print(f"   Voice frames sent: {audio_stats['frames_sent']}")
-		print(f"   Invalid frames: {audio_stats['invalid_frames']}")
-		print(f"   Total network packets: {net_stats['packets_sent']}")
-		print(f"   Total bytes sent: {net_stats['bytes_sent']}")
-		print(f"   Stream stats: {stream_stats['scheduler_stats']}")
-		print(f"   Queue status: {stream_stats['queue_status']}")
-		print(f"   Stream active: {stream_stats['running']}")
-		print(f"   Encoding errors: {audio_stats['encoding_errors']}")
-		print(f"   Network errors: {net_stats['errors']}")
-
-		# Protocol stats (if available)
-		if hasattr(self.protocol, 'get_protocol_stats'):
-			protocol_stats = self.protocol.get_protocol_stats()
-			print(f"   COBS frames encoded: {protocol_stats['cobs']['frames_encoded']}")
-			print(f"   COBS overhead: {protocol_stats['cobs']['avg_overhead_per_frame']:.1f}B/frame")
-
-		# Audio success rate
-		if audio_stats['frames_encoded'] > 0:
-			voice_success_rate = (audio_stats['frames_sent'] / audio_stats['frames_encoded']) * 100
-			print(f"   Voice success rate: {voice_success_rate:.1f}%")
-
-
+		print(f"\n🚀 {self.station_id} Continuous stream system ready")
+		print("📋 Configuration:")
+		print(f"   Station: {self.station_id}")
+		print(f"   Sample rate: {self.sample_rate} Hz")
+		print(f"   Bitrate: {self.bitrate} bps CBR")
+		print(f"   Frame size: {self.frame_duration_ms}ms ({self.samples_per_frame} samples)")
+		print(f"   Frame rate: {1000/self.frame_duration_ms} fps")
+		print(f"   Network target: {self.transmitter.target_ip}:{self.transmitter.target_port}")
+		print(f"   Stream starts automatically when there's activity")
 
 	def test_gpio(self):
 		"""Test GPIO functionality"""
@@ -1330,11 +1140,6 @@ class GPIOZeroPTTHandler:
 			time.sleep(0.3)
 		print("   ✓ LED test complete")
 		print(f"   PTT status: {'PRESSED' if self.ptt_button.is_pressed else 'NOT PRESSED'}")
-
-
-
-
-
 
 	def test_network(self):
 		"""Test network connectivity - VALIDATES 80-BYTE OPUS CONSTRAINT"""
@@ -1367,8 +1172,6 @@ class GPIOZeroPTTHandler:
 			print(f"   ✗ Unexpected error in test_network: {e}")
 			traceback.print_exc()
 
-
-
 		test_text = "Test text message using Paul's COBS-first approach"
 		try:
 			text_frames = self.protocol.create_text_frames(test_text)
@@ -1382,9 +1185,6 @@ class GPIOZeroPTTHandler:
 
 		except Exception as e:
 			print(f"   ✗ Text frame error: {e}")
-
-
-
 
 		# Test regular text frame (no RTP)
 			test_text = "Test text message (no RTP)"
@@ -1409,11 +1209,6 @@ class GPIOZeroPTTHandler:
 				print(f"   ✗ Text frame error: {e}")
 				traceback.print_exc()
 
-
-
-
-
-
 	def test_chat(self):
 		"""Test chat functionality with continuous stream"""
 		print("💬 Testing continuous stream chat system...")
@@ -1435,27 +1230,36 @@ class GPIOZeroPTTHandler:
 		print(f"   Stream running: {stats['running']}")
 		print(f"   Queue status: {stats['queue_status']}")
 
+	def print_stats(self):
+		"""Print transmission statistics"""
+		audio_stats = self.audio_stats
+		net_stats = self.transmitter.get_stats()
 
+		# CHANGE: Get stats from frame transmitter instead of message queue
+		stream_stats = self.audio_frame_manager.get_transmission_stats()
 
+		print(f"\n📊 {self.station_id} Transmission Statistics:")
+		print(f"   Voice frames encoded: {audio_stats['frames_encoded']}")
+		print(f"   Voice frames sent: {audio_stats['frames_sent']}")
+		print(f"   Invalid frames: {audio_stats['invalid_frames']}")
+		print(f"   Total network packets: {net_stats['packets_sent']}")
+		print(f"   Total bytes sent: {net_stats['bytes_sent']}")
+		print(f"   Stream stats: {stream_stats['scheduler_stats']}")
+		print(f"   Queue status: {stream_stats['queue_status']}")
+		print(f"   Stream active: {stream_stats['running']}")
+		print(f"   Encoding errors: {audio_stats['encoding_errors']}")
+		print(f"   Network errors: {net_stats['errors']}")
 
-	def start(self):
-		"""Start the continuous stream system"""
-		if self.audio_input_stream:
-			self.audio_input_stream.start_stream()
+		# Protocol stats (if available)
+		if hasattr(self.protocol, 'get_protocol_stats'):
+			protocol_stats = self.protocol.get_protocol_stats()
+			print(f"   COBS frames encoded: {protocol_stats['cobs']['frames_encoded']}")
+			print(f"   COBS overhead: {protocol_stats['cobs']['avg_overhead_per_frame']:.1f}B/frame")
 
-		# Start chat interface
-		self.chat_interface.start()
-
-		print(f"\n🚀 {self.station_id} Continuous stream system ready")
-		print("📋 Configuration:")
-		print(f"   Station: {self.station_id}")
-		print(f"   Sample rate: {self.sample_rate} Hz")
-		print(f"   Bitrate: {self.bitrate} bps CBR")
-		print(f"   Frame size: {self.frame_duration_ms}ms ({self.samples_per_frame} samples)")
-		print(f"   Frame rate: {1000/self.frame_duration_ms} fps")
-		print(f"   Network target: {self.transmitter.target_ip}:{self.transmitter.target_port}")
-		print(f"   Stream starts automatically when there's activity")
-
+		# Audio success rate
+		if audio_stats['frames_encoded'] > 0:
+			voice_success_rate = (audio_stats['frames_sent'] / audio_stats['frames_encoded']) * 100
+			print(f"   Voice success rate: {voice_success_rate:.1f}%")
 
 	def stop(self):
 		"""Stop the continuous stream system"""
@@ -1466,8 +1270,6 @@ class GPIOZeroPTTHandler:
 			self.audio_input_stream.close()
 		self.audio.terminate()
 		print(f"🛑 {self.station_id} Continuous stream system stopped")
-
-
 
 	def cleanup(self):
 		"""Clean shutdown - FIXED to prevent duplicate cleanup"""
@@ -1492,209 +1294,9 @@ class GPIOZeroPTTHandler:
 		print(f"Thank you for shopping at Omega Mart. {self.station_id} cleanup complete.")
 
 
-
-
-
-
-class MessageReceiver:
-	"""Handles receiving and parsing incoming messages"""
-	def __init__(self, listen_port=57372, chat_interface=None):
-		self.listen_port = listen_port
-		self.chat_interface = chat_interface
-		self.socket = None
-		self.running = False
-		self.receive_thread = None
-
-		# NEW: Simple frame reassembler (no fragmentation headers)
-		self.reassembler = SimpleFrameReassembler()
-
-		# 
-		self.cobs_manager = COBSFrameBoundaryManager()
-
-		# For parsing complete frames
-		self.protocol = OpulentVoiceProtocolWithIP(StationIdentifier("TEMP"))
-
-	# def _process_received_data(self, data, addr):
-	# 	"""
-	# 	Simple receiver processing - no fragmentation headers to worry about
-	# 	"""
-	# 	try:
-	# 		# Step 1: Parse Opulent Voice header
-	# 		if len(data) != 133:  # All frames must be exactly 133 bytes
-	# 			DebugConfig.debug_print(f"⚠ Expected 133-byte frame, got {len(data)}B from {addr}")
-	# 			return
-
-	# 		ov_header = data[:12]
-	# 		frame_payload = data[12:]  # Should be exactly 121 bytes
-
-	# 		# Parse OV header
-	# 		station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
-
-	# 		DebugConfig.debug_print(f"📥 Received 133B frame from {addr}")
-
-	# 		if token != OpulentVoiceProtocolWithIP.TOKEN:
-	# 			DebugConfig.debug_print(f"⚠ Invalid token from {addr}")
-	# 			return  # Invalid frame
-
-	# 		# Step 2: Try to reassemble COBS frame
-	# 		complete_cobs_frame = self.reassembler.add_frame_payload(frame_payload)
-
-	# 		if complete_cobs_frame:
-	# 			DebugConfig.debug_print(f"✅ Reassembled complete COBS frame: {len(complete_cobs_frame)}B")
-
-	# 			# Step 3: COBS decode to get original IP frame
-	# 			try:
-	# 				ip_frame, _ = self.cobs_manager.decode_frame(complete_cobs_frame)
-	# 				DebugConfig.debug_print(f"✅ COBS decoded to IP frame: {len(ip_frame)}B")
-
-	# 				# Step 4: Process the complete IP frame
-	# 				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
-
-	# 			except Exception as e:
-	# 				DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
-	# 		else:
-	# 			DebugConfig.debug_print(f"📝 Frame payload added to buffer...")
-
-	# 	except Exception as e:
-	# 		DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
-
-
-
-	def start(self):
-		"""Start the message receiver"""
-		try:
-			self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			self.socket.bind(('', self.listen_port))
-			self.socket.settimeout(1.0)  # Allow periodic checking of running flag
-
-			self.running = True
-			self.receive_thread = threading.Thread(target=self._receive_loop, daemon=True)
-			self.receive_thread.start()
-
-			print(f"👂 Message receiver listening on port {self.listen_port}")
-
-		except Exception as e:
-			print(f"✗ Failed to start receiver: {e}")
-
-	def stop(self):
-		"""Stop the message receiver"""
-		self.running = False
-		if self.receive_thread:
-			self.receive_thread.join(timeout=2.0)
-		if self.socket:
-			self.socket.close()
-		print("👂 Message receiver stopped")
-
-	def _receive_loop(self):
-		"""Main receive loop"""
-		while self.running:
-			try:
-				data, addr = self.socket.recvfrom(4096)
-				self._process_received_data(data, addr)
-
-			except socket.timeout:
-				continue  # Normal timeout, check running flag
-			except Exception as e:
-				if self.running:  # Only log errors if we're supposed to be running
-					print(f"Receive error: {e}")
-
-
-
-
-
-	def _process_received_data(self, data, addr):
-		"""
-		PAUL'S APPROACH: Much simpler receiver processing!
-		"""
-		try:
-			# Step 1: Parse Opulent Voice header
-			if len(data) < 12:
-				return
-
-			ov_header = data[:12]
-			fragment_payload = data[12:]
-
-			# Parse OV header
-			station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
-
-			if token != OpulentVoiceProtocolWithIP.TOKEN:
-				return  # Invalid frame
-
-			# Step 2: Try to reassemble COBS frames
-			cobs_frames = self.reassembler.add_frame_payload(fragment_payload)
-
-			# Step 3: Process all the reassembled COBS frames
-			for frame in cobs_frames:
-				DebugConfig.debug_print(f"📥 Received COBS frame from {addr}: {len(frame)}B")
-
-				# Step 4: COBS decode to get original IP frame
-				try:
-					ip_frame, _ = self.cobs_manager.decode_frame(frame)
-				except Exception as e:
-					DebugConfig.debug_print(f"✗ COBS decode error from {addr}: {e}")
-					continue
-
-				self._process_complete_ip_frame(ip_frame, station_bytes, addr)
-
-		except Exception as e:
-			DebugConfig.debug_print(f"Error processing received data from {addr}: {e}")
-
-
-	def _process_complete_ip_frame(self, ip_frame, station_bytes, addr):
-		"""
-		Process a complete, decoded IP frame - much simpler now!
-		"""
-		try:
-			# Get station identifier
-			try:
-				from_station = StationIdentifier.from_bytes(station_bytes)
-			except:
-				from_station = f"UNKNOWN-{station_bytes.hex()[:8]}"
-
-			# Parse IP header to get protocol info
-			if len(ip_frame) < 20:
-				return
-
-			# Quick IP header parse to get UDP payload
-			ip_header_length = (ip_frame[0] & 0x0F) * 4
-			if len(ip_frame) < ip_header_length + 8:  # Need at least UDP header
-				return
-
-			udp_payload = ip_frame[ip_header_length + 8:]  # Skip IP + UDP headers
-
-			# Parse UDP header to determine port/type
-			udp_dest_port = struct.unpack('!H', ip_frame[ip_header_length + 2:ip_header_length + 4])[0]
-
-			# Route based on UDP port
-			if udp_dest_port == 57373:  # Voice
-				DebugConfig.debug_print(f"🎤 [{from_station}] Voice: {len(udp_payload)}B")
-			elif udp_dest_port == 57374:  # Text  
-				try:
-					message = udp_payload.decode('utf-8')
-					print(f"\n📨 [{from_station}]: {message}")
-					if self.chat_interface:
-						# Re-display chat prompt
-						print(f"[{self.chat_interface.station_id}] Chat> ", end='', flush=True)
-				except UnicodeDecodeError:
-					print(f"📨 [{from_station}]: <Binary text data: {len(udp_payload)}B>")
-			elif udp_dest_port == 57375:  # Control
-				try:
-					control_msg = udp_payload.decode('utf-8')
-					if not control_msg.startswith('KEEPALIVE'):  # Don't spam with keepalives
-						print(f"📋 [{from_station}] Control: {control_msg}")
-				except UnicodeDecodeError:
-					print(f"📋 [{from_station}] Control: <Binary data: {len(udp_payload)}B>")
-			else:
-				print(f"❓ [{from_station}] Unknown port {udp_dest_port}: {len(udp_payload)}B")
-
-		except Exception as e:
-			DebugConfig.debug_print(f"Error processing IP frame: {e}")
-
-
-
-
-
-
+# ===================================================================
+# UTILITY FUNCTIONS
+# ===================================================================
 
 def test_base40_encoding():
 	"""Test the base-40 encoding/decoding functions"""
@@ -1733,336 +1335,9 @@ def test_base40_encoding():
 
 	print("   🧪 Base-40 encoding tests complete\n")
 
-
-
-
-
 def parse_arguments():
 	"""Enhanced argument parser that works with configuration system"""
 	return create_enhanced_argument_parser()
-
-
-
-
-
-
-
-
-
-
-
-def setup_web_interface_callbacks(radio_system, web_interface):
-	"""Connect radio system callbacks to web interface for real-time updates"""
-	
-	# Store original PTT methods
-	original_ptt_pressed = radio_system.ptt_pressed
-	original_ptt_released = radio_system.ptt_released
-	
-	# Wrap PTT methods to notify web interface
-	async def ptt_pressed_with_web():
-		original_ptt_pressed()
-		await web_interface.on_ptt_state_changed(True)
-	
-	async def ptt_released_with_web():
-		original_ptt_released() 
-		await web_interface.on_ptt_state_changed(False)
-	
-	# Replace methods (note: this is simplified - you may need async handling)
-	radio_system.ptt_pressed = lambda: asyncio.create_task(ptt_pressed_with_web())
-	radio_system.ptt_released = lambda: asyncio.create_task(ptt_released_with_web())
-	
-	# TODO: Add other callbacks as needed
-	# - Message received callbacks
-	# - Status change callbacks
-	# - Audio message callbacks (Phase 2)
-
-
-
-
-
-
-
-
-
-
-
-
-
-def setup_enhanced_reception(radio_system, web_interface=None):
-	"""Setup enhanced message reception with web interface integration"""
-	
-	print("🔄 Setting up enhanced reception with web interface integration...")
-	
-	# Replace the existing receiver with enhanced version
-	enhanced_receiver = integrate_enhanced_receiver(radio_system, web_interface)
-	
-	# Connect web interface callbacks if provided
-	if web_interface:
-		setup_web_reception_callbacks(radio_system, web_interface, enhanced_receiver)
-	
-	print("✅ Enhanced reception setup complete")
-	return enhanced_receiver
-
-def setup_web_reception_callbacks(radio_system, web_interface, receiver):
-	"""Setup callbacks between radio system and web interface for reception"""
-	
-	# Store original methods if they exist
-	original_display = None
-	if (hasattr(radio_system, 'chat_interface') and 
-		hasattr(radio_system.chat_interface, 'display_received_message')):
-		original_display = radio_system.chat_interface.display_received_message
-	
-	# Enhanced display method that also notifies web interface
-	def enhanced_display_received_message(from_station, message):
-		# Call original display for CLI
-		if original_display:
-			original_display(from_station, message)
-		else:
-			print(f"\n📨 [{from_station}]: {message}")
-		
-		# Notify web interface asynchronously
-		def notify_web():
-			try:
-				loop = asyncio.new_event_loop()
-				asyncio.set_event_loop(loop)
-				loop.run_until_complete(web_interface.on_message_received({
-					"content": message,
-					"from": str(from_station),
-					"type": "text",
-					"timestamp": datetime.now().isoformat(),
-					"direction": "incoming"
-				}))
-				loop.close()
-			except Exception as e:
-				print(f"Error notifying web interface: {e}")
-		
-		threading.Thread(target=notify_web, daemon=True).start()
-	
-	# Replace the display method if chat interface exists
-	if hasattr(radio_system, 'chat_interface'):
-		radio_system.chat_interface.display_received_message = enhanced_display_received_message
-		print("✅ Chat interface enhanced for web notifications")
-	
-	print("✅ Web reception callbacks configured")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Usage
-
-
-
-
-# Replace the entire main section in interlocutor.py (starting from "if __name__ == "__main__":") with this:
-
-if __name__ == "__main__":
-	print("-=" * 40)
-	print("Opulent Voice Radio with Terminal Chat")
-	print("-=" * 40)
-
-	try:
-		# Setup configuration system - NOW RETURNS CONFIG MANAGER TOO
-		config, should_exit, config_manager = setup_configuration()
-		
-		if should_exit:
-			sys.exit(0)
-
-		# Set debug mode from configuration
-		DebugConfig.set_mode(verbose=config.debug.verbose, quiet=config.debug.quiet)
-
-		# Handle audio CLI commands FIRST (existing code unchanged)
-		if '--list-audio' in sys.argv:
-			from audio_device_manager import create_audio_manager_for_cli
-			device_manager = create_audio_manager_for_cli()
-			device_manager.list_audio_devices()
-			device_manager.cleanup()
-			sys.exit(0)
-		
-		if '--test-audio' in sys.argv:
-			from audio_device_manager import create_audio_manager_for_cli
-			device_manager = create_audio_manager_for_cli()
-			device_manager.test_audio_devices()
-			device_manager.cleanup()
-			sys.exit(0)
-		
-		if '--setup-audio' in sys.argv:
-			from audio_device_manager import create_audio_manager_for_interactive
-			device_manager = create_audio_manager_for_interactive()
-			device_manager.setup_audio_devices(force_selection=True)
-			device_manager.cleanup()
-			sys.exit(0)
-
-		# Test the base-40 encoding first
-		if config.debug.verbose:
-			test_base40_encoding()
-
-		# Create station identifier from configuration
-		station_id = StationIdentifier(config.callsign)
-
-		DebugConfig.system_print(f"📡 Station: {station_id}")
-		DebugConfig.system_print(f"📡 Target: {config.network.target_ip}:{config.network.target_port}")
-		DebugConfig.system_print(f"👂 Listen: Port {config.network.listen_port}")
-		DebugConfig.system_print(f"🎯 Target Type: {config.protocol.target_type}")
-		if config.debug.verbose:
-			DebugConfig.debug_print("💡 Configuration loaded from file and CLI overrides")
-		DebugConfig.system_print("")
-
-		# Check for web interface mode first
-		if hasattr(config, 'ui') and hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
-			# WEB INTERFACE MODE - FIXED VERSION
-			print("🌐 Starting in web interface mode ...")
-
-			# Initialize radio system
-			radio = GPIOZeroPTTHandler(
-				station_identifier=station_id,
-				config=config
-			)
-
-			# Setup web interface
-			web_interface_instance = initialize_web_interface(radio, config, config_manager)
-	
-			# Setup enhanced reception (this creates and starts the receiver)
-			# enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
-			enhanced_receiver = radio.setup_enhanced_receiver_with_audio()
-			receiver = enhanced_receiver
-
-			# Connect to web interface
-			if web_interface_instance and enhanced_receiver:
-				enhanced_receiver.set_web_interface(web_interface_instance)
-				setup_web_reception_callbacks(radio, web_interface_instance, enhanced_receiver)
-
-	
-			# Connect receiver to radio's chat interface
-			receiver.chat_interface = radio.chat_interface
-	
-			# Start radio system
-			radio.start()
-
-			print("🚀 Web interface starting on http://localhost:8000")
-			print("🌐 Press Ctrl+C to stop the web interface")
-			
-			try:
-				# FIXED: Get the correct host and port from config
-				host = getattr(config.ui, 'web_interface_host', 'localhost')
-				port = getattr(config.ui, 'web_interface_port', 8000)
-				
-				# Run web server (this blocks until Ctrl+C)
-				run_web_server(
-					host=host, 
-					port=port, 
-					radio_system=radio, 
-					config=config
-				)
-			except KeyboardInterrupt:
-				print("\n🛑 Web interface shutting down...")
-			finally:
-				# Clean shutdown of web interface components
-				if 'radio' in locals():
-					radio.cleanup()
-				print("🌐 Web interface stopped")
-			
-			# CRITICAL: Exit here - don't fall through to CLI mode
-			sys.exit(0)
-			
-		elif config.ui.chat_only_mode:
-			# Chat-only mode (existing code unchanged)
-			print("💬 Chat-only mode (no GPIO/audio)")
-			# Create a minimal chat-only system
-			from terminal_chat import TerminalChatSystem
-			chat_system = TerminalChatSystem(station_id, config)
-			receiver.chat_interface = chat_system
-			
-			print(f"✅ {station_id} Chat System Ready!")
-			print("💬 Type messages in terminal")
-			print("⌨️  Press Ctrl+C to exit")
-			
-			try:
-				chat_system.start()
-				while True:
-					time.sleep(0.1)
-			except KeyboardInterrupt:
-				print("\n🛑 Chat system shutting down...")
-				chat_system.stop()
-			
-
-
-
-
-		else:
-			# FULL CLI RADIO MODE
-			print("📻 Starting full radio system with enhanced reception...")
-	
-			# Initialize full radio system
-			radio = GPIOZeroPTTHandler(
-				station_identifier=station_id,
-				config=config
-			)
-
-			# ENHANCED: Setup enhanced reception for CLI mode
-			enhanced_receiver = radio.setup_enhanced_receiver_for_cli()
-			receiver = enhanced_receiver
-	
-			# Connect receiver to chat interface
-			if receiver:
-				receiver.chat_interface = radio.chat_interface
-
-			# Run tests and start
-			radio.test_gpio()
-			radio.test_network()
-			radio.test_chat()
-			radio.start()
-
-			print(f"\n✅ {station_id} Enhanced System Ready!")
-			print("🎤 Press PTT for voice transmission (highest priority)")
-			print("💬 Type chat messages in terminal")
-			print("🎧 Audio reception active for incoming voice")
-			print("📊 Enhanced statistics shown after each PTT release")
-			print("⌨️  Press Ctrl+C to exit")
-
-			# CLI Main loop
-			try:
-				while True:
-					time.sleep(0.1)
-			except KeyboardInterrupt:
-				print("\n🛑 Enhanced CLI radio system shutting down...")
-
-
-
-
-
-	except KeyboardInterrupt:
-		print("\nShutting down...")
-	except Exception as e:
-		print(f"✗ Error: {e}")
-		import traceback
-		traceback.print_exc()
-		sys.exit(1)
-	finally:
-		# Cleanup (this runs regardless of which mode was used)
-		if 'receiver' in locals():
-			receiver.stop()
-		if 'radio' in locals():
-			radio.cleanup()
-		elif 'chat_system' in locals():
-			chat_system.stop()
-
-		print("Thank you for using Opulent Voice!")
-
-
-# Also add this function near the top of the file (after the imports):
 
 def setup_web_interface_callbacks(radio_system, web_interface):
 	"""Connect radio system callbacks to web interface for real-time updates"""
@@ -2136,29 +1411,249 @@ def setup_web_interface_callbacks(radio_system, web_interface):
 		radio_system.ptt_pressed = ptt_pressed_with_web
 		radio_system.ptt_released = ptt_released_with_web
 
+def setup_enhanced_reception(radio_system, web_interface=None):
+	"""Setup enhanced message reception with web interface integration"""
+	
+	print("🔄 Setting up enhanced reception with web interface integration...")
+	
+	# Replace the existing receiver with enhanced version
+	enhanced_receiver = integrate_enhanced_receiver(radio_system, web_interface)
+	
+	# Connect web interface callbacks if provided
+	if web_interface:
+		setup_web_reception_callbacks(radio_system, web_interface, enhanced_receiver)
+	
+	print("✅ Enhanced reception setup complete")
+	return enhanced_receiver
+
+def setup_web_reception_callbacks(radio_system, web_interface, receiver):
+	"""Setup callbacks between radio system and web interface for reception"""
+	
+	# Store original methods if they exist
+	original_display = None
+	if (hasattr(radio_system, 'chat_interface') and 
+		hasattr(radio_system.chat_interface, 'display_received_message')):
+		original_display = radio_system.chat_interface.display_received_message
+	
+	# Enhanced display method that also notifies web interface
+	def enhanced_display_received_message(from_station, message):
+		# Call original display for CLI
+		if original_display:
+			original_display(from_station, message)
+		else:
+			print(f"\n📨 [{from_station}]: {message}")
+		
+		# Notify web interface asynchronously
+		def notify_web():
+			try:
+				loop = asyncio.new_event_loop()
+				asyncio.set_event_loop(loop)
+				loop.run_until_complete(web_interface.on_message_received({
+					"content": message,
+					"from": str(from_station),
+					"type": "text",
+					"timestamp": datetime.now().isoformat(),
+					"direction": "incoming"
+				}))
+				loop.close()
+			except Exception as e:
+				print(f"Error notifying web interface: {e}")
+		
+		threading.Thread(target=notify_web, daemon=True).start()
+	
+	# Replace the display method if chat interface exists
+	if hasattr(radio_system, 'chat_interface'):
+		radio_system.chat_interface.display_received_message = enhanced_display_received_message
+		print("✅ Chat interface enhanced for web notifications")
+	
+	print("✅ Web reception callbacks configured")
 
 
+# ===================================================================
+# MAIN PROGRAM
+# ===================================================================
 
+if __name__ == "__main__":
+	print("-=" * 40)
+	print("Opulent Voice Radio with Terminal Chat")
+	print("-=" * 40)
 
+	try:
+		# Setup configuration system and return config manager
+		config, should_exit, config_manager = setup_configuration()
+		
+		if should_exit:
+			sys.exit(0)
 
+		# Set debug mode from configuration
+		DebugConfig.set_mode(verbose=config.debug.verbose, quiet=config.debug.quiet)
 
+		# Handle audio CLI commands FIRST (existing code unchanged)
+		if '--list-audio' in sys.argv:
+			from audio_device_manager import create_audio_manager_for_cli
+			device_manager = create_audio_manager_for_cli()
+			device_manager.list_audio_devices()
+			device_manager.cleanup()
+			sys.exit(0)
+		
+		if '--test-audio' in sys.argv:
+			from audio_device_manager import create_audio_manager_for_cli
+			device_manager = create_audio_manager_for_cli()
+			device_manager.test_audio_devices()
+			device_manager.cleanup()
+			sys.exit(0)
+		
+		if '--setup-audio' in sys.argv:
+			from audio_device_manager import create_audio_manager_for_interactive
+			device_manager = create_audio_manager_for_interactive()
+			device_manager.setup_audio_devices(force_selection=True)
+			device_manager.cleanup()
+			sys.exit(0)
 
+		# Test the base-40 encoding first
+		if config.debug.verbose:
+			test_base40_encoding()
 
+		# Create station identifier from configuration
+		station_id = StationIdentifier(config.callsign)
 
+		DebugConfig.system_print(f"📡 Station: {station_id}")
+		DebugConfig.system_print(f"📡 Target: {config.network.target_ip}:{config.network.target_port}")
+		DebugConfig.system_print(f"👂 Listen: Port {config.network.listen_port}")
+		DebugConfig.system_print(f"🎯 Target Type: {config.protocol.target_type}")
+		if config.debug.verbose:
+			DebugConfig.debug_print("💡 Configuration loaded from file and CLI overrides")
+		DebugConfig.system_print("")
 
+		# Check for web interface mode first
+		if hasattr(config, 'ui') and hasattr(config.ui, 'web_interface_enabled') and config.ui.web_interface_enabled:
+			# Web Interface Mode
+			print("🌐 Starting in web interface mode ...")
 
+			# Initialize radio system
+			radio = GPIOZeroPTTHandler(
+				station_identifier=station_id,
+				config=config
+			)
 
+			# Setup web interface
+			web_interface_instance = initialize_web_interface(radio, config, config_manager)
+	
+			# Setup enhanced reception (this creates and starts the receiver)
+			# enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
+			enhanced_receiver = radio.setup_enhanced_receiver_with_audio()
+			receiver = enhanced_receiver
 
+			# Connect to web interface
+			if web_interface_instance and enhanced_receiver:
+				enhanced_receiver.set_web_interface(web_interface_instance)
+				setup_web_reception_callbacks(radio, web_interface_instance, enhanced_receiver)
 
+	
+			# Connect receiver to radio's chat interface
+			receiver.chat_interface = radio.chat_interface
+	
+			# Start radio system
+			radio.start()
 
+			print("🚀 Web interface starting on http://localhost:8000")
+			print("🌐 Press Ctrl+C to stop the web interface")
+			
+			try:
+				# FIXED: Get the correct host and port from config
+				host = getattr(config.ui, 'web_interface_host', 'localhost')
+				port = getattr(config.ui, 'web_interface_port', 8000)
+				
+				# Run web server (this blocks until Ctrl+C)
+				run_web_server(
+					host=host,
+					port=port,
+					radio_system=radio,
+					config=config
+				)
+			except KeyboardInterrupt:
+				print("\n🛑 Web interface shutting down...")
+			finally:
+				# Clean shutdown of web interface components
+				if 'radio' in locals():
+					radio.cleanup()
+				print("🌐 Web interface stopped")
+			
+			# CRITICAL: Exit here - don't fall through to CLI mode
+			sys.exit(0)
+			
+		elif config.ui.chat_only_mode:
+			# Chat-only mode (existing code unchanged)
+			print("💬 Chat-only mode (no GPIO/audio)")
+			# Create a minimal chat-only system
+			from terminal_chat import TerminalChatSystem
+			chat_system = TerminalChatSystem(station_id, config)
+			receiver.chat_interface = chat_system
+			
+			print(f"✅ {station_id} Chat System Ready!")
+			print("💬 Type messages in terminal")
+			print("⌨️  Press Ctrl+C to exit")
+			
+			try:
+				chat_system.start()
+				while True:
+					time.sleep(0.1)
+			except KeyboardInterrupt:
+				print("\n🛑 Chat system shutting down...")
+				chat_system.stop()
 
+		else:
+			# FULL CLI RADIO MODE
+			print("📻 Starting full radio system with enhanced reception...")
+	
+			# Initialize full radio system
+			radio = GPIOZeroPTTHandler(
+				station_identifier=station_id,
+				config=config
+			)
 
+			# ENHANCED: Setup enhanced reception for CLI mode
+			enhanced_receiver = radio.setup_enhanced_receiver_for_cli()
+			receiver = enhanced_receiver
+	
+			# Connect receiver to chat interface
+			if receiver:
+				receiver.chat_interface = radio.chat_interface
 
+			# Run tests and start
+			radio.test_gpio()
+			radio.test_network()
+			radio.test_chat()
+			radio.start()
 
+			print(f"\n✅ {station_id} Enhanced System Ready!")
+			print("🎤 Press PTT for voice transmission (highest priority)")
+			print("💬 Type chat messages in terminal")
+			print("🎧 Audio reception active for incoming voice")
+			print("📊 Enhanced statistics shown after each PTT release")
+			print("⌨️  Press Ctrl+C to exit")
 
+			# CLI Main loop
+			try:
+				while True:
+					time.sleep(0.1)
+			except KeyboardInterrupt:
+				print("\n🛑 Enhanced CLI radio system shutting down...")
 
+	except KeyboardInterrupt:
+		print("\nShutting down...")
+	except Exception as e:
+		print(f"✗ Error: {e}")
+		import traceback
+		traceback.print_exc()
+		sys.exit(1)
+	finally:
+		# Cleanup (this runs regardless of which mode was used)
+		if 'receiver' in locals():
+			receiver.stop()
+		if 'radio' in locals():
+			radio.cleanup()
+		elif 'chat_system' in locals():
+			chat_system.stop()
 
-
-
-
-
+		print("Thank you for using Opulent Voice!")
