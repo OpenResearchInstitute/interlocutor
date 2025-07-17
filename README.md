@@ -17,6 +17,22 @@ sudo apt install python3-pyaudio
 
 ### 16 July 2025 Documentation
 
+#### Transmission Grouping in Web Interface is Working
+
+:white_check_mark: Control messages reaching JavaScript (lots of work to fix missing methods! controls were being sent as texts)
+
+:white_check_mark: PTT boundaries detected, so that Opus packets can be grouped.
+
+:white_check_mark: Audio packets grouped into transmissions - this is happening in the web interface (yay!)
+
+:white_check_mark: Single UI bubble per transmission (yay!)
+
+:white_check_mark: Correct packet count and duration calculation
+
+:white_check_mark: Much cleaner UI (one bubble instead of hundreds!)
+
+:no_entry_sign: Not working: audio playback. It acts like it wants to play back the audio, and it takes as long as the audio UI bubble claims it should take, but nothing heard in headphones.
+
 #### ContinuousStreamManager achieves Architectural Nirvana
 
 "The stream was continuous all along. We just had to listen" -Blankus
