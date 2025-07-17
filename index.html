@@ -653,6 +653,925 @@
 				white-space: nowrap;
 			}
 		}
+
+
+
+
+<!-- ENHANCED CSS STYLES FOR NEW LAYOUT -->
+/* Configuration Management Consolidated Styles */
+.config-management-consolidated {
+	background: rgba(255, 255, 255, 0.08);
+	border-radius: 16px;
+	margin-bottom: 2rem;
+	border: 2px solid var(--border-glass);
+}
+
+.config-status-display {
+	background: rgba(0, 0, 0, 0.1);
+	border-radius: 8px;
+	padding: 1rem;
+	margin-bottom: 1.5rem;
+}
+
+.current-file-status {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 1rem;
+}
+
+.status-item {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.status-label {
+	font-size: 0.9rem;
+	color: var(--text-secondary);
+	font-weight: 500;
+}
+
+.status-value {
+	font-family: 'Courier New', monospace;
+	background: rgba(255, 255, 255, 0.1);
+	padding: 0.5rem;
+	border-radius: 4px;
+	font-size: 0.9rem;
+}
+
+.operation-group-title {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--text-primary);
+	margin-bottom: 1rem;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid var(--border-glass);
+}
+
+.config-file-operations {
+	margin-bottom: 2rem;
+}
+
+.operation-group {
+	margin-bottom: 1.5rem;
+	padding: 1rem;
+	background: rgba(255, 255, 255, 0.03);
+	border-radius: 8px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.operation-label {
+	display: block;
+	font-weight: 600;
+	color: var(--text-primary);
+	margin-bottom: 0.5rem;
+}
+
+.operation-controls {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.input-group {
+	display: flex;
+	gap: 0.5rem;
+	align-items: stretch;
+}
+
+.config-filename-input {
+	flex: 1;
+	padding: 0.75rem;
+	border: 2px solid var(--border-glass);
+	border-radius: 8px;
+	background: var(--bg-glass);
+	color: var(--text-primary);
+	font-size: 0.9rem;
+}
+
+.template-select {
+	min-width: 180px;
+	padding: 0.75rem;
+	border: 2px solid var(--border-glass);
+	border-radius: 8px;
+	background: var(--bg-glass);
+	color: var(--text-primary);
+}
+
+.operation-btn {
+	min-width: 100px;
+	padding: 0.75rem 1rem;
+	white-space: nowrap;
+}
+
+.operation-help {
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	font-style: italic;
+	margin-top: 0.25rem;
+}
+
+.config-actions-section {
+	margin-bottom: 2rem;
+}
+
+.action-buttons-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 1rem;
+}
+
+.action-group {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.action-btn {
+	padding: 1rem;
+	height: auto;
+	display: flex;
+	align-items: center;
+	gap: 0.75rem;
+	text-align: left;
+}
+
+.btn-content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.btn-title {
+	font-weight: 600;
+	font-size: 1rem;
+}
+
+.btn-subtitle {
+	font-size: 0.8rem;
+	opacity: 0.8;
+	font-weight: normal;
+}
+
+.action-help {
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	text-align: center;
+}
+
+.config-feedback-section {
+	border-top: 1px solid var(--border-glass);
+	padding-top: 1.5rem;
+}
+
+.config-status-container {
+	background: rgba(0, 0, 0, 0.1);
+	border-radius: 8px;
+	padding: 1rem;
+	position: relative;
+}
+
+.config-status-message {
+	font-size: 0.9rem;
+	color: var(--text-secondary);
+}
+
+.operation-progress {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--accent-color);
+}
+
+.progress-spinner {
+	width: 16px;
+	height: 16px;
+	border: 2px solid var(--border-glass);
+	border-top: 2px solid var(--accent-color);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.progress-text {
+	font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.current-file-status {
+		grid-template-columns: 1fr;
+	}
+	
+	.input-group {
+		flex-direction: column;
+	}
+	
+	.action-buttons-grid {
+		grid-template-columns: 1fr;
+	}
+	
+	.operation-btn {
+		min-width: auto;
+	}
+}
+
+
+
+
+
+
+
+
+/* Form validation error styles */
+.form-error {
+    border-color: var(--error-color) !important;
+    box-shadow: 0 0 10px rgba(244, 67, 54, 0.3) !important;
+}
+
+.error-text {
+    color: var(--error-color) !important;
+    font-weight: 600;
+}
+
+.help-text.error-text {
+    background: rgba(244, 67, 54, 0.1);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+}
+
+
+
+
+
+
+
+
+
+/* Add these CSS styles to your index.html <style> section for reception features */
+
+/* Audio Message Styles */
+.message.audio-message {
+	background: linear-gradient(135deg, rgba(66, 165, 245, 0.1), rgba(66, 165, 245, 0.2));
+	border: 2px solid rgba(66, 165, 245, 0.3);
+	border-radius: 16px;
+	padding: 1rem;
+	margin: 0.5rem 0;
+}
+
+.audio-content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+.audio-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-right: 0.5rem;
+	text-transform: uppercase;
+}
+
+.message.incoming {
+	border-left: 4px solid var(--accent-color);
+	animation: messageSlideIn 0.4s ease;
+}
+
+.message.outgoing {
+	border-right: 4px solid var(--success-color);
+}
+
+@keyframes messageSlideIn {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Reception Statistics */
+.reception-stats {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+	padding: 1rem;
+	margin-top: 1rem;
+}
+
+.reception-stats h4 {
+	margin-bottom: 0.5rem;
+	color: var(--text-primary);
+	font-size: 1rem;
+}
+
+.reception-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: 0.5rem;
+}
+
+.reception-stat-item {
+	text-align: center;
+	padding: 0.5rem;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 6px;
+}
+
+.reception-stat-label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.25rem;
+}
+
+.reception-stat-value {
+	font-size: 1.2rem;
+	font-weight: 600;
+	color: var(--accent-color);
+}
+
+/* Real-time Updates */
+.message-new {
+	animation: messageHighlight 2s ease;
+}
+
+@keyframes messageHighlight {
+	0% { background: rgba(66, 165, 245, 0.3); }
+	100% { background: transparent; }
+}
+
+.audio-message-new .audio-icon {
+	animation: pulseNew 1s ease 3;
+}
+
+@keyframes pulseNew {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.3); }
+}
+
+/* Loading States */
+.audio-loading {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--text-secondary);
+	font-style: italic;
+}
+
+.audio-loading::before {
+	content: '🔄';
+	animation: spin 1s linear infinite;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+	.audio-controls {
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+	
+	.audio-play-btn {
+		width: 100%;
+		justify-content: center;
+	}
+	
+	.audio-controls-panel {
+		padding: 0.75rem;
+	}
+	
+	.control-group {
+		font-size: 0.85rem;
+	}
+	
+	.audio-permission-request {
+		margin: 1rem;
+		max-width: calc(100vw - 2rem);
+	}
+}
+
+/* Dark Mode Enhancements */
+@media (prefers-color-scheme: dark) {
+	.audio-waveform {
+		background: rgba(0, 0, 0, 0.2);
+	}
+	
+	.audio-duration {
+		background: rgba(66, 165, 245, 0.15);
+	}
+	
+	.control-group label {
+		color: rgba(255, 255, 255, 0.7);
+	}
+	
+	.control-group input[type="checkbox"]:checked + label {
+		color: rgba(255, 255, 255, 0.9);
+	}
+}
+
+/* Accessibility Enhancements */
+.audio-play-btn:focus {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
+}
+
+.control-group input[type="checkbox"]:focus {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+	.message.audio-message {
+		border-width: 3px;
+	}
+	
+	.audio-play-btn {
+		border: 2px solid white;
+	}
+	
+	.message-type-indicator {
+		border: 1px solid white;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.audio-icon,
+	.audio-waveform::before,
+	.messageSlideIn,
+	.messageHighlight {
+		animation: none;
+	}
+	
+	.message.incoming {
+		animation: none;
+	}
+}
+
+/* Notification dot for new audio */
+.stat-item.has-new-audio .stat-value::after {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	background: var(--error-color);
+	border-radius: 50%;
+	margin-left: 0.5rem;
+	animation: pulse 1s infinite;
+}
+
+/* Status indicators */
+.connection-status.receiving {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	animation: receivingPulse 1s ease infinite;
+}
+
+@keyframes receivingPulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+
+
+.audio-icon {
+	font-size: 1.2rem;
+	animation: pulse-audio 2s infinite;
+}
+
+@keyframes pulse-audio {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+.audio-from {
+	color: var(--accent-color);
+	font-weight: 600;
+}
+
+.audio-duration {
+	background: rgba(66, 165, 245, 0.2);
+	padding: 0.25rem 0.5rem;
+	border-radius: 12px;
+	font-size: 0.8rem;
+	font-family: 'Courier New', monospace;
+}
+
+.audio-controls {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+}
+
+.audio-play-btn {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	border: none;
+	border-radius: 8px;
+	color: white;
+	padding: 0.5rem 1rem;
+	font-size: 0.9rem;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.audio-play-btn:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+}
+
+.audio-play-btn:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: none;
+}
+
+.audio-waveform {
+	flex: 1;
+	height: 30px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 15px;
+	position: relative;
+	overflow: hidden;
+}
+
+.audio-waveform::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 5px;
+	right: 5px;
+	height: 2px;
+	background: linear-gradient(90deg, 
+		transparent 0%, 
+		var(--accent-color) 20%, 
+		var(--accent-color) 80%, 
+		transparent 100%);
+	transform: translateY(-50%);
+	animation: audio-wave 2s infinite;
+}
+
+@keyframes audio-wave {
+	0%, 100% { opacity: 0.3; transform: translateY(-50%) scaleX(0.8); }
+	50% { opacity: 1; transform: translateY(-50%) scaleX(1.2); }
+}
+
+/* Audio Controls Panel */
+.audio-controls-panel {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 12px;
+	padding: 1rem;
+	margin-bottom: 1rem;
+	border: 1px solid var(--border-glass);
+}
+
+.control-group {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.5rem;
+	padding: 0.25rem 0;
+}
+
+.control-group:last-child {
+	margin-bottom: 0;
+}
+
+.control-group label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+	user-select: none;
+}
+
+.control-group input[type="checkbox"] {
+	accent-color: var(--accent-color);
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+.control-group input[type="checkbox"]:checked + label {
+	color: var(--text-primary);
+}
+
+/* Audio Permission Request */
+.audio-permission-request {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--bg-glass);
+	backdrop-filter: blur(20px);
+	border: 2px solid var(--border-glass);
+	border-radius: 20px;
+	padding: 2rem;
+	z-index: 1000;
+	box-shadow: var(--shadow-main);
+	text-align: center;
+	max-width: 400px;
+	animation: slideInScale 0.3s ease;
+}
+
+@keyframes slideInScale {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+}
+
+.permission-content h3 {
+	margin-bottom: 1rem;
+	color: var(--text-primary);
+	font-size: 1.3rem;
+}
+
+.permission-content p {
+	margin-bottom: 1.5rem;
+	color: var(--text-secondary);
+	line-height: 1.5;
+}
+
+.permission-content .btn {
+	margin: 0 0.5rem;
+}
+
+/* Enhanced Message Styles */
+.message-type-indicator {
+	background: var(--accent-color);
+	color: white;
+	padding: 0.2rem 0.5rem;
+	border-radius: 4px;
+	font-size: 0.7rem;
+	font-weight: 600;
+
+
+
+
+
+
+
+/* Add these enhanced styles to your index.html <style> section for better transmission UI */
+
+/* Enhanced transmission message styling */
+.audio-message .message-type-indicator {
+    background: linear-gradient(45deg, #1976d2, #42a5f5);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.audio-packets {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: 0.5rem;
+}
+
+/* Enhanced waveform visualization */
+.waveform-bars {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+    height: 30px;
+    padding: 0 10px;
+}
+
+.waveform-bars .bar {
+    width: 3px;
+    background: linear-gradient(to top, var(--accent-color), rgba(66, 165, 245, 0.3));
+    border-radius: 2px 2px 0 0;
+    height: 20%;
+    transition: height 0.3s ease;
+    opacity: 0.7;
+}
+
+.waveform-bars .bar:nth-child(odd) {
+    background: linear-gradient(to top, #42a5f5, rgba(66, 165, 245, 0.5));
+}
+
+.waveform-bars .bar:hover {
+    opacity: 1;
+    transform: scaleY(1.1);
+}
+
+/* Transmission metadata styling */
+.transmission-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
+/* Enhanced audio controls */
+.audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.audio-play-btn {
+    background: linear-gradient(45deg, var(--success-color), #43a047);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 140px;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.audio-play-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(45deg, #4caf50, #66bb6a);
+}
+
+.audio-play-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+    background: linear-gradient(45deg, #9e9e9e, #757575);
+}
+
+/* Transmission status indicators */
+.transmission-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.transmission-status.active {
+    border-left-color: var(--warning-color);
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.transmission-status.completed {
+    border-left-color: var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+/* Enhanced message header for transmissions */
+.audio-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.audio-icon {
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    animation: none; /* Remove the pulsing for transmissions */
+}
+
+.audio-from {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.audio-duration {
+    background: linear-gradient(45deg, rgba(66, 165, 245, 0.2), rgba(66, 165, 245, 0.3));
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    border: 1px solid rgba(66, 165, 245, 0.3);
+    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.2);
+}
+
+/* Transmission animation */
+@keyframes transmissionComplete {
+    0% { 
+        background: rgba(76, 175, 80, 0.1);
+        transform: scale(1);
+    }
+    50% { 
+        background: rgba(76, 175, 80, 0.2);
+        transform: scale(1.02);
+    }
+    100% { 
+        background: transparent;
+        transform: scale(1);
+    }
+}
+
+.audio-message.transmission-complete {
+    animation: transmissionComplete 1s ease;
+}
+
+/* Status panel enhancements for transmissions */
+.transmission-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.transmission-stat {
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.transmission-stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.transmission-stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .audio-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    
+    .audio-controls {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .audio-play-btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .waveform-bars {
+        height: 25px;
+    }
+    
+    .transmission-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	</style>
 </head>
 <body>
@@ -763,297 +1682,383 @@
 
 
 
-		<!-- Configuration Panel -->
-		<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
-			<div class="panel-title">
-				<span class="panel-icon">⚙️</span>
-				Configuration Management
+
+
+
+
+
+
+
+<!-- REVISED CONFIGURATION PANEL -->
+<!-- This replaces the existing config-panel section in index.html -->
+
+<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
+	<div class="panel-title">
+		<span class="panel-icon">⚙️</span>
+		Configuration Management
+	</div>
+	
+	<!-- CONSOLIDATED CONFIGURATION MANAGEMENT SECTION -->
+	<div class="config-section config-management-consolidated">
+		<div class="section-header">
+			<span aria-hidden="true">📁</span>
+			Configuration Management
+		</div>
+		
+		<!-- Current Configuration Status -->
+		<div class="config-status-display">
+			<div class="current-file-status">
+				<div class="status-item">
+					<label class="status-label">📄 Current Configuration:</label>
+					<span id="current-config-file" class="status-value">No file loaded</span>
+				</div>
+				<div class="status-item">
+					<label class="status-label">🕒 Last Modified:</label>
+					<span id="config-last-modified" class="status-value">Unknown</span>
+				</div>
 			</div>
+		</div>
+		
+		<!-- File Operations Section -->
+		<div class="config-file-operations">
+			<h4 class="operation-group-title">📂 File Operations</h4>
 			
-			<!-- Configuration File Management Section -->
-			<div class="config-section">
-				<div class="section-header">
-					<span aria-hidden="true">📁</span>
-					Configuration Files
-				</div>
-				
-				<div class="config-file-info" id="config-file-info">
-					<div class="current-file">
-						<label>Current Configuration File:</label>
-						<span id="current-config-file">No file loaded</span>
-					</div>
-				</div>
-				
-				<div class="config-file-actions">
-					<div class="file-action-group">
-						<label for="config-filename">File Name (optional):</label>
+			<!-- Load Configuration -->
+			<div class="operation-group">
+				<label class="operation-label">Load Configuration</label>
+				<div class="operation-controls">
+					<div class="input-group">
 						<input type="text" 
-							   id="config-filename" 
+							   id="load-config-filename" 
 							   placeholder="Leave empty for auto-discovery"
-							   class="config-filename-input">
-					</div>
-					
-					<div class="button-group config-file-buttons">
-						<button class="btn btn-primary" onclick="loadConfigFile()">
+							   class="config-filename-input"
+							   aria-label="Configuration file to load">
+						<button class="btn btn-primary operation-btn" onclick="loadConfigFile()">
 							<span aria-hidden="true">📂</span>
-							Load Config
+							Load
 						</button>
-						
-						<button class="btn btn-success" onclick="saveConfigFile()">
-							<span aria-hidden="true">💾</span>
-							Save Config
-						</button>
-						
-						<button class="btn" onclick="createConfigFile()">
-							<span aria-hidden="true">📄</span>
-							Create New
-						</button>
-						
-						<button class="btn" onclick="testConnection()">
-							<span aria-hidden="true">🧪</span>
-							Test System
-						</button>
+					</div>
+					<div class="operation-help">
+						Auto-discovery searches: opulent_voice.yaml → config/opulent_voice.yaml → ~/.config/opulent_voice/config.yaml
 					</div>
 				</div>
 			</div>
 			
-			<div class="config-grid">
-				<!-- Station Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">📡</span>
-						Station Settings
-					</div>
-					
-					<div class="form-group">
-						<label for="callsign">Callsign *</label>
+			<!-- Save Configuration -->
+			<div class="operation-group">
+				<label class="operation-label">Save Configuration</label>
+				<div class="operation-controls">
+					<div class="input-group">
 						<input type="text" 
-							   id="callsign" 
-							   placeholder="W1ABC" 
-							   maxlength="10" 
-							   required
-							   aria-describedby="callsign-help">
-						<div id="callsign-help" class="help-text">
-							Amateur radio callsign (A-Z, 0-9, -, /, .)
-						</div>
-					</div>
-				</div>
-
-				<!-- Network Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🌐</span>
-						Network Settings
-					</div>
-					
-					<div class="form-group">
-						<label for="target-ip">Target IP Address</label>
-						<input type="text" 
-							   id="target-ip" 
-							   placeholder="192.168.2.152"
-							   aria-describedby="target-ip-help">
-						<div id="target-ip-help" class="help-text">
-							IP address of target system
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="target-port">Target Port</label>
-						<input type="number" 
-							   id="target-port" 
-							   placeholder="57372" 
-							   min="1" 
-							   max="65535"
-							   aria-describedby="target-port-help">
-						<div id="target-port-help" class="help-text">
-							UDP port for radio communication
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="listen-port">Listen Port</label>
-						<input type="number" 
-							   id="listen-port" 
-							   placeholder="57372" 
-							   min="1" 
-							   max="65535"
-							   aria-describedby="listen-port-help">
-						<div id="listen-port-help" class="help-text">
-							Local port for receiving messages
-						</div>
-					</div>
-				</div>
-
-				<!-- Audio Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🎵</span>
-						Audio Settings
-					</div>
-					
-					<div class="form-group">
-						<label for="sample-rate">Sample Rate (Hz)</label>
-						<select id="sample-rate" aria-describedby="sample-rate-help">
-							<option value="48000">48000 Hz (Recommended)</option>
-							<option value="44100">44100 Hz</option>
-							<option value="96000">96000 Hz</option>
-						</select>
-						<div id="sample-rate-help" class="help-text">
-							Audio sampling frequency
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="frame-duration">Frame Duration (ms)</label>
-						<select id="frame-duration" aria-describedby="frame-duration-help">
-							<option value="40">40 ms (Recommended)</option>
-							<option value="20">20 ms</option>
-							<option value="60">60 ms</option>
-						</select>
-						<div id="frame-duration-help" class="help-text">
-							Audio frame timing
-						</div>
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="prefer-usb" checked>
-						<label for="prefer-usb">Prefer USB Audio Devices</label>
-					</div>
-				</div>
-
-				<!-- Protocol Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🔧</span>
-						Protocol Settings
-					</div>
-					
-					<div class="form-group">
-						<label for="target-type">Target Type</label>
-						<select id="target-type" aria-describedby="target-type-help">
-							<option value="computer">Computer (LAN/Internet)</option>
-							<option value="modem">Modem (SDR/Radio)</option>
-						</select>
-						<div id="target-type-help" class="help-text">
-							Affects keepalive and timeout behavior
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="keepalive-interval">Keepalive Interval (seconds)</label>
-						<input type="number" 
-							   id="keepalive-interval" 
-							   placeholder="2.0" 
-							   min="0.5" 
-							   max="60"
-							   step="0.1"
-							   aria-describedby="keepalive-help">
-						<div id="keepalive-help" class="help-text">
-							Keepalive timing for computer targets
-						</div>
-					</div>
-				</div>
-
-				<!-- GPIO Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🔌</span>
-						GPIO Settings (Raspberry Pi)
-					</div>
-					
-					<div class="form-group">
-						<label for="ptt-pin">PTT GPIO Pin</label>
-						<input type="number" 
-							   id="ptt-pin" 
-							   placeholder="23" 
-							   min="2" 
-							   max="27"
-							   aria-describedby="ptt-pin-help">
-						<div id="ptt-pin-help" class="help-text">
-							GPIO pin for PTT button
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="led-pin">LED GPIO Pin</label>
-						<input type="number" 
-							   id="led-pin" 
-							   placeholder="17" 
-							   min="2" 
-							   max="27"
-							   aria-describedby="led-pin-help">
-						<div id="led-pin-help" class="help-text">
-							GPIO pin for PTT LED indicator
-						</div>
-					</div>
-				</div>
-
-				<!-- Debug Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🐛</span>
-						Debug Settings
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="verbose-mode">
-						<label for="verbose-mode">Verbose Debug Output</label>
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="quiet-mode">
-						<label for="quiet-mode">Quiet Mode (Minimal Output)</label>
-					</div>
-					
-					<div class="form-group">
-						<label for="log-level">Log Level</label>
-						<select id="log-level-config">
-							<option value="DEBUG">Debug (All Messages)</option>
-							<option value="INFO" selected>Info (Normal)</option>
-							<option value="WARNING">Warning (Important Only)</option>
-							<option value="ERROR">Error (Problems Only)</option>
-						</select>
-					</div>
-				</div>
-
-				<!-- Apply/Save Actions -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">💫</span>
-						Apply Changes
-					</div>
-					
-					<div class="button-group">
-						<button class="btn btn-primary" onclick="applyConfig()">
-							<span aria-hidden="true">✅</span>
-							Apply Changes
-						</button>
-						
-						<button class="btn btn-success" onclick="saveCurrentConfig()">
+							   id="save-config-filename" 
+							   placeholder="Leave empty to save to original file"
+							   class="config-filename-input"
+							   aria-label="Configuration file to save to">
+						<button class="btn btn-success operation-btn" onclick="saveConfigFile()">
 							<span aria-hidden="true">💾</span>
-							Save Current Config
-						</button>
-						
-						<button class="btn" onclick="resetToDefaults()">
-							<span aria-hidden="true">🔄</span>
-							Reset to Defaults
+							Save
 						</button>
 					</div>
-					
-					<div class="config-status" id="config-status">
-						Ready to configure system settings
+					<div class="operation-help">
+						Saves current form settings to file. Empty filename saves to original loaded file.
+					</div>
+				</div>
+			</div>
+			
+			<!-- Create New Configuration -->
+			<div class="operation-group">
+				<label class="operation-label">Create New Configuration</label>
+				<div class="operation-controls">
+					<div class="input-group">
+						<input type="text" 
+							   id="create-config-filename" 
+							   placeholder="opulent_voice.yaml"
+							   class="config-filename-input"
+							   aria-label="New configuration filename">
+						<select id="create-config-template" class="template-select" aria-label="Template type">
+							<option value="full">Full Template (with comments)</option>
+							<option value="minimal">Minimal Template</option>
+							<option value="current">Current Form Settings</option>
+						</select>
+						<button class="btn operation-btn" onclick="createConfigFileEnhanced()">
+							<span aria-hidden="true">📄</span>
+							Create
+						</button>
+					</div>
+					<div class="operation-help">
+						Creates a new configuration file. Choose template type or save current form settings.
 					</div>
 				</div>
 			</div>
 		</div>
+		
+		<!-- Configuration Actions Section -->
+		<div class="config-actions-section">
+			<h4 class="operation-group-title">⚙️ Configuration Actions</h4>
+			
+			<div class="action-buttons-grid">
+				<!-- Apply to System -->
+				<div class="action-group">
+					<button class="btn btn-primary action-btn" onclick="applyConfig()">
+						<span aria-hidden="true">✅</span>
+						<div class="btn-content">
+							<div class="btn-title">Apply Changes</div>
+							<div class="btn-subtitle">Update running system</div>
+						</div>
+					</button>
+					<div class="action-help">
+						Applies current form settings to the running radio system (does not save to file)
+					</div>
+				</div>
+				
+				<!-- Test System -->
+				<div class="action-group">
+					<button class="btn action-btn" onclick="testConnection()">
+						<span aria-hidden="true">🧪</span>
+						<div class="btn-content">
+							<div class="btn-title">Test System</div>
+							<div class="btn-subtitle">Validate configuration</div>
+						</div>
+					</button>
+					<div class="action-help">
+						Tests network, audio, GPIO, and validates current form settings
+					</div>
+				</div>
+				
+				<!-- Reset Form -->
+				<div class="action-group">
+					<button class="btn action-btn" onclick="resetToDefaults()">
+						<span aria-hidden="true">🔄</span>
+						<div class="btn-content">
+							<div class="btn-title">Reset Form</div>
+							<div class="btn-subtitle">Restore defaults</div>
+						</div>
+					</button>
+					<div class="action-help">
+						Resets all form fields to default values (does not affect saved files)
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Status and Feedback Section -->
+		<div class="config-feedback-section">
+			<h4 class="operation-group-title">📊 Status</h4>
+			<div class="config-status-container">
+				<div id="config-status" class="config-status-message">
+					Ready to manage configuration files and settings
+				</div>
+				<div id="config-operation-progress" class="operation-progress" style="display: none;">
+					<div class="progress-spinner"></div>
+					<span class="progress-text">Processing...</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<!-- EXISTING CONFIGURATION SECTIONS CONTINUE HERE -->
+	<!-- All the existing config sections (Station, Network, Audio, etc.) remain unchanged -->
+	
+	<div class="config-grid">
+		<!-- Station Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">📡</span>
+				Station Settings
+			</div>
+			
+			<div class="form-group">
+				<label for="callsign">Callsign *</label>
+				<input type="text" 
+					   id="callsign" 
+					   placeholder="W1ABC" 
+					   maxlength="10" 
+					   required
+					   aria-describedby="callsign-help">
+				<div id="callsign-help" class="help-text">
+					Amateur radio callsign (A-Z, 0-9, -, /, .)
+				</div>
+			</div>
+		</div>
 
+		<!-- Network Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">🌐</span>
+				Network Settings
+			</div>
+			
+			<div class="form-group">
+				<label for="target-ip">Target IP Address</label>
+				<input type="text" 
+					   id="target-ip" 
+					   placeholder="192.168.2.152"
+					   aria-describedby="target-ip-help">
+				<div id="target-ip-help" class="help-text">
+					IP address of target system
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label for="target-port">Target Port</label>
+				<input type="number" 
+					   id="target-port" 
+					   placeholder="57372" 
+					   min="1" 
+					   max="65535"
+					   aria-describedby="target-port-help">
+				<div id="target-port-help" class="help-text">
+					UDP port for radio communication
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label for="listen-port">Listen Port</label>
+				<input type="number" 
+					   id="listen-port" 
+					   placeholder="57372" 
+					   min="1" 
+					   max="65535"
+					   aria-describedby="listen-port-help">
+				<div id="listen-port-help" class="help-text">
+					Local port for receiving messages
+				</div>
+			</div>
+		</div>
 
+		<!-- Audio Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">🎵</span>
+				Audio Settings
+			</div>
+			
+			<div class="form-group">
+				<label for="sample-rate">Sample Rate (Hz)</label>
+				<select id="sample-rate" aria-describedby="sample-rate-help">
+					<option value="48000">48000 Hz (Recommended)</option>
+					<option value="44100">44100 Hz</option>
+					<option value="96000">96000 Hz</option>
+				</select>
+				<div id="sample-rate-help" class="help-text">
+					Audio sampling frequency
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label for="frame-duration">Frame Duration (ms)</label>
+				<select id="frame-duration" aria-describedby="frame-duration-help">
+					<option value="40">40 ms (Recommended)</option>
+					<option value="20">20 ms</option>
+					<option value="60">60 ms</option>
+				</select>
+				<div id="frame-duration-help" class="help-text">
+					Audio frame timing
+				</div>
+			</div>
+			
+			<div class="checkbox-group">
+				<input type="checkbox" id="prefer-usb" checked>
+				<label for="prefer-usb">Prefer USB Audio Devices</label>
+			</div>
+		</div>
 
+		<!-- Protocol Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">🔧</span>
+				Protocol Settings
+			</div>
+			
+			<div class="form-group">
+				<label for="target-type">Target Type</label>
+				<select id="target-type" aria-describedby="target-type-help">
+					<option value="computer">Computer (LAN/Internet)</option>
+					<option value="modem">Modem (SDR/Radio)</option>
+				</select>
+				<div id="target-type-help" class="help-text">
+					Affects keepalive and timeout behavior
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label for="keepalive-interval">Keepalive Interval (seconds)</label>
+				<input type="number" 
+					   id="keepalive-interval" 
+					   placeholder="2.0" 
+					   min="0.5" 
+					   max="60"
+					   step="0.1"
+					   aria-describedby="keepalive-help">
+				<div id="keepalive-help" class="help-text">
+					Keepalive timing for computer targets
+				</div>
+			</div>
+		</div>
 
+		<!-- GPIO Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">🔌</span>
+				GPIO Settings (Raspberry Pi)
+			</div>
+			
+			<div class="form-group">
+				<label for="ptt-pin">PTT GPIO Pin</label>
+				<input type="number" 
+					   id="ptt-pin" 
+					   placeholder="23" 
+					   min="2" 
+					   max="27"
+					   aria-describedby="ptt-pin-help">
+				<div id="ptt-pin-help" class="help-text">
+					GPIO pin for PTT button
+				</div>
+			</div>
+			
+			<div class="form-group">
+				<label for="led-pin">LED GPIO Pin</label>
+				<input type="number" 
+					   id="led-pin" 
+					   placeholder="17" 
+					   min="2" 
+					   max="27"
+					   aria-describedby="led-pin-help">
+				<div id="led-pin-help" class="help-text">
+					GPIO pin for PTT LED indicator
+				</div>
+			</div>
+		</div>
 
-
-
-
+		<!-- Debug Configuration -->
+		<div class="config-section">
+			<div class="section-header">
+				<span aria-hidden="true">🐛</span>
+				Debug Settings
+			</div>
+			
+			<div class="checkbox-group">
+				<input type="checkbox" id="verbose-mode">
+				<label for="verbose-mode">Verbose Debug Output</label>
+			</div>
+			
+			<div class="checkbox-group">
+				<input type="checkbox" id="quiet-mode">
+				<label for="quiet-mode">Quiet Mode (Minimal Output)</label>
+			</div>
+			
+			<div class="form-group">
+				<label for="log-level">Log Level</label>
+				<select id="log-level-config">
+					<option value="DEBUG">Debug (All Messages)</option>
+					<option value="INFO" selected>Info (Normal)</option>
+					<option value="WARNING">Warning (Important Only)</option>
+					<option value="ERROR">Error (Problems Only)</option>
+				</select>
+			</div>
+		</div>
+	</div>
+</div>
 
 
 
@@ -1245,78 +2250,86 @@
 			}
 		}
 
-		// Enhanced WebSocket message handling
-		function handleWebSocketMessage(message) {
-			addLogEntry(`Received: ${message.type}`, 'info');
-			
-			switch (message.type) {
-				case 'initial_status':
-					populateStatusFromData(message.data);
-					if (message.data.message_history) {
-						loadMessageHistory(message.data.message_history);
-					}
-					break;
-					
-				case 'current_config':
-					populateConfigFromData(message.data);
-					break;
-					
-				case 'message_received':
-					handleIncomingMessage(message.data);
-					break;
-					
-				case 'message_sent':
-					addLogEntry('Message confirmed sent', 'success');
-					break;
-					
-				case 'message_history':
-					loadMessageHistory(message.data);
-					break;
-					
-				case 'ptt_state_changed':
-					handlePTTStateChange(message.data.active);
-					break;
-					
-				case 'status_update':
-					updateSystemStatus(message.data);
-					break;
-					
-
-
-				case 'config_saved':
-				case 'config_loaded':
-				case 'config_updated':
-					showNotification(message.data.message || 'Operation completed', 'success');
-					if (message.type === 'config_loaded') {
-						loadCurrentConfig();
-					}
-					break;
-					
-				case 'error':
-					showNotification(message.message || 'An error occurred', 'error');
-					addLogEntry(`Error: ${message.message}`, 'error');
-					break;
-					
 
 
 
 
-				case 'config_loaded':
-				case 'config_saved': 
-				case 'config_created':
-				case 'config_not_found':
-				case 'config_validation_warning':
-				case 'connection_test_result':
-					handleEnhancedConfigMessage(message);
-					break;
 
 
 
 
-				default:
-					addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+function handleWebSocketMessage_temp_replace(message) {
+	addLogEntry(`Received: ${message.type}`, 'info');
+	console.log('🔍 MAIN HANDLER DEBUG: Message type:', message.type);
+
+	switch (message.type) {
+		case 'initial_status':
+			populateStatusFromData(message.data);
+			if (message.data.message_history) {
+				loadMessageHistory(message.data.message_history);
 			}
-		}
+			break;
+			
+		case 'current_config':
+			populateConfigFromData(message.data);
+			break;
+			
+		case 'message_received':
+			handleIncomingMessage(message.data);
+			break;
+			
+		case 'message_sent':
+			addLogEntry('Message confirmed sent', 'success');
+			break;
+			
+		case 'message_history':
+			loadMessageHistory(message.data);
+			break;
+			
+		case 'ptt_state_changed':
+			handlePTTStateChange(message.data.active);
+			break;
+			
+		case 'status_update':
+			updateSystemStatus(message.data);
+			break;
+			
+		case 'error':
+			showNotification(message.message || 'An error occurred', 'error');
+			addLogEntry(`Error: ${message.message}`, 'error');
+			break;
+			
+		// CONSOLIDATED: All enhanced config messages go to one handler
+		case 'config_loaded':
+		case 'config_saved':
+		case 'config_updated':
+		case 'config_created':
+		case 'config_not_found':
+		case 'config_validation_warning':
+		case 'connection_test_result':
+		case 'connection_test_with_form_result':
+			console.log('🔍 MAIN HANDLER DEBUG: Routing to handleEnhancedConfigMessage');
+			handleEnhancedConfigMessage(message);
+			break;
+			
+		default:
+			console.log('🔍 MAIN HANDLER DEBUG: Unknown message type, going to default');
+			addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// Tab switching functionality
 		function switchTab(tabName) {
@@ -1728,8 +2741,32 @@
 				`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 		}
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		// Event listeners
 		document.addEventListener('DOMContentLoaded', function() {
+
+			initializeReceptionFeatures();
 			// Message form handling
 			const messageForm = document.getElementById('message-form');
 			const messageInput = document.getElementById('message-input');
@@ -1810,8 +2847,73 @@
 
 			// Initialize connection
 			addLogEntry('Starting Opulent Voice Web Interface', 'info');
-			connectWebSocket();
+			connectWebSocketEnhanced();
 		});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// Handle page visibility for WebSocket reconnection
 		document.addEventListener('visibilitychange', function() {
@@ -1821,7 +2923,490 @@
 			}
 		});
 
-		// Make functions globally available for debugging
+
+
+
+
+
+
+
+
+
+	// ========================================
+	// ADDED THESE AUDIO RECEPTION FUNCTIONS
+	// Inserted before the "Make functions globally available" section
+	// ========================================
+
+	// Global audio context for web audio
+	let audioContext = null;
+	let audioQueue = [];
+	let isPlayingAudio = false;
+
+	// Initialize Web Audio API
+	function initializeWebAudio() {
+		try {
+			// Create audio context (user interaction required)
+			audioContext = new (window.AudioContext || window.webkitAudioContext)();
+			addLogEntry('Web Audio initialized', 'success');
+			return true;
+		} catch (error) {
+			addLogEntry(`Web Audio initialization failed: ${error.message}`, 'error');
+			return false;
+		}
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Handle received audio notifications
+	function handleReceivedAudio_temp_replaced_with_debug(audioData) {
+		console.log('🎤 Audio received:', audioData);
+		
+		// Ensure audio context is initialized
+		if (!audioContext) {
+			// Request user to click for audio permission
+			showAudioPermissionRequest();
+			return;
+		}
+		
+		// Add audio indicator to chat
+		addAudioIndicatorToChat(audioData);
+		
+		// Update statistics
+		updateAudioReceptionStats(audioData);
+		
+		// Attempt to play audio if enabled
+		if (document.getElementById('auto-play-audio')?.checked) {
+			requestAudioPlayback(audioData.audio_id);
+		}
+		
+		addLogEntry(`Audio received from ${audioData.from_station}: ${audioData.duration_ms}ms`, 'info');
+		
+		// Show notification
+		showNotification(`🎤 Audio from ${audioData.from_station}`, 'info');
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	// Add visual indicator for received audio in chat
+	function addAudioIndicatorToChat(audioData) {
+		const messageHistory = document.getElementById('message-history');
+		
+		// Create audio message element
+		const audioMessage = document.createElement('div');
+		audioMessage.className = 'message incoming audio-message message-new';
+		audioMessage.setAttribute('data-audio-id', audioData.audio_id);
+		audioMessage.innerHTML = `
+			<div class="audio-content">
+				<div class="audio-header">
+					<span class="audio-icon">🎤</span>
+					<span class="message-type-indicator">VOICE</span>
+					<span class="audio-from">${audioData.from_station}</span>
+					<span class="audio-duration">${audioData.duration_ms}ms</span>
+				</div>
+				<div class="audio-controls">
+					<button class="audio-play-btn" onclick="playReceivedAudio('${audioData.audio_id}')">
+						▶️ Play Audio
+					</button>
+					<div class="audio-waveform"></div>
+				</div>
+			</div>
+			<div class="message-meta">
+				<span>${audioData.from_station}</span>
+				<span>${new Date(audioData.timestamp).toLocaleTimeString()}</span>
+			</div>
+		`;
+		
+		messageHistory.appendChild(audioMessage);
+		scrollToBottom(messageHistory);
+		
+		// Animate appearance
+		audioMessage.style.opacity = '0';
+		audioMessage.style.transform = 'translateY(20px)';
+		setTimeout(() => {
+			audioMessage.style.transition = 'all 0.3s ease';
+			audioMessage.style.opacity = '1';
+			audioMessage.style.transform = 'translateY(0)';
+		}, 10);
+		
+		// Remove the 'new' animation class after animation
+		setTimeout(() => {
+			audioMessage.classList.remove('message-new');
+		}, 2000);
+	}
+
+
+	// Request audio playback from server
+	function requestAudioPlayback(audioId) {
+		if (!audioId) return;
+		
+		addLogEntry(`Requesting audio playback: ${audioId}`, 'info');
+		sendWebSocketMessage('request_audio_playback', { audio_id: audioId });
+	}
+
+	// Play received audio (called by button click)
+	function playReceivedAudio(audioId) {
+		if (!audioContext) {
+			if (initializeWebAudio()) {
+				// Retry after initialization
+				setTimeout(() => playReceivedAudio(audioId), 100);
+			}
+			return;
+		}
+		
+		requestAudioPlayback(audioId);
+	}
+
+	// Handle audio playback data from server
+	function handleAudioPlaybackData(audioData) {
+		console.log('🎵 Audio playback data:', audioData);
+		
+		// Find the audio message element
+		const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
+		if (audioElement) {
+			const playButton = audioElement.querySelector('.audio-play-btn');
+			if (playButton) {
+				playButton.textContent = '⏸️ Playing...';
+				playButton.disabled = true;
+				
+				// Re-enable after estimated duration
+				setTimeout(() => {
+					playButton.textContent = '▶️ Play Audio';
+					playButton.disabled = false;
+				}, audioData.duration_ms || 2000);
+			}
+		}
+		
+		// Note: Actual audio data streaming would require additional implementation
+		// For now, we'll show a visual indication that audio is "playing"
+		showNotification(`Playing audio from ${audioData.from_station}`, 'info');
+		addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
+	}
+
+	// Handle audio stream data
+	function handleAudioStreamData(streamData) {
+		console.log('🔊 Audio stream data:', streamData);
+		
+		if (streamData.audio_available && streamData.packets > 0) {
+			addLogEntry(`Audio stream: ${streamData.packets} packets available`, 'info');
+			
+			// Request audio stream periodically if enabled
+			if (document.getElementById('enable-audio-streaming')?.checked) {
+				setTimeout(() => {
+					sendWebSocketMessage('get_audio_stream');
+				}, 100);
+			}
+		}
+	}
+
+	// Show audio permission request
+	function showAudioPermissionRequest() {
+		const existingRequest = document.getElementById('audio-permission-request');
+		if (existingRequest) return;
+		
+		const permissionDiv = document.createElement('div');
+		permissionDiv.id = 'audio-permission-request';
+		permissionDiv.className = 'audio-permission-request';
+		permissionDiv.innerHTML = `
+			<div class="permission-content">
+				<h3>🎤 Audio Reception Available</h3>
+				<p>Click to enable audio playback for received voice messages</p>
+				<button onclick="enableAudioReception()" class="btn btn-primary">
+					Enable Audio
+				</button>
+				<button onclick="dismissAudioRequest()" class="btn">
+					Not Now
+				</button>
+			</div>
+		`;
+		
+		document.body.appendChild(permissionDiv);
+	}
+
+	// Enable audio reception
+	function enableAudioReception() {
+		if (initializeWebAudio()) {
+			showNotification('Audio reception enabled', 'success');
+			dismissAudioRequest();
+			
+			// Request any pending audio
+			sendWebSocketMessage('get_audio_stream');
+		} else {
+			showNotification('Failed to enable audio - check browser permissions', 'error');
+		}
+	}
+
+	// Dismiss audio permission request
+	function dismissAudioRequest() {
+		const request = document.getElementById('audio-permission-request');
+		if (request) {
+			request.remove();
+		}
+	}
+
+	// Update reception statistics
+	function updateReceptionStats(stats) {
+		console.log('📊 Reception stats:', stats);
+		
+		// Update counters
+		if (stats.receiver_stats) {
+			const receiverStats = stats.receiver_stats;
+			
+			// Update existing stats or create new display
+			updateStatDisplay('audio-packets-received', receiverStats.audio_packets || 0);
+			updateStatDisplay('text-packets-received', receiverStats.text_packets || 0);
+			updateStatDisplay('total-packets-received', receiverStats.total_packets || 0);
+		}
+		
+		// Update audio message count
+		updateStatDisplay('audio-messages-stored', stats.audio_messages_stored || 0);
+	}
+
+	// Update individual stat display
+	function updateStatDisplay(statId, value) {
+		const statElement = document.getElementById(statId);
+		if (statElement) {
+			statElement.textContent = value;
+			
+			// Add visual feedback for new data
+			statElement.style.background = 'rgba(66, 165, 245, 0.2)';
+			setTimeout(() => {
+				statElement.style.background = '';
+			}, 500);
+		}
+	}
+
+	// Update audio reception statistics
+	function updateAudioReceptionStats(audioData) {
+		// Update audio reception counter
+		const audioCounter = document.getElementById('audio-received-count');
+		if (audioCounter) {
+			const current = parseInt(audioCounter.textContent) || 0;
+			audioCounter.textContent = current + 1;
+			
+			// Add notification dot
+			audioCounter.parentElement.classList.add('has-new-audio');
+			setTimeout(() => {
+				audioCounter.parentElement.classList.remove('has-new-audio');
+			}, 3000);
+		}
+		
+		// Update last received audio info
+		const lastAudioInfo = document.getElementById('last-audio-info');
+		if (lastAudioInfo) {
+			lastAudioInfo.textContent = `${audioData.from_station} (${audioData.duration_ms}ms)`;
+		}
+	}
+
+	// Play notification sound for incoming messages
+	function playNotificationSound() {
+		if (!audioContext || !document.getElementById('enable-message-sounds')?.checked) {
+			return;
+		}
+		
+		try {
+			// Create a simple notification beep
+			const oscillator = audioContext.createOscillator();
+			const gainNode = audioContext.createGain();
+			
+			oscillator.connect(gainNode);
+			gainNode.connect(audioContext.destination);
+			
+			oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+			gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+			gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+			
+			oscillator.start(audioContext.currentTime);
+			oscillator.stop(audioContext.currentTime + 0.2);
+			
+		} catch (error) {
+			console.log('Notification sound failed:', error);
+		}
+	}
+
+	// Initialize reception features when DOM is loaded
+	function initializeReceptionFeatures() {
+		// Add audio controls to the interface
+		addAudioControls();
+		
+		// Add reception statistics display
+		addReceptionStatsDisplay();
+		
+		// Set up audio streaming if enabled
+		setupAudioStreaming();
+		
+		addLogEntry('Reception features initialized', 'info');
+	}
+
+	function addAudioControls() {
+		// Add audio control panel to the interface
+		const chatPanel = document.getElementById('chat-panel');
+		if (chatPanel) {
+			const audioControls = document.createElement('div');
+			audioControls.className = 'audio-controls-panel';
+			audioControls.innerHTML = `
+				<div class="control-group">
+					<input type="checkbox" id="auto-play-audio" checked>
+					<label for="auto-play-audio">Auto-play received audio</label>
+				</div>
+				<div class="control-group">
+					<input type="checkbox" id="enable-message-sounds" checked>
+					<label for="enable-message-sounds">Message notification sounds</label>
+				</div>
+				<div class="control-group">
+					<input type="checkbox" id="enable-audio-streaming">
+					<label for="enable-audio-streaming">Real-time audio streaming</label>
+				</div>
+			`;
+			
+			// Insert before chat container
+			const chatContainer = chatPanel.querySelector('.chat-container');
+			chatPanel.insertBefore(audioControls, chatContainer);
+		}
+	}
+
+	function addReceptionStatsDisplay() {
+		// Add reception stats to the status panel
+		const statusPanel = document.querySelector('.panel:last-child .status-grid');
+		if (statusPanel) {
+			const receptionStats = document.createElement('div');
+			receptionStats.className = 'stat-item';
+			receptionStats.innerHTML = `
+				<span class="stat-label">Audio Received</span>
+				<span id="audio-received-count" class="stat-value">0</span>
+			`;
+			statusPanel.appendChild(receptionStats);
+			
+			const lastAudioStat = document.createElement('div');
+			lastAudioStat.className = 'stat-item';
+			lastAudioStat.innerHTML = `
+				<span class="stat-label">Last Audio From</span>
+				<span id="last-audio-info" class="stat-value">None</span>
+			`;
+			statusPanel.appendChild(lastAudioStat);
+		}
+	}
+
+	function setupAudioStreaming() {
+		// Set up audio streaming checkbox handler
+		const streamingCheckbox = document.getElementById('enable-audio-streaming');
+		if (streamingCheckbox) {
+			streamingCheckbox.addEventListener('change', function() {
+				if (this.checked) {
+					if (!audioContext && !initializeWebAudio()) {
+						this.checked = false;
+						showNotification('Cannot enable streaming - audio not available', 'error');
+						return;
+					}
+					addLogEntry('Audio streaming enabled', 'info');
+					sendWebSocketMessage('get_audio_stream');
+				} else {
+					addLogEntry('Audio streaming disabled', 'info');
+				}
+			});
+		}
+	}
+
+	// Request browser notification permission
+	function requestNotificationPermission() {
+		if ('Notification' in window && Notification.permission === 'default') {
+			Notification.requestPermission().then(permission => {
+				if (permission === 'granted') {
+					showNotification('Browser notifications enabled', 'success');
+				}
+			});
+		}
+	}
+
+	// Flash browser tab for notifications
+	function flashBrowserTab(message) {
+		const originalTitle = document.title;
+		let isFlashing = false;
+		
+		const flashInterval = setInterval(() => {
+			document.title = isFlashing ? originalTitle : `📨 ${message}`;
+			isFlashing = !isFlashing;
+		}, 1000);
+		
+		// Stop flashing when tab becomes visible or after 10 seconds
+		const stopFlashing = () => {
+			clearInterval(flashInterval);
+			document.title = originalTitle;
+			document.removeEventListener('visibilitychange', stopFlashing);
+		};
+		
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) {
+				stopFlashing();
+			}
+		});
+		
+		setTimeout(stopFlashing, 10000);
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		// ========================================
+		// UPDATE YOUR window.radioInterface OBJECT:
+		// Replace the existing one with this enhanced version:
+		// ========================================
 		window.radioInterface = {
 			connectWebSocket,
 			sendWebSocketMessage,
@@ -1832,8 +3417,14 @@
 			saveConfig,
 			showNotification,
 			addLogEntry,
-			attemptReconnect
-		};
+			attemptReconnect,
+			// New reception functions
+			initializeWebAudio,
+			enableAudioReception,
+			playReceivedAudio,
+			requestAudioPlayback,
+			initializeReceptionFeatures
+			};
 
 
 
@@ -1877,10 +3468,120 @@
 			sendWebSocketMessage('create_config', data);
 		}
 
-		function testConnection() {
-			addLogEntry('Testing system connection...', 'info');
-			sendWebSocketMessage('test_connection');
+
+
+
+
+
+
+
+
+function testConnection() {
+    addLogEntry('Testing system with current form values...', 'info');
+    showOperationProgress('Gathering form data for testing...');
+    
+    try {
+        console.log('🔍 DEBUG: Starting form data gathering...');
+        
+        const formConfig = gatherEnhancedConfigData();
+        console.log('🔍 DEBUG: Form config gathered:', formConfig);
+        console.log('🔍 DEBUG: Form config type:', typeof formConfig);
+        console.log('🔍 DEBUG: Form config keys:', Object.keys(formConfig || {}));
+        
+        // Check specific fields
+        console.log('🔍 DEBUG: Callsign field value:', document.getElementById('callsign')?.value);
+        console.log('🔍 DEBUG: Target IP field value:', document.getElementById('target-ip')?.value);
+        
+        sendWebSocketMessage('test_connection_with_form', {
+            form_config: formConfig,
+            validate_form: true
+        });
+        
+    } catch (error) {
+        console.error('❌ Error in testConnection:', error);
+        updateConfigStatus(`❌ Error: ${error.message}`, 'error');
+        hideOperationProgress();
+    }
+}
+
+
+
+
+
+
+
+
+		// Enhanced test connection that validates form first
+		function testConnection_temporarily_deactivated() {
+			addLogEntry('Testing system with current form values...', 'info');
+			showOperationProgress('Gathering form data for testing...');
+    
+			// First, gather current form values (same as Apply Changes)
+			const formConfig = gatherEnhancedConfigData();
+    
+			// Send both the form data and test request
+			sendWebSocketMessage('test_connection_with_form', {
+				form_config: formConfig,
+				validate_form: true
+			});
 		}
+
+
+
+
+
+// Show form validation results in the UI
+function displayFormValidationResults(validation_results) {
+    const statusEl = document.getElementById('config-status');
+    
+    if (validation_results.valid) {
+        updateConfigStatus('✅ Form validation passed - testing system...', 'info');
+    } else {
+        const errors = validation_results.errors.join(', ');
+        updateConfigStatus(`❌ Form validation failed: ${errors}`, 'error');
+        
+        // Highlight invalid fields if possible
+        highlightInvalidFields(validation_results.field_errors || {});
+    }
+}
+
+// Helper function to highlight invalid form fields
+function highlightInvalidFields(fieldErrors) {
+    // Clear previous error highlighting
+    document.querySelectorAll('.form-error').forEach(el => {
+        el.classList.remove('form-error');
+    });
+    
+    // Highlight fields with errors
+    Object.keys(fieldErrors).forEach(fieldName => {
+        const field = document.getElementById(fieldName);
+        if (field) {
+            field.classList.add('form-error');
+            
+            // Add error message if help text exists
+            const helpText = field.parentElement.querySelector('.help-text');
+            if (helpText) {
+                helpText.textContent = fieldErrors[fieldName];
+                helpText.classList.add('error-text');
+            }
+        }
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		function resetToDefaults() {
 			if (confirm('Reset all configuration to defaults? This will clear the current form.')) {
@@ -2086,68 +3787,1293 @@
 			}
 		}
 
-		// Enhanced WebSocket message handling for new config features
-		function handleEnhancedConfigMessage(message) {
-			switch (message.type) {
-				case 'current_config':
-					populateEnhancedConfigFromData(message.data);
-					break;
-					
-				case 'config_loaded':
-					showNotification(message.data.message, 'success');
-					updateConfigStatus(`Loaded: ${message.data.filename}`);
-					// Refresh the config display
-					loadCurrentConfig();
-					break;
-					
-				case 'config_saved':
-					showNotification(message.data.message, 'success');
-					updateConfigStatus(`Saved: ${message.data.filename}`);
-					break;
-					
-				case 'config_created':
-					showNotification(message.data.message, 'success');
-					updateConfigStatus(`Created: ${message.data.filename}`);
-					// Load the newly created config
-					loadCurrentConfig();
-					break;
-					
-				case 'config_not_found':
-					showNotification('No configuration file found in standard locations', 'warning');
-					updateConfigStatus('No config file found - use Create New');
-					addLogEntry(`Searched paths: ${message.data.searched_paths.join(', ')}`, 'info');
-					break;
-					
-				case 'config_validation_warning':
-					showNotification('Configuration loaded with warnings', 'warning');
-					updateConfigStatus(`Warnings: ${message.data.errors.join(', ')}`);
-					addLogEntry(`Config warnings: ${message.data.errors.join(', ')}`, 'warning');
-					break;
-					
-				case 'connection_test_result':
-					const result = message.data;
-					if (result.success) {
-						showNotification('System test passed', 'success');
-						updateConfigStatus('System test: All components OK');
-					} else {
-						showNotification('System test found issues', 'warning');
-						updateConfigStatus(`System test: ${result.message}`);
-					}
-					
-					// Log detailed results
-					if (result.results) {
-						Object.entries(result.results).forEach(([test, passed]) => {
-							const status = passed ? 'PASS' : 'FAIL';
-							addLogEntry(`Test ${test}: ${status}`, passed ? 'success' : 'warning');
-						});
-					}
-					break;
-			}
-		}
 
-		// Replace the existing populateConfigFromData function with populateEnhancedConfigFromData
-		// Replace the existing gatherConfigData function with gatherEnhancedConfigData
-		// Replace the existing validateConfig function with validateEnhancedConfig
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- ENHANCED JAVASCRIPT FUNCTIONS -->
+// Enhanced create config function with template selection
+function createConfigFileEnhanced() {
+	const filename = document.getElementById('create-config-filename').value.trim() || 'opulent_voice.yaml';
+	const templateType = document.getElementById('create-config-template').value;
+	
+	const data = {
+		filename: filename,
+		template_type: templateType
+	};
+	
+	showOperationProgress('Creating configuration file...');
+	addLogEntry(`Creating new configuration file: ${filename} (${templateType} template)`, 'info');
+	sendWebSocketMessage('create_config', data);
+}
+
+// Enhanced load config function with separate input
+function loadConfigFile() {
+	const filename = document.getElementById('load-config-filename').value.trim();
+	const data = filename ? { filename } : {};
+	
+	showOperationProgress('Loading configuration...');
+	addLogEntry(`Loading configuration${filename ? ` from ${filename}` : ' (auto-discovery)'}...`, 'info');
+	sendWebSocketMessage('load_config', data);
+}
+
+// Enhanced save config function with separate input
+function saveConfigFile() {
+	const filename = document.getElementById('save-config-filename').value.trim();
+	const data = filename ? { filename } : {};
+	
+	showOperationProgress('Saving configuration...');
+	addLogEntry(`Saving configuration${filename ? ` to ${filename}` : ' (auto-location)'}...`, 'info');
+	sendWebSocketMessage('save_config', data);
+}
+
+// Progress indication functions
+function showOperationProgress(message) {
+	const progressEl = document.getElementById('config-operation-progress');
+	const textEl = progressEl.querySelector('.progress-text');
+	textEl.textContent = message;
+	progressEl.style.display = 'flex';
+}
+
+function hideOperationProgress() {
+	const progressEl = document.getElementById('config-operation-progress');
+	progressEl.style.display = 'none';
+}
+
+// Update config status with better formatting
+function updateConfigStatus(message, type = 'info') {
+	const statusEl = document.getElementById('config-status');
+	const timestamp = new Date().toLocaleTimeString();
+	
+	statusEl.textContent = `[${timestamp}] ${message}`;
+	
+	// Add visual feedback based on type
+	statusEl.className = `config-status-message status-${type}`;
+	
+	// Hide progress indicator
+	hideOperationProgress();
+	
+	// Auto-clear after 10 seconds
+	setTimeout(() => {
+		if (statusEl.textContent.includes(timestamp)) {
+			statusEl.textContent = 'Ready to manage configuration files and settings';
+			statusEl.className = 'config-status-message';
+		}
+	}, 10000);
+}
+
+
+
+
+
+
+
+// Enhanced WebSocket message handling for new config features
+function handleEnhancedConfigMessage(message) {
+	console.log('🔍 ENHANCED HANDLER DEBUG: Received message type:', message.type);
+	console.log('🔍 ENHANCED HANDLER DEBUG: Message data:', message.data);
+	
+	switch (message.type) {
+		case 'current_config':
+			console.log('🔍 ENHANCED HANDLER DEBUG: Processing current_config');
+			populateEnhancedConfigFromData(message.data);
+			break;
+			
+		case 'config_loaded':
+			console.log('🔍 ENHANCED HANDLER DEBUG: Processing config_loaded');
+			showNotification(message.data.message, 'success');
+			updateConfigStatus(`Loaded: ${message.data.filename}`);
+			loadCurrentConfig();
+			break;
+			
+		case 'config_saved':
+			console.log('🔍 ENHANCED HANDLER DEBUG: Processing config_saved');
+			showNotification(message.data.message, 'success');
+			updateConfigStatus(`Saved: ${message.data.filename}`);
+			break;
+			
+		case 'connection_test_with_form_result':
+			console.log('🔍 ENHANCED HANDLER DEBUG: Processing connection_test_with_form_result');
+			hideOperationProgress();
+			const formTestResult = message.data;
+			
+			console.log('🔍 ENHANCED HANDLER DEBUG: Form validation valid:', formTestResult.form_validation?.valid);
+			
+			if (formTestResult.form_validation?.valid) {
+				// Form is valid, show system test results
+				const systemStatus = formTestResult.system_test.success ?
+					'System test passed with form values' :
+					`System test issues: ${formTestResult.system_test.message}`;
+				updateConfigStatus(systemStatus, formTestResult.system_test.success ? 'success' : 'warning');
+				
+				console.log('🔍 ENHANCED HANDLER DEBUG: System test success:', formTestResult.system_test.success);
+			} else {
+				// Form validation failed
+				const errors = formTestResult.form_validation.errors.join(', ');
+				updateConfigStatus(`❌ Cannot test - form errors: ${errors}`, 'error');
+				console.log('🔍 ENHANCED HANDLER DEBUG: Form validation failed:', errors);
+			}
+			break;
+			
+		default:
+			console.log('🔍 ENHANCED HANDLER DEBUG: Unknown message type:', message.type);
+	}
+}
+
+
+
+
+
+
+
+// Update display functions
+function updateCurrentConfigFile(filename) {
+	document.getElementById('current-config-file').textContent = filename;
+}
+
+function updateConfigLastModified(timestamp) {
+	document.getElementById('config-last-modified').textContent = timestamp;
+}
+
+// Add status type styles
+const additionalStyles = `
+<style>
+.status-success { color: var(--success-color) !important; }
+.status-warning { color: var(--warning-color) !important; }
+.status-error { color: var(--error-color) !important; }
+.status-info { color: var(--text-secondary) !important; }
+</style>
+`;
+document.head.insertAdjacentHTML('beforeend', additionalStyles);
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Add these functions to your index.html <script> section for reception handling
+
+// Global audio context for web audio caused problems, so we commented them out
+// they are elsewhere !!!
+//let audioContext = null;
+//let audioQueue = [];
+//let isPlayingAudio = false;
+
+// Initialize Web Audio API
+function initializeWebAudio() {
+	try {
+		// Create audio context (user interaction required)
+		audioContext = new (window.AudioContext || window.webkitAudioContext)();
+		addLogEntry('Web Audio initialized', 'success');
+		return true;
+	} catch (error) {
+		addLogEntry(`Web Audio initialization failed: ${error.message}`, 'error');
+		return false;
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//AI!!! 2
+
+// Replace the entire handleWebSocketMessage function and add transmission management
+// Add this to your index.html <script> section:
+
+// Transmission management globals
+let activeTransmissions = new Map(); // stationId -> transmission data
+let completedTransmissions = []; // Array of completed transmissions
+let transmissionTimeoutMs = 3000; // 3 seconds timeout for incomplete transmissions
+let maxTransmissions = 50; // Keep last 50 transmissions
+
+// Enhanced WebSocket message handler with transmission grouping
+function handleWebSocketMessage(message) {
+    console.log('🔍 WebSocket message received:', message.type);
+    addLogEntry(`Received: ${message.type}`, 'info');
+
+    switch (message.type) {
+        case 'initial_status':
+            populateStatusFromData(message.data);
+            if (message.data.message_history) {
+                loadMessageHistory(message.data.message_history);
+            }
+            break;
+            
+        case 'current_config':
+            populateConfigFromData(message.data);
+            break;
+            
+        case 'message_received':
+            handleIncomingMessage(message.data);
+            break;
+            
+        case 'message_sent':
+            addLogEntry('Message confirmed sent', 'success');
+            break;
+            
+        case 'message_history':
+            loadMessageHistory(message.data);
+            break;
+            
+        case 'ptt_state_changed':
+            handlePTTStateChange(message.data.active);
+            break;
+            
+        case 'status_update':
+            updateSystemStatus(message.data);
+            break;
+            
+        case 'error':
+            showNotification(message.message || 'An error occurred', 'error');
+            addLogEntry(`Error: ${message.message}`, 'error');
+            break;
+            
+        // Enhanced config messages
+        case 'config_loaded':
+        case 'config_saved':
+        case 'config_updated':
+        case 'config_created':
+        case 'config_not_found':
+        case 'config_validation_warning':
+        case 'connection_test_result':
+        case 'connection_test_with_form_result':
+            handleEnhancedConfigMessage(message);
+            break;
+            
+        // *** NEW: CONTROL MESSAGE HANDLING FOR PTT BOUNDARIES ***
+        case 'control_received':
+            console.log('🎛️ Control message received:', message.data);
+            handleControlMessage(message.data);
+            break;
+            
+        // *** MODIFIED: AUDIO RECEPTION - Group by transmission ***
+        case 'audio_received':
+            console.log('🎤 Audio packet received:', message.data);
+            handleReceivedAudioPacket(message.data);
+            break;
+            
+        case 'audio_stream_data':
+            handleAudioStreamData(message.data);
+            break;
+            
+        case 'audio_playback_data':
+            handleAudioPlaybackData(message.data);
+            break;
+            
+        case 'reception_stats':
+            updateReceptionStats(message.data);
+            break;
+            
+        default:
+            console.warn('🔍 Unknown message type:', message.type);
+            addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+    }
+}
+
+
+
+
+
+
+// Handle PTT control messages to define transmission boundaries
+function handleControlMessage(controlData) {
+    const stationId = controlData.from;
+    const controlMessage = controlData.content;
+    const timestamp = controlData.timestamp;
+    
+    console.log(`🎛️ JS CONTROL DEBUG: Control received from ${stationId}: ${controlMessage}`);
+    
+    if (controlMessage === 'PTT_START') {
+        console.log(`🎛️ JS CONTROL DEBUG: Starting transmission for ${stationId}`);
+        startNewTransmission(stationId, timestamp);
+    } else if (controlMessage === 'PTT_STOP') {
+        console.log(`🎛️ JS CONTROL DEBUG: Ending transmission for ${stationId}`);
+        endTransmission(stationId, timestamp);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Start a new transmission for a station
+function startNewTransmission(stationId, startTime) {
+    console.log(`🎤 📋 Starting transmission from ${stationId}`);
+    
+    // End any previous incomplete transmission from this station
+    if (activeTransmissions.has(stationId)) {
+        console.log(`⚠️ Force-ending previous incomplete transmission from ${stationId}`);
+        endTransmission(stationId, new Date().toISOString(), true);
+    }
+    
+    const transmission = {
+        stationId: stationId,
+        startTime: startTime,
+        endTime: null,
+        audioPackets: [],
+        totalDuration: 0,
+        firstPacketTime: null,
+        lastPacketTime: null,
+        transmissionId: `tx_${stationId}_${Date.now()}`,
+        incomplete: true,
+        timeoutId: null
+    };
+    
+    activeTransmissions.set(stationId, transmission);
+    addLogEntry(`📡 Transmission started: ${stationId}`, 'success');
+    
+    // Show temporary indicator
+    showNotification(`📻 ${stationId} started transmitting`, 'info');
+}
+
+// End a transmission and create UI bubble
+function endTransmission(stationId, endTime, forced = false) {
+    const transmission = activeTransmissions.get(stationId);
+    if (!transmission) {
+        console.log(`⚠️ Tried to end transmission for ${stationId} but none active`);
+        return;
+    }
+    
+    // Clear timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    transmission.endTime = endTime;
+    transmission.incomplete = false;
+    
+    console.log(`🎤 📋 Ending transmission from ${stationId}:`);
+    console.log(`   Packets: ${transmission.audioPackets.length}`);
+    console.log(`   Duration: ${transmission.totalDuration}ms`);
+    console.log(`   Forced: ${forced}`);
+    
+    // Move to completed transmissions
+    completedTransmissions.push(transmission);
+    activeTransmissions.delete(stationId);
+    
+    // Limit stored transmissions
+    if (completedTransmissions.length > maxTransmissions) {
+        completedTransmissions = completedTransmissions.slice(-maxTransmissions);
+    }
+    
+    // Create UI bubble for the complete transmission
+    if (transmission.audioPackets.length > 0) {
+        createTransmissionUIBubble(transmission);
+        const duration = (transmission.totalDuration / 1000).toFixed(1);
+        addLogEntry(`📻 Transmission completed: ${stationId} (${transmission.audioPackets.length} packets, ${duration}s)`, 'success');
+        showNotification(`📻 ${stationId} transmission complete (${duration}s)`, 'success');
+    } else {
+        console.log(`⚠️ No audio packets in transmission from ${stationId}`);
+        addLogEntry(`⚠️ Empty transmission from ${stationId}`, 'warning');
+    }
+}
+
+// Handle individual audio packets and add to active transmission
+function handleReceivedAudioPacket(audioData) {
+    const stationId = audioData.from_station;
+    
+    console.log(`🎤 Audio packet from ${stationId}: ${audioData.duration_ms}ms`);
+    
+    // Get active transmission
+    let transmission = activeTransmissions.get(stationId);
+    
+    if (!transmission) {
+        // No active transmission - start one automatically (fallback for missing PTT_START)
+        console.log(`🎤 ⚠️ Auto-starting transmission for ${stationId} (no PTT_START received)`);
+        startNewTransmission(stationId, audioData.timestamp);
+        transmission = activeTransmissions.get(stationId);
+    }
+    
+    // Add packet to transmission
+    transmission.audioPackets.push(audioData);
+    transmission.totalDuration += audioData.duration_ms;
+    transmission.lastPacketTime = audioData.timestamp;
+    
+    if (!transmission.firstPacketTime) {
+        transmission.firstPacketTime = audioData.timestamp;
+    }
+    
+    // Reset auto-timeout for this transmission
+    resetTransmissionTimeout(stationId);
+    
+    // Continue real-time audio playback (don't interfere with live audio)
+    playLiveAudio(audioData);
+    
+    console.log(`🎤 Added packet to transmission ${transmission.transmissionId} (${transmission.audioPackets.length} packets, ${transmission.totalDuration}ms total)`);
+}
+
+// Auto-timeout incomplete transmissions (fallback for missing PTT_STOP)
+function resetTransmissionTimeout(stationId) {
+    const transmission = activeTransmissions.get(stationId);
+    if (!transmission) return;
+    
+    // Clear existing timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    // Set new timeout
+    transmission.timeoutId = setTimeout(() => {
+        console.log(`⏰ Auto-ending transmission from ${stationId} (timeout)`);
+        endTransmission(stationId, new Date().toISOString(), true);
+    }, transmissionTimeoutMs);
+}
+
+// Create UI bubble for completed transmission
+function createTransmissionUIBubble(transmission) {
+    const messageHistory = document.getElementById('message-history');
+    
+    const transmissionElement = document.createElement('div');
+    transmissionElement.className = 'message incoming audio-message';
+    transmissionElement.setAttribute('data-transmission-id', transmission.transmissionId);
+    
+    const totalDurationSec = (transmission.totalDuration / 1000).toFixed(1);
+    const packetCount = transmission.audioPackets.length;
+    const startTime = new Date(transmission.startTime).toLocaleTimeString();
+    
+    transmissionElement.innerHTML = `
+        <div class="audio-content">
+            <div class="audio-header">
+                <span class="audio-icon">📻</span>
+                <span class="message-type-indicator">TRANSMISSION</span>
+                <span class="audio-from">${transmission.stationId}</span>
+                <span class="audio-duration">${totalDurationSec}s</span>
+                <span class="audio-packets">(${packetCount} packets)</span>
+            </div>
+            <div class="audio-controls">
+                <button class="audio-play-btn" onclick="playCompleteTransmission('${transmission.transmissionId}')">
+                    ▶️ Play Transmission
+                </button>
+                <div class="audio-waveform">
+                    <div class="waveform-bars">
+                        ${'<div class="bar"></div>'.repeat(Math.min(packetCount, 20))}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="message-meta">
+            <span>${transmission.stationId}</span>
+            <span>${startTime}</span>
+            <span class="transmission-meta">${packetCount} packets • ${totalDurationSec}s</span>
+        </div>
+    `;
+    
+    messageHistory.appendChild(transmissionElement);
+    scrollToBottom(messageHistory);
+    
+    // Animate appearance
+    transmissionElement.style.opacity = '0';
+    transmissionElement.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+        transmissionElement.style.transition = 'all 0.3s ease';
+        transmissionElement.style.opacity = '1';
+        transmissionElement.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Animate waveform bars
+    const bars = transmissionElement.querySelectorAll('.bar');
+    bars.forEach((bar, index) => {
+        const height = Math.random() * 80 + 20; // Random height 20-100%
+        setTimeout(() => {
+            bar.style.height = `${height}%`;
+        }, index * 50);
+    });
+}
+
+// Play back a complete transmission
+function playCompleteTransmission(transmissionId) {
+    const transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
+    if (!transmission) {
+        console.error(`❌ Transmission ${transmissionId} not found`);
+        showNotification('Transmission not found', 'error');
+        return;
+    }
+    
+    console.log(`🎵 Playing transmission ${transmissionId} (${transmission.audioPackets.length} packets)`);
+    
+    // Update button state
+    const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+    if (button) {
+        button.textContent = '⏸️ Playing...';
+        button.disabled = true;
+        
+        // Re-enable after estimated duration
+        setTimeout(() => {
+            button.textContent = '▶️ Play Transmission';
+            button.disabled = false;
+        }, transmission.totalDuration + 500); // Add 500ms buffer
+    }
+    
+    // TODO: Implement actual Opus playback of concatenated packets
+    // For now, request playback of first packet as a demo
+    if (transmission.audioPackets.length > 0) {
+        const firstPacket = transmission.audioPackets[0];
+        if (firstPacket.audio_id) {
+            requestAudioPlayback(firstPacket.audio_id);
+        }
+    }
+    
+    const duration = (transmission.totalDuration / 1000).toFixed(1);
+    showNotification(`🎵 Playing transmission from ${transmission.stationId} (${duration}s)`, 'info');
+    addLogEntry(`Playing transmission: ${transmission.stationId} (${transmission.totalDuration}ms)`, 'info');
+}
+
+// Continue real-time audio (don't interfere with live audio)
+function playLiveAudio(audioData) {
+    // This maintains the existing real-time audio functionality
+    // The live audio stream should continue working as before
+    
+    // Only update statistics, don't create UI bubbles for individual packets
+    updateAudioReceptionStats(audioData);
+    
+    // Continue with existing live audio processing if auto-play is enabled
+    if (document.getElementById('auto-play-audio')?.checked) {
+        // Note: Individual packet playback disabled - only transmission playback now
+        console.log(`🔊 Live audio from ${audioData.from_station} continues playing`);
+    }
+}
+
+// Enhanced status display for transmissions
+function updateTransmissionStats() {
+    const activeCount = activeTransmissions.size;
+    const completedCount = completedTransmissions.length;
+    
+    // Update transmission stats if elements exist
+    const activeElement = document.getElementById('active-transmissions');
+    if (activeElement) {
+        activeElement.textContent = activeCount;
+    }
+    
+    const completedElement = document.getElementById('completed-transmissions');
+    if (completedElement) {
+        completedElement.textContent = completedCount;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Handle received audio notifications
+function handleReceivedAudio(audioData) {
+	console.log('🎤 Audio received:', audioData);
+	
+	// Ensure audio context is initialized
+	if (!audioContext) {
+		// Request user to click for audio permission
+		showAudioPermissionRequest();
+		return;
+	}
+	
+	// Add audio indicator to chat
+	addAudioIndicatorToChat(audioData);
+	
+	// Update statistics
+	updateAudioReceptionStats(audioData);
+	
+	// Attempt to play audio if enabled
+	if (document.getElementById('auto-play-audio')?.checked) {
+		requestAudioPlayback(audioData.audio_id);
+	}
+	
+	addLogEntry(`Audio received from ${audioData.from_station}: ${audioData.duration_ms}ms`, 'info');
+	
+	// Show notification
+	showNotification(`🎤 Audio from ${audioData.from_station}`, 'info');
+}
+
+// Add visual indicator for received audio in chat
+function addAudioIndicatorToChat(audioData) {
+	const messageHistory = document.getElementById('message-history');
+	
+	// Create audio message element
+	const audioMessage = document.createElement('div');
+	audioMessage.className = 'message incoming audio-message';
+	audioMessage.setAttribute('data-audio-id', audioData.audio_id);
+	audioMessage.innerHTML = `
+		<div class="audio-content">
+			<div class="audio-header">
+				<span class="audio-icon">🎤</span>
+				<span class="audio-from">${audioData.from_station}</span>
+				<span class="audio-duration">${audioData.duration_ms}ms</span>
+			</div>
+			<div class="audio-controls">
+				<button class="audio-play-btn" onclick="playReceivedAudio('${audioData.audio_id}')">
+					▶️ Play Audio
+				</button>
+				<div class="audio-waveform"></div>
+			</div>
+		</div>
+		<div class="message-meta">
+			<span>${audioData.from_station}</span>
+			<span>${new Date(audioData.timestamp).toLocaleTimeString()}</span>
+		</div>
+	`;
+	
+	messageHistory.appendChild(audioMessage);
+	scrollToBottom(messageHistory);
+	
+	// Animate appearance
+	audioMessage.style.opacity = '0';
+	audioMessage.style.transform = 'translateY(20px)';
+	setTimeout(() => {
+		audioMessage.style.transition = 'all 0.3s ease';
+		audioMessage.style.opacity = '1';
+		audioMessage.style.transform = 'translateY(0)';
+	}, 10);
+}
+
+// Enhanced message handler with better incoming message display
+function handleIncomingMessageEnhanced(data) {
+	console.log('📨 Enhanced message handler:', data);
+	
+	// Don't display if this is our own message
+	if (data.from === currentStation) {
+		return;
+	}
+	
+	const messageHistory = document.getElementById('message-history');
+	
+	// Create enhanced message element
+	const message = createEnhancedMessageElement(data);
+	messageHistory.appendChild(message);
+	scrollToBottom(messageHistory);
+	
+	// Update statistics
+	messageCount.received++;
+	document.getElementById('messages-received').textContent = messageCount.received;
+	
+	// Enhanced notifications
+	if (Notification.permission === 'granted') {
+		new Notification(`Message from ${data.from}`, {
+			body: data.content.substring(0, 100),
+			icon: '/static/radio-icon.png'
+		});
+	}
+	
+	// Screen reader announcement
+	announceToScreenReader(`New message from ${data.from}: ${data.content}`);
+	
+	// Audio notification (optional)
+	playNotificationSound();
+	
+	// Flash browser tab if not visible
+	if (document.hidden) {
+		flashBrowserTab(`${data.from}: ${data.content.substring(0, 30)}...`);
+	}
+	
+	addLogEntry(`Message received from ${data.from}`, 'info');
+}
+
+// Create enhanced message element with better styling
+function createEnhancedMessageElement(data) {
+	const messageEl = document.createElement('div');
+	messageEl.className = `message ${data.direction || 'incoming'}`;
+	messageEl.setAttribute('role', 'log');
+	messageEl.setAttribute('aria-live', 'polite');
+	messageEl.setAttribute('data-message-id', data.message_id);
+	
+	const contentEl = document.createElement('div');
+	contentEl.className = 'message-content';
+	contentEl.textContent = data.content;
+	
+	// Add message type indicator if not text
+	if (data.type && data.type !== 'text') {
+		const typeIndicator = document.createElement('span');
+		typeIndicator.className = 'message-type-indicator';
+		typeIndicator.textContent = data.type.toUpperCase();
+		contentEl.prepend(typeIndicator);
+	}
+	
+	messageEl.appendChild(contentEl);
+	
+	const metaEl = document.createElement('div');
+	metaEl.className = 'message-meta';
+	
+	const fromEl = document.createElement('span');
+	fromEl.className = 'message-from';
+	fromEl.textContent = data.direction === 'outgoing' ? 'You' : data.from;
+	metaEl.appendChild(fromEl);
+	
+	const timeEl = document.createElement('span');
+	timeEl.className = 'message-time';
+	const date = new Date(data.timestamp);
+	timeEl.textContent = date.toLocaleTimeString();
+	timeEl.setAttribute('title', date.toLocaleString());
+	metaEl.appendChild(timeEl);
+	
+	messageEl.appendChild(metaEl);
+	return messageEl;
+}
+
+// Request audio playback from server
+function requestAudioPlayback(audioId) {
+	if (!audioId) return;
+	
+	addLogEntry(`Requesting audio playback: ${audioId}`, 'info');
+	sendWebSocketMessage('request_audio_playback', { audio_id: audioId });
+}
+
+// Play received audio (called by button click)
+function playReceivedAudio(audioId) {
+	if (!audioContext) {
+		if (initializeWebAudio()) {
+			// Retry after initialization
+			setTimeout(() => playReceivedAudio(audioId), 100);
+		}
+		return;
+	}
+	
+	requestAudioPlayback(audioId);
+}
+
+// Handle audio playback data from server
+function handleAudioPlaybackData(audioData) {
+	console.log('🎵 Audio playback data:', audioData);
+	
+	// Find the audio message element
+	const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
+	if (audioElement) {
+		const playButton = audioElement.querySelector('.audio-play-btn');
+		if (playButton) {
+			playButton.textContent = '⏸️ Playing...';
+			playButton.disabled = true;
+			
+			// Re-enable after estimated duration
+			setTimeout(() => {
+				playButton.textContent = '▶️ Play Audio';
+				playButton.disabled = false;
+			}, audioData.duration_ms || 2000);
+		}
+	}
+	
+	// Note: Actual audio data streaming would require additional implementation
+	// For now, we'll show a visual indication that audio is "playing"
+	showNotification(`Playing audio from ${audioData.from_station}`, 'info');
+	addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
+}
+
+// Handle audio stream data
+function handleAudioStreamData(streamData) {
+	console.log('🔊 Audio stream data:', streamData);
+	
+	if (streamData.audio_available && streamData.packets > 0) {
+		addLogEntry(`Audio stream: ${streamData.packets} packets available`, 'info');
+		
+		// Request audio stream periodically if enabled
+		if (document.getElementById('enable-audio-streaming')?.checked) {
+			setTimeout(() => {
+				sendWebSocketMessage('get_audio_stream');
+			}, 100);
+		}
+	}
+}
+
+// Show audio permission request
+function showAudioPermissionRequest() {
+	const existingRequest = document.getElementById('audio-permission-request');
+	if (existingRequest) return;
+	
+	const permissionDiv = document.createElement('div');
+	permissionDiv.id = 'audio-permission-request';
+	permissionDiv.className = 'audio-permission-request';
+	permissionDiv.innerHTML = `
+		<div class="permission-content">
+			<h3>🎤 Audio Reception Available</h3>
+			<p>Click to enable audio playback for received voice messages</p>
+			<button onclick="enableAudioReception()" class="btn btn-primary">
+				Enable Audio
+			</button>
+			<button onclick="dismissAudioRequest()" class="btn">
+				Not Now
+			</button>
+		</div>
+	`;
+	
+	document.body.appendChild(permissionDiv);
+}
+
+// Enable audio reception
+function enableAudioReception() {
+	if (initializeWebAudio()) {
+		showNotification('Audio reception enabled', 'success');
+		dismissAudioRequest();
+		
+		// Request any pending audio
+		sendWebSocketMessage('get_audio_stream');
+	} else {
+		showNotification('Failed to enable audio - check browser permissions', 'error');
+	}
+}
+
+// Dismiss audio permission request
+function dismissAudioRequest() {
+	const request = document.getElementById('audio-permission-request');
+	if (request) {
+		request.remove();
+	}
+}
+
+// Update reception statistics
+function updateReceptionStats(stats) {
+	console.log('📊 Reception stats:', stats);
+	
+	// Update counters
+	if (stats.receiver_stats) {
+		const receiverStats = stats.receiver_stats;
+		
+		// Update existing stats or create new display
+		updateStatDisplay('audio-packets-received', receiverStats.audio_packets || 0);
+		updateStatDisplay('text-packets-received', receiverStats.text_packets || 0);
+		updateStatDisplay('total-packets-received', receiverStats.total_packets || 0);
+	}
+	
+	// Update audio message count
+	updateStatDisplay('audio-messages-stored', stats.audio_messages_stored || 0);
+}
+
+// Update individual stat display
+function updateStatDisplay(statId, value) {
+	const statElement = document.getElementById(statId);
+	if (statElement) {
+		statElement.textContent = value;
+	}
+}
+
+// Update audio reception statistics
+function updateAudioReceptionStats(audioData) {
+	// Update audio reception counter
+	const audioCounter = document.getElementById('audio-received-count');
+	if (audioCounter) {
+		const current = parseInt(audioCounter.textContent) || 0;
+		audioCounter.textContent = current + 1;
+	}
+	
+	// Update last received audio info
+	const lastAudioInfo = document.getElementById('last-audio-info');
+	if (lastAudioInfo) {
+		lastAudioInfo.textContent = `${audioData.from_station} (${audioData.duration_ms}ms)`;
+	}
+}
+
+// Play notification sound for incoming messages
+function playNotificationSound() {
+	if (!audioContext || !document.getElementById('enable-message-sounds')?.checked) {
+		return;
+	}
+	
+	try {
+		// Create a simple notification beep
+		const oscillator = audioContext.createOscillator();
+		const gainNode = audioContext.createGain();
+		
+		oscillator.connect(gainNode);
+		gainNode.connect(audioContext.destination);
+		
+		oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+		gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+		gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+		
+		oscillator.start(audioContext.currentTime);
+		oscillator.stop(audioContext.currentTime + 0.2);
+		
+	} catch (error) {
+		console.log('Notification sound failed:', error);
+	}
+}
+
+// Flash browser tab for notifications
+function flashBrowserTab(message) {
+	const originalTitle = document.title;
+	let isFlashing = false;
+	
+	const flashInterval = setInterval(() => {
+		document.title = isFlashing ? originalTitle : `📨 ${message}`;
+		isFlashing = !isFlashing;
+	}, 1000);
+	
+	// Stop flashing when tab becomes visible or after 10 seconds
+	const stopFlashing = () => {
+		clearInterval(flashInterval);
+		document.title = originalTitle;
+		document.removeEventListener('visibilitychange', stopFlashing);
+	};
+	
+	document.addEventListener('visibilitychange', () => {
+		if (!document.hidden) {
+			stopFlashing();
+		}
+	});
+	
+	setTimeout(stopFlashing, 10000);
+}
+
+// Request browser notification permission
+function requestNotificationPermission() {
+	if ('Notification' in window && Notification.permission === 'default') {
+		Notification.requestPermission().then(permission => {
+			if (permission === 'granted') {
+				showNotification('Browser notifications enabled', 'success');
+			}
+		});
+	}
+}
+
+// Enhanced connection management with reception features
+function connectWebSocketEnhanced() {
+	// Use existing connectWebSocket but add reception setup
+	console.log("🔍 connectWebSocketEnhanced called!"); // ADD THIS LINE
+	connectWebSocket();
+	
+	// Set up periodic reception stats requests
+	setInterval(() => {
+		if (ws && ws.readyState === WebSocket.OPEN) {
+			sendWebSocketMessage('get_reception_stats');
+		}
+	}, 5000);
+	
+	// Request notification permission
+	setTimeout(requestNotificationPermission, 2000);
+}
+
+
+function initializeReceptionFeatures() {
+	// Add audio controls to the interface
+	addAudioControls();
+	
+	// Add reception statistics display
+	addReceptionStatsDisplay();
+	
+	// Set up audio streaming if enabled
+	setupAudioStreaming();
+	
+	addLogEntry('Reception features initialized', 'info');
+}
+
+function addAudioControls() {
+	// Add audio control panel to the interface
+	const chatPanel = document.getElementById('chat-panel');
+	if (chatPanel) {
+		const audioControls = document.createElement('div');
+		audioControls.className = 'audio-controls-panel';
+		audioControls.innerHTML = `
+			<div class="control-group">
+				<label>
+					<input type="checkbox" id="auto-play-audio" checked>
+					Auto-play received audio
+				</label>
+			</div>
+			<div class="control-group">
+				<label>
+					<input type="checkbox" id="enable-message-sounds" checked>
+					Message notification sounds
+				</label>
+			</div>
+			<div class="control-group">
+				<label>
+					<input type="checkbox" id="enable-audio-streaming">
+					Real-time audio streaming
+				</label>
+			</div>
+		`;
+		
+		// Insert before chat container
+		const chatContainer = chatPanel.querySelector('.chat-container');
+		chatPanel.insertBefore(audioControls, chatContainer);
+	}
+}
+
+function addReceptionStatsDisplay() {
+	// Add reception stats to the status panel
+	const statusPanel = document.querySelector('.panel:last-child .status-grid');
+	if (statusPanel) {
+		const receptionStats = document.createElement('div');
+		receptionStats.className = 'stat-item';
+		receptionStats.innerHTML = `
+			<span class="stat-label">Audio Received</span>
+			<span id="audio-received-count" class="stat-value">0</span>
+		`;
+		statusPanel.appendChild(receptionStats);
+		
+		const lastAudioStat = document.createElement('div');
+		lastAudioStat.className = 'stat-item';
+		lastAudioStat.innerHTML = `
+			<span class="stat-label">Last Audio From</span>
+			<span id="last-audio-info" class="stat-value">None</span>
+		`;
+		statusPanel.appendChild(lastAudioStat);
+	}
+}
+
+function setupAudioStreaming() {
+	// Set up audio streaming checkbox handler
+	const streamingCheckbox = document.getElementById('enable-audio-streaming');
+	if (streamingCheckbox) {
+		streamingCheckbox.addEventListener('change', function() {
+			if (this.checked) {
+				if (!audioContext && !initializeWebAudio()) {
+					this.checked = false;
+					showNotification('Cannot enable streaming - audio not available', 'error');
+					return;
+				}
+				addLogEntry('Audio streaming enabled', 'info');
+				sendWebSocketMessage('get_audio_stream');
+			} else {
+				addLogEntry('Audio streaming disabled', 'info');
+			}
+		});
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Enhanced handleReceivedAudio with debugging
+function handleReceivedAudio(audioData) {
+    console.log('🎤 JS AUDIO DEBUG 3: handleReceivedAudio called');
+    console.log('   Audio data:', audioData);
+    console.log('   From station:', audioData.from_station);
+    console.log('   Duration:', audioData.duration_ms, 'ms');
+    console.log('   Audio ID:', audioData.audio_id);
+    
+    // Check if audio context exists
+    console.log('🎤 JS AUDIO DEBUG 4: Audio context check');
+    console.log('   Audio context:', audioContext ? 'Available' : 'Not initialized');
+    
+    // Ensure audio context is initialized
+    if (!audioContext) {
+        console.log('🎤 JS AUDIO DEBUG 4: Audio context not available, showing permission request');
+        showAudioPermissionRequest();
+        return;
+    }
+    
+    // Add audio indicator to chat
+    console.log('🎤 JS AUDIO DEBUG 5: Adding audio indicator to chat');
+    addAudioIndicatorToChat(audioData);
+    
+    // Update statistics
+    console.log('🎤 JS AUDIO DEBUG 6: Updating audio reception stats');
+    updateAudioReceptionStats(audioData);
+    
+    // Check auto-play setting
+    const autoPlayCheckbox = document.getElementById('auto-play-audio');
+    const autoPlayEnabled = autoPlayCheckbox ? autoPlayCheckbox.checked : false;
+    console.log('🎤 JS AUDIO DEBUG 7: Auto-play check');
+    console.log('   Auto-play checkbox found:', !!autoPlayCheckbox);
+    console.log('   Auto-play enabled:', autoPlayEnabled);
+    
+    // Attempt to play audio if enabled
+    if (autoPlayEnabled) {
+        console.log('🎤 JS AUDIO DEBUG 7: Requesting audio playback');
+        requestAudioPlayback(audioData.audio_id);
+    } else {
+        console.log('🎤 JS AUDIO DEBUG 7: Auto-play disabled, not playing');
+    }
+    
+    addLogEntry(`Audio received from ${audioData.from_station}: ${audioData.duration_ms}ms`, 'info');
+    
+    // Show notification
+    showNotification(`🎤 Audio from ${audioData.from_station}`, 'info');
+    
+    console.log('🎤 JS AUDIO DEBUG 8: handleReceivedAudio complete');
+    console.log('-'.repeat(50));
+}
+
+// Enhanced addAudioIndicatorToChat with debugging
+function addAudioIndicatorToChat(audioData) {
+    console.log('🎤 JS UI DEBUG 1: Adding audio indicator to chat');
+    console.log('   Looking for message-history element');
+    
+    const messageHistory = document.getElementById('message-history');
+    if (!messageHistory) {
+        console.error('🎤 JS UI DEBUG 1: message-history element not found!');
+        return;
+    }
+    
+    console.log('🎤 JS UI DEBUG 1: message-history found, creating audio message');
+    
+    // Create audio message element
+    const audioMessage = document.createElement('div');
+    audioMessage.className = 'message incoming audio-message message-new';
+    audioMessage.setAttribute('data-audio-id', audioData.audio_id);
+    
+    const audioHTML = `
+        <div class="audio-content">
+            <div class="audio-header">
+                <span class="audio-icon">🎤</span>
+                <span class="message-type-indicator">VOICE</span>
+                <span class="audio-from">${audioData.from_station}</span>
+                <span class="audio-duration">${audioData.duration_ms}ms</span>
+            </div>
+            <div class="audio-controls">
+                <button class="audio-play-btn" onclick="playReceivedAudio('${audioData.audio_id}')">
+                    ▶️ Play Audio
+                </button>
+                <div class="audio-waveform"></div>
+            </div>
+        </div>
+        <div class="message-meta">
+            <span>${audioData.from_station}</span>
+            <span>${new Date(audioData.timestamp).toLocaleTimeString()}</span>
+        </div>
+    `;
+    
+    audioMessage.innerHTML = audioHTML;
+    console.log('🎤 JS UI DEBUG 2: Audio message HTML created');
+    
+    try {
+        messageHistory.appendChild(audioMessage);
+        console.log('🎤 JS UI DEBUG 2: Audio message added to DOM');
+        
+        scrollToBottom(messageHistory);
+        console.log('🎤 JS UI DEBUG 2: Scrolled to bottom');
+        
+        // Animate appearance
+        audioMessage.style.opacity = '0';
+        audioMessage.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            audioMessage.style.transition = 'all 0.3s ease';
+            audioMessage.style.opacity = '1';
+            audioMessage.style.transform = 'translateY(0)';
+            console.log('🎤 JS UI DEBUG 3: Animation applied');
+        }, 10);
+        
+        // Remove the 'new' animation class after animation
+        setTimeout(() => {
+            audioMessage.classList.remove('message-new');
+            console.log('🎤 JS UI DEBUG 3: Animation class removed');
+        }, 2000);
+        
+        console.log('🎤 JS UI DEBUG 3: Audio indicator successfully added to chat');
+        
+    } catch (error) {
+        console.error('🎤 JS UI DEBUG ERROR: Failed to add audio indicator:', error);
+    }
+}
+
+
+
+
+
+//END
+//Temporary debug functions
+//Replace handleWebSocketMessage function with the debug version
+//Replace your handleReceivedAudio function with the debug version
+//Add the addAudioIndicatorToChat debug function
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
