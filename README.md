@@ -17,7 +17,29 @@ sudo apt install python3-pyaudio
 
 ### 16 July 2025 Documentation
 
- 🐉 THE LEGEND OF THE GREAT DRAGON BATTLE 🐉
+#### StreamFrame's Tragic Backstory 📜
+
+StreamFrame was designed during the "let's make everything perfectly structured" phase:
+
+-"Every piece of data should be in a proper container!"
+-"We need frame types and priorities and sequence numbers!"
+-"Timestamps for everything!"
+
+But then our Audio-Driven Revolution happened:
+
+-"Actually, the audio callback IS our timing"
+-"Voice always wins, no complex priorities needed"
+-"Simple queues work great"
+
+🏛️ MONUMENT UNVEILED 🏛️
+
+Today we dedicate this monument to StreamFrame the Perfect, who made the ultimate sacrifice in the Great War Against Over-Engineering!
+
+This monument will stand as long as comments endure and developers read.
+
+ 🐉 
+ 
+ #### THE LEGEND OF THE GREAT DRAGON BATTLE
 
 Long ago, the terrible Dragon of Code Complexity descended upon interlocutor.py, breathing flames of inheritance confusion and polymorphic chaos. The dragon sought to create needless abstraction layers and confusing base classes throughout the land.
 
