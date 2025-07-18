@@ -1326,7 +1326,235 @@
 
 
 
+/* Add these enhanced styles to your index.html <style> section for better transmission UI */
 
+/* Enhanced transmission message styling */
+.audio-message .message-type-indicator {
+    background: linear-gradient(45deg, #1976d2, #42a5f5);
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.audio-packets {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 0.2rem 0.5rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-left: 0.5rem;
+}
+
+/* Enhanced waveform visualization */
+.waveform-bars {
+    display: flex;
+    align-items: end;
+    gap: 2px;
+    height: 30px;
+    padding: 0 10px;
+}
+
+.waveform-bars .bar {
+    width: 3px;
+    background: linear-gradient(to top, var(--accent-color), rgba(66, 165, 245, 0.3));
+    border-radius: 2px 2px 0 0;
+    height: 20%;
+    transition: height 0.3s ease;
+    opacity: 0.7;
+}
+
+.waveform-bars .bar:nth-child(odd) {
+    background: linear-gradient(to top, #42a5f5, rgba(66, 165, 245, 0.5));
+}
+
+.waveform-bars .bar:hover {
+    opacity: 1;
+    transform: scaleY(1.1);
+}
+
+/* Transmission metadata styling */
+.transmission-meta {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin-left: 0.5rem;
+}
+
+/* Enhanced audio controls */
+.audio-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.audio-play-btn {
+    background: linear-gradient(45deg, var(--success-color), #43a047);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 140px;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.audio-play-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    background: linear-gradient(45deg, #4caf50, #66bb6a);
+}
+
+.audio-play-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+    background: linear-gradient(45deg, #9e9e9e, #757575);
+}
+
+/* Transmission status indicators */
+.transmission-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent-color);
+}
+
+.transmission-status.active {
+    border-left-color: var(--warning-color);
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.transmission-status.completed {
+    border-left-color: var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+/* Enhanced message header for transmissions */
+.audio-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.audio-icon {
+    font-size: 1.4rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    animation: none; /* Remove the pulsing for transmissions */
+}
+
+.audio-from {
+    color: var(--accent-color);
+    font-weight: 700;
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.audio-duration {
+    background: linear-gradient(45deg, rgba(66, 165, 245, 0.2), rgba(66, 165, 245, 0.3));
+    padding: 0.3rem 0.8rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    border: 1px solid rgba(66, 165, 245, 0.3);
+    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.2);
+}
+
+/* Transmission animation */
+@keyframes transmissionComplete {
+    0% { 
+        background: rgba(76, 175, 80, 0.1);
+        transform: scale(1);
+    }
+    50% { 
+        background: rgba(76, 175, 80, 0.2);
+        transform: scale(1.02);
+    }
+    100% { 
+        background: transparent;
+        transform: scale(1);
+    }
+}
+
+.audio-message.transmission-complete {
+    animation: transmissionComplete 1s ease;
+}
+
+/* Status panel enhancements for transmissions */
+.transmission-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.transmission-stat {
+    text-align: center;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.transmission-stat-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.transmission-stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent-color);
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .audio-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+    }
+    
+    .audio-controls {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .audio-play-btn {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .waveform-bars {
+        height: 25px;
+    }
+    
+    .transmission-stats {
+        grid-template-columns: 1fr;
+    }
+}
 
 
 
@@ -2021,74 +2249,6 @@
 				return false;
 			}
 		}
-
-
-
-
-
-
-
-
-
-function handleWebSocketMessage_temp_replace(message) {
-	addLogEntry(`Received: ${message.type}`, 'info');
-	console.log('🔍 MAIN HANDLER DEBUG: Message type:', message.type);
-
-	switch (message.type) {
-		case 'initial_status':
-			populateStatusFromData(message.data);
-			if (message.data.message_history) {
-				loadMessageHistory(message.data.message_history);
-			}
-			break;
-			
-		case 'current_config':
-			populateConfigFromData(message.data);
-			break;
-			
-		case 'message_received':
-			handleIncomingMessage(message.data);
-			break;
-			
-		case 'message_sent':
-			addLogEntry('Message confirmed sent', 'success');
-			break;
-			
-		case 'message_history':
-			loadMessageHistory(message.data);
-			break;
-			
-		case 'ptt_state_changed':
-			handlePTTStateChange(message.data.active);
-			break;
-			
-		case 'status_update':
-			updateSystemStatus(message.data);
-			break;
-			
-		case 'error':
-			showNotification(message.message || 'An error occurred', 'error');
-			addLogEntry(`Error: ${message.message}`, 'error');
-			break;
-			
-		// CONSOLIDATED: All enhanced config messages go to one handler
-		case 'config_loaded':
-		case 'config_saved':
-		case 'config_updated':
-		case 'config_created':
-		case 'config_not_found':
-		case 'config_validation_warning':
-		case 'connection_test_result':
-		case 'connection_test_with_form_result':
-			console.log('🔍 MAIN HANDLER DEBUG: Routing to handleEnhancedConfigMessage');
-			handleEnhancedConfigMessage(message);
-			break;
-			
-		default:
-			console.log('🔍 MAIN HANDLER DEBUG: Unknown message type, going to default');
-			addLogEntry(`Unknown message type: ${message.type}`, 'warning');
-	}
-}
 
 
 
@@ -2872,31 +3032,16 @@ function handleWebSocketMessage_temp_replace(message) {
 		requestAudioPlayback(audioId);
 	}
 
-	// Handle audio playback data from server
-	function handleAudioPlaybackData(audioData) {
-		console.log('🎵 Audio playback data:', audioData);
-		
-		// Find the audio message element
-		const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
-		if (audioElement) {
-			const playButton = audioElement.querySelector('.audio-play-btn');
-			if (playButton) {
-				playButton.textContent = '⏸️ Playing...';
-				playButton.disabled = true;
-				
-				// Re-enable after estimated duration
-				setTimeout(() => {
-					playButton.textContent = '▶️ Play Audio';
-					playButton.disabled = false;
-				}, audioData.duration_ms || 2000);
-			}
-		}
-		
-		// Note: Actual audio data streaming would require additional implementation
-		// For now, we'll show a visual indication that audio is "playing"
-		showNotification(`Playing audio from ${audioData.from_station}`, 'info');
-		addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
-	}
+	
+
+
+
+
+
+
+
+
+
 
 	// Handle audio stream data
 	function handleAudioStreamData(streamData) {
@@ -3762,86 +3907,519 @@ function initializeWebAudio() {
 
 
 
-	// ========================================
-	// REPLACE YOUR EXISTING handleWebSocketMessage FUNCTION WITH THIS:
-	// ========================================
-	function handleWebSocketMessage(message) {
-		// Enhanced debugging for message handling
-		console.log('🔍 WebSocket message received:', message);
-		addLogEntry(`Received: ${message.type}`, 'info');
 
-		switch (message.type) {
-			case 'initial_status':
-				populateStatusFromData(message.data);
-				if (message.data.message_history) {
-					loadMessageHistory(message.data.message_history);
-				}
-				break;
-				
-			case 'current_config':
-				populateConfigFromData(message.data);
-				break;
-				
-			case 'message_received':
-				handleIncomingMessage(message.data);
-				break;
-				
-			case 'message_sent':
-				addLogEntry('Message confirmed sent', 'success');
-				break;
-				
-			case 'message_history':
-				loadMessageHistory(message.data);
-				break;
-				
-			case 'ptt_state_changed':
-				handlePTTStateChange(message.data.active);
-				break;
-				
-			case 'status_update':
-				updateSystemStatus(message.data);
-				break;
-				
-			case 'error':
-				showNotification(message.message || 'An error occurred', 'error');
-				addLogEntry(`Error: ${message.message}`, 'error');
-				break;
-				
-			// Enhanced config messages
-			case 'config_loaded':
-			case 'config_saved':
-			case 'config_updated':
-			case 'config_created':
-			case 'config_not_found':
-			case 'config_validation_warning':
-			case 'connection_test_result':
-			case 'connection_test_with_form_result':
-				console.log('🔍 Enhanced config message:', message.type);
-				handleEnhancedConfigMessage(message);
-				break;
-				
-			// NEW: Audio reception messages
-			case 'audio_received':
-				handleReceivedAudio(message.data);
-				break;
-				
-			case 'audio_stream_data':
-				handleAudioStreamData(message.data);
-				break;
-				
-			case 'audio_playback_data':
-				handleAudioPlaybackData(message.data);
-				break;
-				
-			case 'reception_stats':
-				updateReceptionStats(message.data);
-				break;
-				
-			default:
-				console.warn('🔍 Unknown message type:', message.type, 'Full message:', message);
-				addLogEntry(`Unknown message type: ${message.type}`, 'warning');
-		}
-	}
+
+
+
+
+
+
+
+
+
+
+
+
+// Transmission management globals
+let activeTransmissions = new Map(); // stationId -> transmission data
+let completedTransmissions = []; // Array of completed transmissions
+let transmissionTimeoutMs = 3000; // 3 seconds timeout for incomplete transmissions
+let maxTransmissions = 50; // Keep last 50 transmissions
+
+// Enhanced WebSocket message handler with transmission grouping
+function handleWebSocketMessage(message) {
+    console.log('🔍 WebSocket message received:', message.type);
+    addLogEntry(`Received: ${message.type}`, 'info');
+
+    switch (message.type) {
+        case 'initial_status':
+            populateStatusFromData(message.data);
+            if (message.data.message_history) {
+                loadMessageHistory(message.data.message_history);
+            }
+            break;
+            
+        case 'current_config':
+            populateConfigFromData(message.data);
+            break;
+            
+        case 'message_received':
+            handleIncomingMessage(message.data);
+            break;
+            
+        case 'message_sent':
+            addLogEntry('Message confirmed sent', 'success');
+            break;
+            
+        case 'message_history':
+            loadMessageHistory(message.data);
+            break;
+            
+        case 'ptt_state_changed':
+            handlePTTStateChange(message.data.active);
+            break;
+            
+        case 'status_update':
+            updateSystemStatus(message.data);
+            break;
+            
+        case 'error':
+            showNotification(message.message || 'An error occurred', 'error');
+            addLogEntry(`Error: ${message.message}`, 'error');
+            break;
+            
+        // Enhanced config messages
+        case 'config_loaded':
+        case 'config_saved':
+        case 'config_updated':
+        case 'config_created':
+        case 'config_not_found':
+        case 'config_validation_warning':
+        case 'connection_test_result':
+        case 'connection_test_with_form_result':
+            handleEnhancedConfigMessage(message);
+            break;
+            
+        // *** NEW: CONTROL MESSAGE HANDLING FOR PTT BOUNDARIES ***
+        case 'control_received':
+            console.log('🎛️ Control message received:', message.data);
+            handleControlMessage(message.data);
+            break;
+            
+        // *** MODIFIED: AUDIO RECEPTION - Group by transmission ***
+        case 'audio_received':
+            console.log('🎤 Audio packet received:', message.data);
+            handleReceivedAudioPacket(message.data);
+            break;
+
+
+        case 'transmission_started':          // ← ADD THIS
+            console.log('📡 TRANSMISSION: Received transmission_started');
+            const startData = message.data;
+            startNewTransmissionFromServer(startData.station_id, startData.start_time, startData.transmission_id);
+            break;
+        
+        case 'transmission_ended':            // ← ADD THIS
+            console.log('📡 TRANSMISSION: Received transmission_ended');
+            const endData = message.data;
+            endTransmissionFromServer(endData.station_id, endData.end_time, endData.transmission_id);
+            break;
+
+
+
+        case 'transmission_audio_data':
+            console.log('🎵 TRANSMISSION AUDIO: Received actual audio data');
+            handleTransmissionAudioData(message.data);
+            break;
+
+            
+        case 'audio_stream_data':
+            handleAudioStreamData(message.data);
+            break;
+            
+        case 'audio_playback_data':
+            console.log('🎵 JS AUDIO PLAYBACK RESPONSE: Server responded with audio data');
+            console.log('   Audio data:', message.data);
+            handleAudioPlaybackData(message.data);
+            break;
+
+
+
+            
+        case 'reception_stats':
+            updateReceptionStats(message.data);
+            break;
+            
+        default:
+            console.warn('🔍 Unknown message type:', message.type);
+            addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+    }
+}
+
+
+
+
+
+
+// Handle PTT control messages to define transmission boundaries
+function handleControlMessage(controlData) {
+    const stationId = controlData.from;
+    const controlMessage = controlData.content;
+    const timestamp = controlData.timestamp;
+    
+    console.log(`🎛️ JS CONTROL DEBUG: Control received from ${stationId}: ${controlMessage}`);
+    
+    if (controlMessage === 'PTT_START') {
+        console.log(`🎛️ JS CONTROL DEBUG: Starting transmission for ${stationId}`);
+        startNewTransmission(stationId, timestamp);
+    } else if (controlMessage === 'PTT_STOP') {
+        console.log(`🎛️ JS CONTROL DEBUG: Ending transmission for ${stationId}`);
+        endTransmission(stationId, timestamp);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Start a new transmission for a station
+function startNewTransmission(stationId, startTime) {
+    console.log(`🎤 📋 Starting transmission from ${stationId}`);
+    
+    // End any previous incomplete transmission from this station
+    if (activeTransmissions.has(stationId)) {
+        console.log(`⚠️ Force-ending previous incomplete transmission from ${stationId}`);
+        endTransmission(stationId, new Date().toISOString(), true);
+    }
+    
+    const transmission = {
+        stationId: stationId,
+        startTime: startTime,
+        endTime: null,
+        audioPackets: [],
+        totalDuration: 0,
+        firstPacketTime: null,
+        lastPacketTime: null,
+        transmissionId: `tx_${stationId}_${Date.now()}`,
+        incomplete: true,
+        timeoutId: null
+    };
+    
+    activeTransmissions.set(stationId, transmission);
+    addLogEntry(`📡 Transmission started: ${stationId}`, 'success');
+    
+    // Show temporary indicator
+    showNotification(`📻 ${stationId} started transmitting`, 'info');
+}
+
+// End a transmission and create UI bubble
+function endTransmission(stationId, endTime, forced = false) {
+    const transmission = activeTransmissions.get(stationId);
+    if (!transmission) {
+        console.log(`⚠️ Tried to end transmission for ${stationId} but none active`);
+        return;
+    }
+    
+    // Clear timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    transmission.endTime = endTime;
+    transmission.incomplete = false;
+    
+    console.log(`🎤 📋 Ending transmission from ${stationId}:`);
+    console.log(`   Packets: ${transmission.audioPackets.length}`);
+    console.log(`   Duration: ${transmission.totalDuration}ms`);
+    console.log(`   Forced: ${forced}`);
+    
+    // Move to completed transmissions
+    completedTransmissions.push(transmission);
+    activeTransmissions.delete(stationId);
+    
+    // Limit stored transmissions
+    if (completedTransmissions.length > maxTransmissions) {
+        completedTransmissions = completedTransmissions.slice(-maxTransmissions);
+    }
+    
+    // Create UI bubble for the complete transmission
+    if (transmission.audioPackets.length > 0) {
+        createTransmissionUIBubble(transmission);
+        const duration = (transmission.totalDuration / 1000).toFixed(1);
+        addLogEntry(`📻 Transmission completed: ${stationId} (${transmission.audioPackets.length} packets, ${duration}s)`, 'success');
+        showNotification(`📻 ${stationId} transmission complete (${duration}s)`, 'success');
+    } else {
+        console.log(`⚠️ No audio packets in transmission from ${stationId}`);
+        addLogEntry(`⚠️ Empty transmission from ${stationId}`, 'warning');
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Handle individual audio packets and add to active transmission
+function handleReceivedAudioPacket(audioData) {
+    const stationId = audioData.from_station;
+    
+    console.log(`🎤 Audio packet from ${stationId}: ${audioData.duration_ms}ms`);
+    
+    // Get active transmission
+    let transmission = activeTransmissions.get(stationId);
+    
+    if (!transmission) {
+        // No active transmission - start one automatically (fallback for missing PTT_START)
+        console.log(`🎤 ⚠️ Auto-starting transmission for ${stationId} (no PTT_START received)`);
+        startNewTransmission(stationId, audioData.timestamp);
+        transmission = activeTransmissions.get(stationId);
+    }
+    
+    // Add packet to transmission
+    transmission.audioPackets.push(audioData);
+    transmission.totalDuration += audioData.duration_ms;
+    transmission.lastPacketTime = audioData.timestamp;
+    
+    if (!transmission.firstPacketTime) {
+        transmission.firstPacketTime = audioData.timestamp;
+    }
+    
+    // Reset auto-timeout for this transmission
+    resetTransmissionTimeout(stationId);
+    
+    // Continue real-time audio playback (don't interfere with live audio)
+    playLiveAudio(audioData);
+    
+    console.log(`🎤 Added packet to transmission ${transmission.transmissionId} (${transmission.audioPackets.length} packets, ${transmission.totalDuration}ms total)`);
+}
+
+
+
+
+
+
+
+
+
+
+
+// Auto-timeout incomplete transmissions (fallback for missing PTT_STOP)
+function resetTransmissionTimeout(stationId) {
+    const transmission = activeTransmissions.get(stationId);
+    if (!transmission) return;
+    
+    // Clear existing timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    // Set new timeout
+    transmission.timeoutId = setTimeout(() => {
+        console.log(`⏰ Auto-ending transmission from ${stationId} (timeout)`);
+        endTransmission(stationId, new Date().toISOString(), true);
+    }, transmissionTimeoutMs);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Create UI bubble for completed transmission
+function createTransmissionUIBubble(transmission) {
+    const messageHistory = document.getElementById('message-history');
+    
+    const transmissionElement = document.createElement('div');
+    transmissionElement.className = 'message incoming audio-message';
+    transmissionElement.setAttribute('data-transmission-id', transmission.transmissionId);
+    
+    const totalDurationSec = (transmission.totalDuration / 1000).toFixed(1);
+    const packetCount = transmission.audioPackets.length;
+    const startTime = new Date(transmission.startTime).toLocaleTimeString();
+    
+    transmissionElement.innerHTML = `
+        <div class="audio-content">
+            <div class="audio-header">
+                <span class="audio-icon">📻</span>
+                <span class="message-type-indicator">TRANSMISSION</span>
+                <span class="audio-from">${transmission.stationId}</span>
+                <span class="audio-duration">${totalDurationSec}s</span>
+                <span class="audio-packets">(${packetCount} packets)</span>
+            </div>
+            <div class="audio-controls">
+                <button class="audio-play-btn" onclick="playCompleteTransmission('${transmission.transmissionId}')">
+                    ▶️ Play Transmission
+                </button>
+                <div class="audio-waveform">
+                    <div class="waveform-bars">
+                        ${'<div class="bar"></div>'.repeat(Math.min(packetCount, 20))}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="message-meta">
+            <span>${transmission.stationId}</span>
+            <span>${startTime}</span>
+            <span class="transmission-meta">${packetCount} packets • ${totalDurationSec}s</span>
+        </div>
+    `;
+    
+    messageHistory.appendChild(transmissionElement);
+    scrollToBottom(messageHistory);
+    
+    // Animate appearance
+    transmissionElement.style.opacity = '0';
+    transmissionElement.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+        transmissionElement.style.transition = 'all 0.3s ease';
+        transmissionElement.style.opacity = '1';
+        transmissionElement.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Animate waveform bars
+    const bars = transmissionElement.querySelectorAll('.bar');
+    bars.forEach((bar, index) => {
+        const height = Math.random() * 80 + 20; // Random height 20-100%
+        setTimeout(() => {
+            bar.style.height = `${height}%`;
+        }, index * 50);
+    });
+}
+
+
+
+
+
+
+
+
+
+// Play back a complete transmission
+function playCompleteTransmission(transmissionId) {
+    const transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
+    if (!transmission) {
+        console.error(`❌ Transmission ${transmissionId} not found`);
+        showNotification('Transmission not found', 'error');
+        return;
+    }
+    
+    console.log(`🎵 TRANSMISSION PLAYBACK DEBUG: Playing transmission ${transmissionId}`);
+    console.log(`   Audio packets: ${transmission.audioPackets.length}`);
+    console.log(`   First packet audio_id: ${transmission.audioPackets[0]?.audio_id}`);
+    console.log(`   Station: ${transmission.stationId}`);
+    console.log(`   Duration: ${transmission.totalDuration}ms`);
+    
+    // Update button state
+    const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+    if (button) {
+        button.textContent = '⏸️ Playing...';
+        button.disabled = true;
+        
+        // Re-enable after estimated duration
+        setTimeout(() => {
+            button.textContent = '▶️ Play Transmission';
+            button.disabled = false;
+        }, transmission.totalDuration + 500); // Add 500ms buffer
+    }
+    
+    // FIXED: Request transmission playback instead of individual packet playback
+    console.log(`🎵 TRANSMISSION PLAYBACK DEBUG: Requesting transmission playback from server`);
+    sendWebSocketMessage('request_transmission_playback', { 
+        transmission_id: transmissionId,
+        station_id: transmission.stationId,
+        start_time: transmission.startTime,
+        duration_ms: transmission.totalDuration
+    });
+    
+    const duration = (transmission.totalDuration / 1000).toFixed(1);
+    showNotification(`🎵 Playing transmission from ${transmission.stationId} (${duration}s)`, 'info');
+    addLogEntry(`Playing transmission: ${transmission.stationId} (${transmission.totalDuration}ms)`, 'info');
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Continue real-time audio (don't interfere with live audio)
+function playLiveAudio(audioData) {
+    // This maintains the existing real-time audio functionality
+    // The live audio stream should continue working as before
+    
+    // Only update statistics, don't create UI bubbles for individual packets
+    updateAudioReceptionStats(audioData);
+    
+    // Continue with existing live audio processing if auto-play is enabled
+    if (document.getElementById('auto-play-audio')?.checked) {
+        // Note: Individual packet playback disabled - only transmission playback now
+        console.log(`🔊 Live audio from ${audioData.from_station} continues playing`);
+    }
+}
+
+// Enhanced status display for transmissions
+function updateTransmissionStats() {
+    const activeCount = activeTransmissions.size;
+    const completedCount = completedTransmissions.length;
+    
+    // Update transmission stats if elements exist
+    const activeElement = document.getElementById('active-transmissions');
+    if (activeElement) {
+        activeElement.textContent = activeCount;
+    }
+    
+    const completedElement = document.getElementById('completed-transmissions');
+    if (completedElement) {
+        completedElement.textContent = completedCount;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3999,6 +4577,16 @@ function createEnhancedMessageElement(data) {
 	return messageEl;
 }
 
+
+
+
+
+
+
+
+
+
+
 // Request audio playback from server
 function requestAudioPlayback(audioId) {
 	if (!audioId) return;
@@ -4020,31 +4608,387 @@ function playReceivedAudio(audioId) {
 	requestAudioPlayback(audioId);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Handle transmission audio data from server
+function handleTransmissionAudioData(audioData) {
+    console.log('🎵 TRANSMISSION AUDIO: Received actual audio data');
+    console.log('   Audio data keys:', Object.keys(audioData));
+    console.log('   Sample rate:', audioData.sample_rate);
+    console.log('   Channels:', audioData.channels);
+    console.log('   Format:', audioData.audio_format);
+    console.log('   Data length:', audioData.audio_data ? audioData.audio_data.length : 0, 'chars (base64)');
+    
+    // Ensure audio context is available
+    if (!audioContext) {
+        console.log('🎵 TRANSMISSION AUDIO: No audio context - initializing');
+        if (!initializeWebAudio()) {
+            console.error('🎵 TRANSMISSION AUDIO: Failed to initialize audio context');
+            return;
+        }
+    }
+    
+    try {
+        // Step 1: Decode base64 audio data to binary
+        const base64Data = audioData.audio_data;
+        if (!base64Data) {
+            console.error('🎵 TRANSMISSION AUDIO: No audio data provided');
+            return;
+        }
+        
+        // Decode base64 to ArrayBuffer
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Decoded', bytes.length, 'bytes of PCM data');
+        
+        // Step 2: Convert 16-bit signed PCM to Float32Array
+        const sampleRate = audioData.sample_rate || 48000;
+        const channels = audioData.channels || 1;
+        const pcmSamples = bytes.length / 2; // 16-bit = 2 bytes per sample
+        
+        // Create Int16Array view of the data
+        const pcmInt16 = new Int16Array(bytes.buffer);
+        console.log('🎵 TRANSMISSION AUDIO: PCM samples:', pcmInt16.length);
+        
+        // Convert to Float32Array (Web Audio format)
+        const floatSamples = new Float32Array(pcmInt16.length);
+        for (let i = 0; i < pcmInt16.length; i++) {
+            floatSamples[i] = pcmInt16[i] / 32768.0; // Convert 16-bit to float (-1.0 to 1.0)
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Converted to float samples:', floatSamples.length);
+        
+        // Step 3: Create Web Audio buffer
+        const audioBuffer = audioContext.createBuffer(channels, floatSamples.length, sampleRate);
+        
+        // Copy float data to audio buffer
+        for (let channel = 0; channel < channels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            if (channels === 1) {
+                // Mono: copy all samples to this channel
+                channelData.set(floatSamples);
+            } else {
+                // Stereo: interleaved samples (not implemented for this use case)
+                console.warn('🎵 TRANSMISSION AUDIO: Stereo not implemented');
+                channelData.set(floatSamples); // Fallback: copy mono to all channels
+            }
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Audio buffer created');
+        console.log('   Duration:', audioBuffer.duration.toFixed(3), 'seconds');
+        console.log('   Sample rate:', audioBuffer.sampleRate, 'Hz');
+        console.log('   Channels:', audioBuffer.numberOfChannels);
+        
+        // Step 4: Create audio source and play
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        
+        // Connect to speakers
+        source.connect(audioContext.destination);
+        
+        // Add some gain control to prevent clipping
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.7; // Reduce volume slightly
+        source.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Play the audio
+        const startTime = audioContext.currentTime;
+        source.start(startTime);
+        
+        console.log('🎵 TRANSMISSION AUDIO: ✅ PLAYING NOW! Duration:', audioBuffer.duration.toFixed(3), 's');
+        
+        // Update UI to show playback status
+        const transmissionId = audioData.transmission_id;
+        if (transmissionId) {
+            const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = '🔊 Playing...';
+                button.disabled = true;
+                
+                // Re-enable button after playback
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }, audioBuffer.duration * 1000 + 100);
+            }
+        }
+        
+        // Show success notification
+        showNotification(`🔊 Playing ${audioData.from_station} transmission (${audioBuffer.duration.toFixed(1)}s)`, 'success');
+        
+    } catch (error) {
+        console.error('🎵 TRANSMISSION AUDIO: ❌ PLAYBACK ERROR:', error);
+        console.error('Error details:', error.stack);
+        showNotification(`❌ Audio playback failed: ${error.message}`, 'error');
+        
+        // Re-enable button on error
+        const transmissionId = audioData.transmission_id;
+        if (transmissionId) {
+            const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+            if (button) {
+                button.textContent = '▶️ Play Transmission';
+                button.disabled = false;
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function handleTransmissionAudioData_remove(audioData) {
+    console.log('🎵 TRANSMISSION AUDIO: Received actual audio data');
+    console.log('   Audio data keys:', Object.keys(audioData));
+    console.log('   Sample rate:', audioData.sample_rate);
+    console.log('   Channels:', audioData.channels);
+    console.log('   Format:', audioData.audio_format);
+    console.log('   Data length:', audioData.audio_data ? audioData.audio_data.length : 0, 'chars (base64)');
+    
+    // Ensure audio context is available
+    if (!audioContext) {
+        console.log('🎵 TRANSMISSION AUDIO: No audio context - initializing');
+        if (!initializeWebAudio()) {
+            console.error('🎵 TRANSMISSION AUDIO: Failed to initialize audio context');
+            return;
+        }
+    }
+    
+    try {
+        // Step 1: Decode base64 audio data to binary
+        const base64Data = audioData.audio_data;
+        if (!base64Data) {
+            console.error('🎵 TRANSMISSION AUDIO: No audio data provided');
+            return;
+        }
+        
+        // Decode base64 to ArrayBuffer
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Decoded', bytes.length, 'bytes of PCM data');
+        
+        // Step 2: Convert 16-bit signed PCM to Float32Array
+        const sampleRate = audioData.sample_rate || 48000;
+        const channels = audioData.channels || 1;
+        const pcmSamples = bytes.length / 2; // 16-bit = 2 bytes per sample
+        
+        // Create Int16Array view of the data
+        const pcmInt16 = new Int16Array(bytes.buffer);
+        console.log('🎵 TRANSMISSION AUDIO: PCM samples:', pcmInt16.length);
+        
+        // Convert to Float32Array (Web Audio format)
+        const floatSamples = new Float32Array(pcmInt16.length);
+        for (let i = 0; i < pcmInt16.length; i++) {
+            floatSamples[i] = pcmInt16[i] / 32768.0; // Convert 16-bit to float (-1.0 to 1.0)
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Converted to float samples:', floatSamples.length);
+        
+        // Step 3: Create Web Audio buffer
+        const audioBuffer = audioContext.createBuffer(channels, floatSamples.length, sampleRate);
+        
+        // Copy float data to audio buffer
+        for (let channel = 0; channel < channels; channel++) {
+            const channelData = audioBuffer.getChannelData(channel);
+            if (channels === 1) {
+                // Mono: copy all samples to this channel
+                channelData.set(floatSamples);
+            } else {
+                // Stereo: interleaved samples (not implemented for this use case)
+                console.warn('🎵 TRANSMISSION AUDIO: Stereo not implemented');
+                channelData.set(floatSamples); // Fallback: copy mono to all channels
+            }
+        }
+        
+        console.log('🎵 TRANSMISSION AUDIO: Audio buffer created');
+        console.log('   Duration:', audioBuffer.duration.toFixed(3), 'seconds');
+        console.log('   Sample rate:', audioBuffer.sampleRate, 'Hz');
+        console.log('   Channels:', audioBuffer.numberOfChannels);
+        
+        // Step 4: Create audio source and play
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        
+        // Connect to speakers
+        source.connect(audioContext.destination);
+        
+        // Add some gain control to prevent clipping
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.7; // Reduce volume slightly
+        source.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        // Play the audio
+        const startTime = audioContext.currentTime;
+        source.start(startTime);
+        
+        console.log('🎵 TRANSMISSION AUDIO: ✅ PLAYING NOW! Duration:', audioBuffer.duration.toFixed(3), 's');
+        
+        // Update UI to show playback status
+        const transmissionId = audioData.transmission_id;
+        if (transmissionId) {
+            const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+            if (button) {
+                const originalText = button.textContent;
+                button.textContent = '🔊 Playing...';
+                button.disabled = true;
+                
+                // Re-enable button after playback
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }, audioBuffer.duration * 1000 + 100);
+            }
+        }
+        
+        // Show success notification
+        showNotification(`🔊 Playing ${audioData.from_station} transmission (${audioBuffer.duration.toFixed(1)}s)`, 'success');
+        
+    } catch (error) {
+        console.error('🎵 TRANSMISSION AUDIO: ❌ PLAYBACK ERROR:', error);
+        console.error('Error details:', error.stack);
+        showNotification(`❌ Audio playback failed: ${error.message}`, 'error');
+        
+        // Re-enable button on error
+        const transmissionId = audioData.transmission_id;
+        if (transmissionId) {
+            const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+            if (button) {
+                button.textContent = '▶️ Play Transmission';
+                button.disabled = false;
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Handle audio playback data from server
 function handleAudioPlaybackData(audioData) {
 	console.log('🎵 Audio playback data:', audioData);
 	
-	// Find the audio message element
-	const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
-	if (audioElement) {
-		const playButton = audioElement.querySelector('.audio-play-btn');
-		if (playButton) {
-			playButton.textContent = '⏸️ Playing...';
-			playButton.disabled = true;
-			
-			// Re-enable after estimated duration
-			setTimeout(() => {
-				playButton.textContent = '▶️ Play Audio';
-				playButton.disabled = false;
-			}, audioData.duration_ms || 2000);
+	// Check if this is transmission playback or individual audio playback
+	if (audioData.transmission_id) {
+		console.log('🎵 TRANSMISSION PLAYBACK: Received transmission playback data');
+		console.log(`   Transmission ID: ${audioData.transmission_id}`);
+		console.log(`   Total segments: ${audioData.total_segments || 1}`);
+		
+		// Find the transmission UI element
+		const transmissionElement = document.querySelector(`[data-transmission-id="${audioData.transmission_id}"]`);
+		if (transmissionElement) {
+			const playButton = transmissionElement.querySelector('.audio-play-btn');
+			if (playButton) {
+				playButton.textContent = '🔊 Playing Transmission...';
+				playButton.disabled = true;
+				
+				// Re-enable after estimated duration
+				setTimeout(() => {
+					playButton.textContent = '▶️ Play Transmission';
+					playButton.disabled = false;
+				}, audioData.duration_ms || 2000);
+			}
 		}
+		
+		showNotification(`🎵 Playing transmission from ${audioData.from_station} (${audioData.total_segments} segments)`, 'info');
+		
+	} else {
+		// Individual audio playback (existing logic)
+		const audioElement = document.querySelector(`[data-audio-id="${audioData.audio_id}"]`);
+		if (audioElement) {
+			const playButton = audioElement.querySelector('.audio-play-btn');
+			if (playButton) {
+				playButton.textContent = '⏸️ Playing...';
+				playButton.disabled = true;
+				
+				// Re-enable after estimated duration
+				setTimeout(() => {
+					playButton.textContent = '▶️ Play Audio';
+					playButton.disabled = false;
+				}, audioData.duration_ms || 2000);
+			}
+		}
+		
+		showNotification(`Playing audio from ${audioData.from_station}`, 'info');
 	}
 	
 	// Note: Actual audio data streaming would require additional implementation
 	// For now, we'll show a visual indication that audio is "playing"
-	showNotification(`Playing audio from ${audioData.from_station}`, 'info');
 	addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Handle audio stream data
 function handleAudioStreamData(streamData) {
@@ -4337,110 +5281,6 @@ function setupAudioStreaming() {
 
 
 
-
-//Temporary debug functions
-//Replace handleWebSocketMessage function with the debug version
-//Replace your handleReceivedAudio function with the debug version
-//Add the addAudioIndicatorToChat debug function
-
-
-
-
-
-// Enhanced handleWebSocketMessage with audio debugging
-function handleWebSocketMessage(message) {
-    // Enhanced debugging for ALL message types
-    console.log('🔍 JS DEBUG: WebSocket message received:', message.type);
-    
-    // Special debugging for audio messages
-    if (message.type === 'audio_received') {
-        console.log('🎤 JS AUDIO DEBUG 1: Audio message received!');
-        console.log('   Full message:', message);
-        console.log('   Message data:', message.data);
-        console.log('   From station:', message.data?.from_station);
-        console.log('   Audio ID:', message.data?.audio_id);
-        console.log('   Duration:', message.data?.duration_ms, 'ms');
-    }
-    
-    addLogEntry(`Received: ${message.type}`, 'info');
-
-    switch (message.type) {
-        case 'initial_status':
-            populateStatusFromData(message.data);
-            if (message.data.message_history) {
-                loadMessageHistory(message.data.message_history);
-            }
-            break;
-            
-        case 'current_config':
-            populateConfigFromData(message.data);
-            break;
-            
-        case 'message_received':
-            handleIncomingMessage(message.data);
-            break;
-            
-        case 'message_sent':
-            addLogEntry('Message confirmed sent', 'success');
-            break;
-            
-        case 'message_history':
-            loadMessageHistory(message.data);
-            break;
-            
-        case 'ptt_state_changed':
-            handlePTTStateChange(message.data.active);
-            break;
-            
-        case 'status_update':
-            updateSystemStatus(message.data);
-            break;
-            
-        case 'error':
-            showNotification(message.message || 'An error occurred', 'error');
-            addLogEntry(`Error: ${message.message}`, 'error');
-            break;
-            
-        // Enhanced config messages
-        case 'config_loaded':
-        case 'config_saved':
-        case 'config_updated':
-        case 'config_created':
-        case 'config_not_found':
-        case 'config_validation_warning':
-        case 'connection_test_result':
-        case 'connection_test_with_form_result':
-            console.log('🔍 Enhanced config message:', message.type);
-            handleEnhancedConfigMessage(message);
-            break;
-            
-        // AUDIO RECEPTION MESSAGES WITH DEBUGGING
-        case 'audio_received':
-            console.log('🎤 JS AUDIO DEBUG 2: Calling handleReceivedAudio');
-            handleReceivedAudio(message.data);
-            break;
-            
-        case 'audio_stream_data':
-            console.log('🔊 JS AUDIO DEBUG: Audio stream data received');
-            handleAudioStreamData(message.data);
-            break;
-            
-        case 'audio_playback_data':
-            console.log('🎵 JS AUDIO DEBUG: Audio playback data received');
-            handleAudioPlaybackData(message.data);
-            break;
-            
-        case 'reception_stats':
-            console.log('📊 JS AUDIO DEBUG: Reception stats received');
-            updateReceptionStats(message.data);
-            break;
-            
-        default:
-            console.warn('🔍 Unknown message type:', message.type, 'Full message:', message);
-            addLogEntry(`Unknown message type: ${message.type}`, 'warning');
-    }
-}
-
 // Enhanced handleReceivedAudio with debugging
 function handleReceivedAudio(audioData) {
     console.log('🎤 JS AUDIO DEBUG 3: handleReceivedAudio called');
@@ -4569,15 +5409,79 @@ function addAudioIndicatorToChat(audioData) {
 
 
 
-//END
-//Temporary debug functions
-//Replace handleWebSocketMessage function with the debug version
-//Replace your handleReceivedAudio function with the debug version
-//Add the addAudioIndicatorToChat debug function
 
 
+function startNewTransmissionFromServer(stationId, startTime, transmissionId) {
+		console.log(`📡 SERVER TRANSMISSION START: ${transmissionId} from ${stationId}`);
+		
+		// End any previous incomplete transmission from this station
+		if (activeTransmissions.has(stationId)) {
+			console.log(`⚠️ Force-ending previous incomplete transmission from ${stationId}`);
+			const oldTransmission = activeTransmissions.get(stationId);
+			endTransmissionFromServer(stationId, new Date().toISOString(), oldTransmission.transmissionId);
+		}
+		
+		const transmission = {
+			stationId: stationId,
+			startTime: startTime,
+			endTime: null,
+			audioPackets: [],
+			totalDuration: 0,
+			firstPacketTime: null,
+			lastPacketTime: null,
+			transmissionId: transmissionId,  // Use server's ID
+			incomplete: true,
+			timeoutId: null
+		};
+		
+		activeTransmissions.set(stationId, transmission);
+		addLogEntry(`📡 Transmission started: ${transmissionId}`, 'success');
+		
+		// Show temporary indicator
+		showNotification(`📻 ${stationId} started transmitting`, 'info');
+	}
 
-
+	function endTransmissionFromServer(stationId, endTime, transmissionId) {
+		const transmission = activeTransmissions.get(stationId);
+		if (!transmission) {
+			console.log(`⚠️ Tried to end transmission for ${stationId} but none active`);
+			return;
+		}
+		
+		// CRITICAL FIX: Update the transmission with server's final ID
+		console.log(`🔄 ID SYNC: Updating transmission ID from ${transmission.transmissionId} to ${transmissionId}`);
+		transmission.transmissionId = transmissionId;
+		transmission.endTime = endTime;
+		transmission.incomplete = false;
+		
+		// Clear timeout
+		if (transmission.timeoutId) {
+			clearTimeout(transmission.timeoutId);
+		}
+		
+		console.log(`📡 TRANSMISSION COMPLETE: ${transmission.transmissionId} - `
+					+ `${transmission.audioPackets.length} packets, ${transmission.totalDuration}ms`);
+		
+		// Move to completed transmissions
+		completedTransmissions.push(transmission);
+		activeTransmissions.delete(stationId);
+		
+		// Cleanup old transmissions
+		if (completedTransmissions.length > maxTransmissions) {
+			completedTransmissions = completedTransmissions.slice(-maxTransmissions);
+		}
+		
+		// Create UI bubble for the complete transmission
+		if (transmission.audioPackets.length > 0) {
+			createTransmissionUIBubble(transmission);
+			const duration = (transmission.totalDuration / 1000).toFixed(1);
+			addLogEntry(`📻 Transmission completed: ${stationId} (${transmission.audioPackets.length} packets, ${duration}s)`, 'success');
+			showNotification(`📻 ${stationId} transmission complete (${duration}s)`, 'success');
+		} else {
+			console.log(`⚠️ No audio packets in transmission from ${stationId}`);
+			addLogEntry(`⚠️ Empty transmission from ${stationId}`, 'warning');
+		}
+	}
 
 
 
