@@ -23,6 +23,9 @@ import re
 # Import your existing radio system components
 from config_manager import OpulentVoiceConfig
 
+
+
+
 class EnhancedRadioWebInterface:
 	"""Enhanced bridge between web GUI and radio system with voice, control, and chat integration"""
 	
@@ -38,12 +41,18 @@ class EnhancedRadioWebInterface:
 		self.chat_manager = None
 		self.ptt_state = False
 		
-		# Audio message storage for GUI
-		self.audio_messages = {}
-		max_messages = 100
-		if config and hasattr(config, 'gui') and hasattr(config.gui, 'audio_replay'):
-			max_messages = config.gui.audio_replay.max_stored_messages
-		self.max_audio_messages = max_messages
+
+		# TRANSMISSION-BASED storage for GUI
+		self.active_transmissions = {}  # station_id -> current transmission data
+		self.completed_transmissions = []  # List of complete transmissions
+		self.max_completed_transmissions = 50  # Store last 50 complete transmissions
+	
+		# Keep individual packets for live audio only (small buffer)
+		self.live_audio_packets = {}  # For real-time streaming
+		self.max_live_packets = 200  # Small buffer for live audio
+	
+		print(f"✅ Transmission-based storage: {self.max_completed_transmissions} transmissions, "
+			  f"{self.max_live_packets} live packets")
 		
 		self.logger = logging.getLogger(__name__)
 		
@@ -78,6 +87,86 @@ class EnhancedRadioWebInterface:
 		except Exception as e:
 			self.logger.error(f"Error in connect_websocket: {e}")
 			raise
+
+
+
+
+
+
+
+
+
+
+
+
+	def start_transmission(self, station_id: str, start_time: str):
+		"""Start tracking a new transmission"""
+		transmission_id = f"tx_{station_id}_{int(time.time() * 1000)}"
+		
+		self.active_transmissions[station_id] = {
+			'transmission_id': transmission_id,
+			'station_id': station_id,
+			'start_time': start_time,
+			'audio_packets': [],
+			'total_duration_ms': 0,
+			'packet_count': 0
+		}
+		
+		print(f"📡 TRANSMISSION START: {transmission_id} from {station_id}")
+
+
+
+
+
+
+	def end_transmission(self, station_id: str, end_time: str):
+		"""End transmission and move to completed storage"""
+		if station_id not in self.active_transmissions:
+			print(f"⚠️ TRANSMISSION END: No active transmission for {station_id}")
+			return
+		
+		transmission = self.active_transmissions[station_id]
+		transmission['end_time'] = end_time
+		transmission['completed_at'] = datetime.now().isoformat()
+		
+		# Move to completed transmissions
+		self.completed_transmissions.append(transmission)
+		del self.active_transmissions[station_id]
+		
+		print(f"📡 TRANSMISSION COMPLETE: {transmission['transmission_id']} - "
+			  f"{transmission['packet_count']} packets, {transmission['total_duration_ms']}ms")
+		
+		# Cleanup old transmissions
+		self.cleanup_completed_transmissions()
+
+	def cleanup_completed_transmissions(self):
+		"""Remove oldest complete transmissions when limit exceeded"""
+		while len(self.completed_transmissions) > self.max_completed_transmissions:
+			old_transmission = self.completed_transmissions.pop(0)  # Remove oldest
+			print(f"🗑️ CLEANUP: Removed old transmission {old_transmission['transmission_id']} "
+				  f"({old_transmission['packet_count']} packets)")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	async def handle_send_text_message(self, data: Dict):
 		"""Handle text message from GUI - Enhanced with proper message flow"""
@@ -210,68 +299,66 @@ class EnhancedRadioWebInterface:
 
 
 
-
-
-
-
-
-
 	async def on_audio_received(self, audio_data: Dict):
-		"""Handle received audio data for web interface with debugging"""
+		"""Handle received audio data - add to active transmission or live buffer"""
 		try:
-			# DEBUG: Audio notification received
-			print(f"🌐 WEB DEBUG 1: Audio notification received")
-			print(f"   From station: {audio_data.get('from_station', 'UNKNOWN')}")
-			print(f"   Audio length: {audio_data.get('audio_length', 0)} bytes")
-			print(f"   Sample rate: {audio_data.get('sample_rate', 0)} Hz")
-			print(f"   Duration: {audio_data.get('duration_ms', 0)} ms")
-			print(f"   Timestamp: {audio_data.get('timestamp', 'No timestamp')}")
-        
-			# Store audio for potential replay
-			audio_id = f"audio_{int(time.time() * 1000)}_{hash(audio_data.get('from_station', '')) % 10000}"
-			print(f"🌐 WEB DEBUG 2: Generated audio ID: {audio_id}")
-        
-			# Limit stored audio messages
-			if len(self.audio_messages) >= self.max_audio_messages:
-				# Remove oldest audio message
-				oldest_id = next(iter(self.audio_messages))
-				del self.audio_messages[oldest_id]
-				print(f"🌐 WEB DEBUG 2: Removed oldest audio: {oldest_id}")
-        
-			self.audio_messages[audio_id] = {
+			station_id = audio_data.get('from_station', 'UNKNOWN')
+			timestamp = audio_data.get('timestamp', datetime.now().isoformat())
+			
+			# Create audio packet
+			audio_packet = {
 				**audio_data,
-				'audio_id': audio_id,
+				'audio_id': f"audio_{int(time.time() * 1000)}_{hash(station_id) % 10000}",
 				'received_at': datetime.now().isoformat()
 			}
-			print(f"🌐 WEB DEBUG 2: Audio stored. Total stored: {len(self.audio_messages)}")
-        
-			# Broadcast audio notification to web clients
-			notification_data = {
-				"from_station": audio_data.get('from_station', 'UNKNOWN'),
-				"timestamp": audio_data.get('timestamp', datetime.now().isoformat()),
-				"audio_id": audio_id,
-				"audio_length": audio_data.get('audio_length', 0),
-				"sample_rate": audio_data.get('sample_rate', 48000),
-				"duration_ms": self._calculate_audio_duration(audio_data)
-			}
-        
-			print(f"🌐 WEB DEBUG 3: Broadcasting to web clients")
-			print(f"   Connected clients: {len(self.websocket_clients)}")
-			print(f"   Notification data: {notification_data}")
-        
+			
+			# Add to active transmission if exists
+			if station_id in self.active_transmissions:
+				transmission = self.active_transmissions[station_id]
+				transmission['audio_packets'].append(audio_packet)
+				transmission['packet_count'] += 1
+				transmission['total_duration_ms'] += audio_data.get('duration_ms', 40)
+				
+				print(f"📡 TRANSMISSION AUDIO: Added packet to {transmission['transmission_id']} "
+					  f"({transmission['packet_count']} packets)")
+			else:
+				# No active transmission - add to live buffer for real-time audio
+				self.live_audio_packets[audio_packet['audio_id']] = audio_packet
+				
+				# Cleanup live buffer
+				if len(self.live_audio_packets) > self.max_live_packets:
+					oldest_id = min(self.live_audio_packets.keys())
+					del self.live_audio_packets[oldest_id]
+				
+				print(f"🔊 LIVE AUDIO: Added packet to live buffer ({len(self.live_audio_packets)} packets)")
+			
+			# Broadcast to web clients (existing notification)
 			await self.broadcast_to_all({
 				"type": "audio_received",
-				"data": notification_data
+				"data": {
+					"from_station": station_id,
+					"timestamp": timestamp,
+					"audio_id": audio_packet['audio_id'],
+					"audio_length": audio_data.get('audio_length', 0),
+					"sample_rate": audio_data.get('sample_rate', 48000),
+					"duration_ms": audio_data.get('duration_ms', 40)
+				}
 			})
-        
-			print(f"🌐 WEB DEBUG 3: Broadcast complete")
-			print("-" * 50)
-    
+			
 		except Exception as e:
-			print(f"🌐 WEB DEBUG ERROR: Error handling received audio: {e}")
+			print(f"📡 TRANSMISSION AUDIO ERROR: {e}")
 			import traceback
 			traceback.print_exc()
-			print("-" * 50)
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -279,6 +366,88 @@ class EnhancedRadioWebInterface:
 
 
 	async def on_control_received(self, control_data: Dict):
+		"""Handle received control messages - especially PTT boundaries for transmission grouping"""
+		try:
+			control_msg = control_data.get('content', '')
+			from_station = control_data.get('from', 'UNKNOWN')
+			timestamp = control_data.get('timestamp', datetime.now().isoformat())
+		
+			print(f"🎛️ TRANSMISSION CONTROL: {control_msg} from {from_station}")
+		
+			if control_msg == 'PTT_START':
+				# Start new transmission and get ID
+				transmission_id = self.start_transmission(from_station, timestamp)
+				
+				# Send transmission started notification (separate from control message)
+				await self.broadcast_to_all({
+					"type": "transmission_started",
+					"data": {
+						"station_id": from_station,
+						"transmission_id": transmission_id,
+						"start_time": timestamp
+					}
+				})
+				print(f"🎛️ TRANSMISSION: Sent transmission_started with ID {transmission_id}")
+				
+			elif control_msg == 'PTT_STOP':
+				# Get transmission ID before ending
+				transmission_id = None
+				if from_station in self.active_transmissions:
+					transmission_id = self.active_transmissions[from_station]['transmission_id']
+				
+				# End transmission and store it
+				self.end_transmission(from_station, timestamp)
+				
+				# Send transmission ended notification (separate from control message)
+				if transmission_id:
+					await self.broadcast_to_all({
+						"type": "transmission_ended", 
+						"data": {
+							"station_id": from_station,
+							"transmission_id": transmission_id,
+							"end_time": timestamp
+						}
+					})
+					print(f"🎛️ TRANSMISSION: Sent transmission_ended with ID {transmission_id}")
+		
+			# Send original control message unchanged (don't modify PTT messages!)
+			await self.broadcast_to_all({
+				"type": "control_received",
+				"data": {
+					"content": control_msg,
+					"from": from_station,
+					"timestamp": timestamp,
+					"type": "control",
+					"priority": "high" if control_msg.startswith('PTT_') else "normal"
+				}
+			})
+		
+			print(f"🌐 WEB CONTROL DEBUG: Control broadcast complete as control_received type")
+		
+		except Exception as e:
+			print(f"🌐 WEB CONTROL DEBUG ERROR: Error handling control message: {e}")
+			import traceback
+			traceback.print_exc()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	async def on_control_received_remove(self, control_data: Dict):
 		"""Handle received control messages - especially PTT boundaries for transmission grouping"""
 		try:
 			control_msg = control_data.get('content', '')
@@ -368,43 +537,6 @@ class EnhancedRadioWebInterface:
 
 
 
-	async def on_audio_received_temp_replace_with_above(self, audio_data: Dict):
-		"""Handle received audio data for web interface"""
-		try:
-			# Store audio for potential replay
-			audio_id = f"audio_{int(time.time() * 1000)}_{hash(audio_data.get('from_station', '')) % 10000}"
-		
-			# Limit stored audio messages
-			if len(self.audio_messages) >= self.max_audio_messages:
-				# Remove oldest audio message
-				oldest_id = next(iter(self.audio_messages))
-				del self.audio_messages[oldest_id]
-			
-			self.audio_messages[audio_id] = {
-				**audio_data,
-				'audio_id': audio_id,
-				'received_at': datetime.now().isoformat()
-			}
-		
-			# Broadcast audio notification to web clients
-			await self.broadcast_to_all({
-				"type": "audio_received",
-				"data": {
-					"from_station": audio_data.get('from_station', 'UNKNOWN'),
-					"timestamp": audio_data.get('timestamp', datetime.now().isoformat()),
-					"audio_id": audio_id,
-					"audio_length": audio_data.get('audio_length', 0),
-					"sample_rate": audio_data.get('sample_rate', 48000),
-					"duration_ms": self._calculate_audio_duration(audio_data)
-				}
-			})
-		
-		
-		except Exception as e:
-			self.logger.error(f"Error handling received audio: {e}")
-
-
-#1
 	async def on_message_received(self, message_data: Dict):
 		"""Enhanced message received handler"""
 		try:
@@ -470,33 +602,309 @@ class EnhancedRadioWebInterface:
 				"message": f"Audio stream error: {str(e)}"
 			})
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 	async def handle_audio_playback_request(self, websocket: WebSocket, data: Dict):
-		"""Handle request to play back received audio"""
+		"""Handle request to play back received audio - UPDATED for transmission storage"""
 		try:
 			audio_id = data.get('audio_id')
-			if not audio_id or audio_id not in self.audio_messages:
+			if not audio_id:
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "Audio ID not provided"
+				})
+				return
+			
+			# Search for audio in completed transmissions
+			found_audio = None
+			for transmission in self.completed_transmissions:
+				for packet in transmission['audio_packets']:
+					if packet.get('audio_id') == audio_id:
+						found_audio = packet
+						break
+				if found_audio:
+					break
+			
+			# Search in live audio packets if not found in transmissions
+			if not found_audio and audio_id in self.live_audio_packets:
+				found_audio = self.live_audio_packets[audio_id]
+			
+			if not found_audio:
 				await self.send_to_client(websocket, {
 					"type": "error",
 					"message": "Audio message not found"
 				})
 				return
 			
-			audio_info = self.audio_messages[audio_id]
-		
 			# Send audio info for playback
 			await self.send_to_client(websocket, {
 				"type": "audio_playback_data",
 				"data": {
 					"audio_id": audio_id,
-					"from_station": audio_info.get('from_station'),
-					"timestamp": audio_info.get('timestamp'),
-					"sample_rate": audio_info.get('sample_rate', 48000),
-					"duration_ms": self._calculate_audio_duration(audio_info)
+					"from_station": found_audio.get('from_station'),
+					"timestamp": found_audio.get('timestamp'),
+					"sample_rate": found_audio.get('sample_rate', 48000),
+					"duration_ms": found_audio.get('duration_ms', 40)
 				}
 			})
 		
 		except Exception as e:
 			self.logger.error(f"Error handling audio playback request: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	# First, let's see what error the server is sending.
+	# Add this debugging to your handle_transmission_playback_request method:
+
+	async def handle_transmission_playback_request(self, websocket: WebSocket, data: Dict):
+		"""Handle playback request using transmission-based storage"""
+		try:
+			transmission_id = data.get('transmission_id')
+			station_id = data.get('station_id')
+		
+			print(f"🎵 TRANSMISSION PLAYBACK: Request for {transmission_id}")
+			print(f"🎵 TRANSMISSION PLAYBACK DEBUG: Looking in {len(self.completed_transmissions)} completed transmissions")
+		
+			# Debug: List all available transmission IDs
+			for i, transmission in enumerate(self.completed_transmissions):
+				print(f"   Available transmission {i+1}: {transmission['transmission_id']}")
+			
+			# Find the transmission in completed transmissions
+			target_transmission = None
+			for transmission in self.completed_transmissions:
+				if transmission['transmission_id'] == transmission_id:
+					target_transmission = transmission
+					break
+		
+			if not target_transmission:
+				print(f"🎵 TRANSMISSION PLAYBACK: Transmission {transmission_id} not found")
+				print(f"🎵 TRANSMISSION PLAYBACK DEBUG: Available IDs were:")
+				for transmission in self.completed_transmissions:
+					print(f"   - {transmission['transmission_id']}")
+			
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": f"Transmission {transmission_id} not found. Available: {[t['transmission_id'] for t in self.completed_transmissions]}"
+				})
+				return
+		
+			audio_packets = target_transmission['audio_packets']
+			if not audio_packets:
+				print(f"🎵 TRANSMISSION PLAYBACK: No audio packets in transmission")
+				await self.send_to_client(websocket, {
+					"type": "error", 
+					"message": "No audio data in transmission"
+				})
+				return
+			
+			print(f"🎵 TRANSMISSION PLAYBACK: Found transmission with {len(audio_packets)} packets")
+			
+			# Concatenate all audio data
+			concatenated_audio = bytearray()
+			packets_with_data = 0
+			
+			for i, packet in enumerate(audio_packets):
+				audio_data_field = packet.get('audio_data')
+				if audio_data_field:
+					concatenated_audio.extend(audio_data_field)
+					packets_with_data += 1
+				else:
+					print(f"🎵 TRANSMISSION PLAYBACK: Packet {i+1} has no audio_data field")
+					print(f"   Packet keys: {list(packet.keys())}")
+			
+			print(f"🎵 TRANSMISSION PLAYBACK: {packets_with_data}/{len(audio_packets)} packets had audio data")
+			
+			if concatenated_audio:
+				# Convert to base64 and send
+				import base64
+				audio_data_b64 = base64.b64encode(bytes(concatenated_audio)).decode('utf-8')
+				
+				actual_duration_ms = target_transmission['total_duration_ms']
+				
+				print(f"🎵 TRANSMISSION PLAYBACK: Sending {len(concatenated_audio)} bytes "
+					  f"({len(audio_packets)} packets, {actual_duration_ms}ms)")
+				
+				await self.send_to_client(websocket, {
+					"type": "transmission_audio_data",
+					"data": {
+						"audio_id": audio_packets[0]['audio_id'],
+						"from_station": station_id,
+						"timestamp": target_transmission['start_time'],
+						"sample_rate": audio_packets[0].get('sample_rate', 48000),
+						"duration_ms": actual_duration_ms,
+						"transmission_id": transmission_id,
+						"total_segments": len(audio_packets),
+						"audio_data": audio_data_b64,
+						"audio_format": "pcm_s16le",
+						"channels": 1
+					}
+				})
+			else:
+				print(f"🎵 TRANSMISSION PLAYBACK: No audio data found in any packets")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "No audio data found in transmission packets"
+				})
+				
+		except Exception as e:
+			print(f"🎵 TRANSMISSION PLAYBACK ERROR: {e}")
+			import traceback
+			traceback.print_exc()
+			await self.send_to_client(websocket, {
+				"type": "error",
+				"message": f"Transmission playback error: {str(e)}"
+			})
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	async def handle_transmission_playback_request_old(self, websocket: WebSocket, data: Dict):
+		"""Handle playback request using transmission-based storage"""
+		try:
+			transmission_id = data.get('transmission_id')
+			station_id = data.get('station_id')
+			
+			print(f"🎵 TRANSMISSION PLAYBACK: Request for {transmission_id}")
+			
+			# Find the transmission in completed transmissions
+			target_transmission = None
+			for transmission in self.completed_transmissions:
+				if transmission['transmission_id'] == transmission_id:
+					target_transmission = transmission
+					break
+			
+			if not target_transmission:
+				print(f"🎵 TRANSMISSION PLAYBACK: Transmission {transmission_id} not found")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": f"Transmission {transmission_id} not found"
+				})
+				return
+			
+			audio_packets = target_transmission['audio_packets']
+			if not audio_packets:
+				print(f"🎵 TRANSMISSION PLAYBACK: No audio packets in transmission")
+				await self.send_to_client(websocket, {
+					"type": "error", 
+					"message": "No audio data in transmission"
+				})
+				return
+			
+			print(f"🎵 TRANSMISSION PLAYBACK: Found transmission with {len(audio_packets)} packets")
+			
+			# Concatenate all audio data
+			concatenated_audio = bytearray()
+			for packet in audio_packets:
+				audio_data_field = packet.get('audio_data')
+				if audio_data_field:
+					concatenated_audio.extend(audio_data_field)
+			
+			if concatenated_audio:
+				# Convert to base64 and send
+				import base64
+				audio_data_b64 = base64.b64encode(bytes(concatenated_audio)).decode('utf-8')
+				
+				actual_duration_ms = target_transmission['total_duration_ms']
+				
+				print(f"🎵 TRANSMISSION PLAYBACK: Sending {len(concatenated_audio)} bytes "
+					  f"({len(audio_packets)} packets, {actual_duration_ms}ms)")
+				
+				await self.send_to_client(websocket, {
+					"type": "transmission_audio_data",
+					"data": {
+						"audio_id": audio_packets[0]['audio_id'],
+						"from_station": station_id,
+						"timestamp": target_transmission['start_time'],
+						"sample_rate": audio_packets[0].get('sample_rate', 48000),
+						"duration_ms": actual_duration_ms,
+						"transmission_id": transmission_id,
+						"total_segments": len(audio_packets),
+						"audio_data": audio_data_b64,
+						"audio_format": "pcm_s16le",
+						"channels": 1
+					}
+				})
+			else:
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "No audio data found in transmission packets"
+				})
+				
+		except Exception as e:
+			print(f"🎵 TRANSMISSION PLAYBACK ERROR: {e}")
+			import traceback
+			traceback.print_exc()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	def _calculate_audio_duration(self, audio_data):
 		"""Calculate audio duration in milliseconds"""
@@ -512,10 +920,29 @@ class EnhancedRadioWebInterface:
 		except:
 			return 40  # Default 40ms frame
 
+
+
+
+
+
+
+
+
 	async def get_reception_stats(self):
-		"""Get reception statistics for web interface"""
+		"""Get reception statistics for web interface - UPDATED for transmission storage"""
+		# Count total audio packets across all transmissions
+		total_audio_packets = 0
+		for transmission in self.completed_transmissions:
+			total_audio_packets += transmission['packet_count']
+		
+		# Add active transmission packets
+		for transmission in self.active_transmissions.values():
+			total_audio_packets += transmission['packet_count']
+		
 		stats = {
-			'audio_messages_stored': len(self.audio_messages),
+			'audio_messages_stored': total_audio_packets,
+			'completed_transmissions': len(self.completed_transmissions),
+			'active_transmissions': len(self.active_transmissions),
 			'message_history_count': len(self.message_history),
 			'last_received_message': None,
 			'last_received_audio': None
@@ -526,14 +953,16 @@ class EnhancedRadioWebInterface:
 		if incoming_messages:
 			stats['last_received_message'] = incoming_messages[-1]
 			
-		# Get last received audio
-		if self.audio_messages:
-			latest_audio = max(self.audio_messages.values(), key=lambda x: x.get('received_at', ''))
-			stats['last_received_audio'] = {
-				'from_station': latest_audio.get('from_station'),
-				'timestamp': latest_audio.get('timestamp'),
-				'audio_id': latest_audio.get('audio_id')
-			}
+		# Get last received audio from completed transmissions
+		if self.completed_transmissions:
+			latest_transmission = self.completed_transmissions[-1]
+			if latest_transmission['audio_packets']:
+				latest_audio = latest_transmission['audio_packets'][-1]
+				stats['last_received_audio'] = {
+					'from_station': latest_transmission['station_id'],
+					'timestamp': latest_audio.get('timestamp'),
+					'audio_id': latest_audio.get('audio_id')
+				}
 		
 		# Get receiver stats if available
 		if (hasattr(self.radio_system, 'receiver') and 
@@ -541,7 +970,6 @@ class EnhancedRadioWebInterface:
 			stats['receiver_stats'] = self.radio_system.receiver.get_stats()
 		
 		return stats
-
 
 
 
@@ -579,18 +1007,20 @@ class EnhancedRadioWebInterface:
 				await self.handle_test_connection_with_form(websocket, data) 
 
 
-			# Voice comamnds (enhanced)
+
+			# Voice commands (enhanced)
 			elif command == 'get_audio_stream':
 				await self.handle_get_audio_stream(websocket)
 			elif command == 'request_audio_playback':
 				await self.handle_audio_playback_request(websocket, data)
+			elif command == 'request_transmission_playback':
+				await self.handle_transmission_playback_request(websocket, data)
 			elif command == 'get_reception_stats':
 				stats = await self.get_reception_stats()
 				await self.send_to_client(websocket, {
 					"type": "reception_stats",
 					"data": stats
 				})
-
 
 		
 			# Chat commands (existing + enhanced)
@@ -1498,12 +1928,19 @@ class EnhancedRadioWebInterface:
 		else:
 			return "normal"
 
+
+
+
+
+
+
+
 	def get_system_stats(self) -> Dict:
 		"""Get system statistics for GUI display"""
 		stats = {
 			"messages_sent": len([m for m in self.message_history if m["direction"] == "outgoing"]),
 			"messages_received": len([m for m in self.message_history if m["direction"] == "incoming"]),
-			"audio_messages_stored": len(self.audio_messages),
+			"audio_messages_stored": len(self.completed_transmissions) + sum(len(t['audio_packets']) for t in self.active_transmissions.values()),
 			"connected_clients": len(self.websocket_clients),
 			"uptime_seconds": 0  # TODO: Calculate actual uptime
 		}
@@ -1533,6 +1970,18 @@ app.add_middleware(
 
 # Global web interface instance
 web_interface: Optional[EnhancedRadioWebInterface] = None
+
+
+
+
+
+
+
+
+
+
+
+
 
 def initialize_web_interface(radio_system=None, config=None, config_manager=None):
 	"""Initialize the enhanced web interface with radio system and config manager"""

@@ -478,6 +478,16 @@ class EnhancedMessageReceiver:
 
 
 
+
+
+
+
+
+
+
+
+
+
     def _handle_audio_packet(self, udp_payload, from_station, timestamp):
         """
         Handle received audio packet with:
@@ -553,7 +563,8 @@ class EnhancedMessageReceiver:
                                 'timestamp': timestamp,
                                 'audio_length': len(audio_pcm),
                                 'sample_rate': 48000,
-                                'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
+                                'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000),
+                                'audio_data': audio_pcm  # ✅ CRITICAL: Include the actual PCM audio data
                         })
                         
                     else:
@@ -569,6 +580,26 @@ class EnhancedMessageReceiver:
             print(f"🎤 Audio processing error: {e}")
             import traceback
             traceback.print_exc()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -780,6 +811,11 @@ class EnhancedMessageReceiver:
                 DebugConfig.debug_print(f"Error in web notification: {e}")
             
         threading.Thread(target=notify, daemon=True).start()
+
+
+
+
+
 
 
 
