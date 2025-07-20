@@ -1,7 +1,9 @@
 # Opulent Voice Radio Dependencies
-opuslib>=3.0.0
+#opuslib>=3.0.0
+opuslib_next
 pyaudio>=0.2.11
 gpiozero>=1.6.0
+lgpio
 PyYAML>=6.0
 numpy>=1.21.0
 sounddevice>=0.5.2

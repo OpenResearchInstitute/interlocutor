@@ -149,7 +149,7 @@ if not (hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base
 	sys.exit(1)
 
 try: 
-	import opuslib
+	import opuslib_next as opuslib
 	print("opuslib ready")
 except ImportError:
 	print("opuslib is missing: pip3 install opuslib")

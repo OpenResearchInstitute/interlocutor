@@ -1049,7 +1049,7 @@ class AudioDecoder:
         self.channels = channels
         
         try:
-            import opuslib
+            import opuslib_next as opuslib
             self.decoder = opuslib.Decoder(
                 fs=sample_rate,
                 channels=channels
