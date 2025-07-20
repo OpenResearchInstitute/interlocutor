@@ -1197,7 +1197,7 @@ class EnhancedRadioWebInterface:
 						'chat_only_mode': getattr(self.config.ui, 'chat_only_mode', False),
 						'web_interface_enabled': getattr(self.config.ui, 'web_interface_enabled', False),
 						'web_interface_port': getattr(self.config.ui, 'web_interface_port', 8000),
-						'web_interface_host': getattr(self.config.ui, 'web_interface_host', 'localhost'),
+						'web_interface_host': getattr(self.config.ui, 'web_interface_host', '0.0.0.0'),
 					},
 					# Add metadata about the current config file
 					'_metadata': {
@@ -2133,7 +2133,7 @@ try:
 except RuntimeError as e:
 	print(f"⚠️ Static files mount failed: {e}")
 
-def run_web_server(host="localhost", port=8000, radio_system=None, config=None):
+def run_web_server(host="0.0.0.0", port=8000, radio_system=None, config=None):
 	"""Run the enhanced web server with better error handling"""
 	
 	print(f"🌐 Starting Enhanced Opulent Voice Web Interface on http://{host}:{port}")

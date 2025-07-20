@@ -164,7 +164,7 @@ class UIConfig:
     chat_only_mode: bool = False
     web_interface_enabled: bool = False
     web_interface_port: int = 8000
-    web_interface_host: str = "localhost"
+    web_interface_host: str = "0.0.0.0"
     auto_open_browser: bool = True
     
     def __post_init__(self):
@@ -189,7 +189,7 @@ class UIConfig:
             chat_only_mode=data.get('chat_only_mode', False),
             web_interface_enabled=data.get('web_interface_enabled', False),
             web_interface_port=data.get('web_interface_port', 8000),
-            web_interface_host=data.get('web_interface_host', 'localhost'),
+            web_interface_host=data.get('web_interface_host', '0.0.0.0'),
             auto_open_browser=data.get('auto_open_browser', True)
         )
 
@@ -1003,7 +1003,7 @@ def create_default_gui_config_section() -> Dict[str, Any]:
             'chat_only_mode': False,
             'web_interface_enabled': False,
             'web_interface_port': 8000,
-            'web_interface_host': 'localhost',
+            'web_interface_host': '0.0.0.0',
             'auto_open_browser': True
         }
     }
@@ -1181,8 +1181,8 @@ Configuration:
     gui_group.add_argument(
         '--web-host',
         type=str,
-        default='localhost',
-        help='Host for web interface (default: localhost)'
+        default='0.0.0.0', # this is the one that worked to change from localhost
+        help='Host for web interface (default: 0.0.0.0)'
     )
     
     gui_group.add_argument(
