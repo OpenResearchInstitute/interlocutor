@@ -45,6 +45,33 @@ eval "$(pyenv virtualenv-init -)"
    34  pyenv virtualenv 3.11.2 orbital
    41  pyenv activate orbital
 
+(orbital) kb5mu@locutor5:~/interlocutor $ 
+(orbital) kb5mu@locutor5:~/interlocutor $ sudo apt install python3-pyaudio
+
+    sudo apt install build-essential portaudio19-dev python3-dev
+
+(orbital) kb5mu@locutor5:~/interlocutor $ pip3 install -r requirements.txt 
+
+
+
+
+
+...
+    Device.pin_factory = Device._default_pin_factory()
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/kb5mu/.pyenv/versions/orbital/lib/python3.11/site-packages/gpiozero/devices.py", line 302, in _default_pin_factory
+    raise BadPinFactory('Unable to load any default pin factory!')
+gpiozero.exc.BadPinFactory: Unable to load any default pin factory!
+Thank you for using Opulent Voice!
+
+missing pin factory
+
+(orbital) kb5mu@locutor5:~/interlocutor $ pip3 install lgpio
+
+(orbital) kb5mu@locutor5:~/interlocutor $ pip3 install opuslib_next
+
+
+
 
 
 
