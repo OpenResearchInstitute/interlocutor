@@ -1,3 +1,4 @@
+```
 b5mu@locutor5:~/interlocutor $ python3 interlocutor.py W%NYV --web-interface
 Traceback (most recent call last):
   File "/home/kb5mu/interlocutor/interlocutor.py", line 89, in <module>
@@ -12,3 +13,12 @@ Reading state information... Done
 E: Unable to locate package pyenv
 kb5mu@locutor5:~/interlocutor $ 
 
+
+
+
+
+
+
+
+
+```
