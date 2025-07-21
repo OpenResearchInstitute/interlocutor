@@ -67,6 +67,109 @@ class EnhancedRadioWebInterface:
 		else:
 			self.logger.info("Web interface using default configuration")
 
+
+
+
+
+
+
+
+
+
+
+		# ADD THESE DEBUG LINES:
+		print("🔍 AUDIO CONFIG DEBUG:")
+    
+		# Check if radio system has audio config
+		if radio_system:
+			if hasattr(radio_system, 'selected_output_device'):
+				print(f"   Radio system output device: {radio_system.selected_output_device}")
+			if hasattr(radio_system, 'audio_params'):
+				print(f"   Radio system audio params: {radio_system.audio_params}")
+			if hasattr(radio_system, 'enhanced_receiver'):
+				print(f"   Enhanced receiver available: {hasattr(radio_system, 'enhanced_receiver')}")
+				if hasattr(radio_system, 'enhanced_receiver') and radio_system.enhanced_receiver:
+					if hasattr(radio_system.enhanced_receiver, 'audio_output'):
+						print(f"   AudioOutputManager available: {radio_system.enhanced_receiver.audio_output is not None}")
+						if radio_system.enhanced_receiver.audio_output:
+							print(f"   AudioOutputManager playing: {radio_system.enhanced_receiver.audio_output.playing}")
+							print(f"   AudioOutputManager device: {radio_system.enhanced_receiver.audio_output.output_device}")
+    
+		# Check if config has audio settings
+		if config and hasattr(config, 'audio'):
+			print(f"   Config audio device: {getattr(config.audio, 'output_device', 'Not set')}")
+			print(f"   Config sample rate: {config.audio.sample_rate}")
+    
+		# Check for audio_config.yaml
+		import os
+		audio_config_path = "audio_config.yaml"
+		if os.path.exists(audio_config_path):
+			print(f"   audio_config.yaml exists: {audio_config_path}")
+			try:
+				import yaml
+				with open(audio_config_path, 'r') as f:
+					audio_config = yaml.safe_load(f)
+				print(f"   audio_config.yaml contents: {audio_config}")
+			except Exception as e:
+				print(f"   Error reading audio_config.yaml: {e}")
+		else:
+			print(f"   audio_config.yaml not found at: {audio_config_path}")
+    
+		print("🔍 AUDIO CONFIG DEBUG COMPLETE")
+
+
+
+
+
+		#Enhanced AudioOutputManager debugging
+		if radio_system:
+			print("🔍 ENHANCED RECEIVER DEBUG:")
+			if hasattr(radio_system, 'enhanced_receiver'):
+				receiver = radio_system.enhanced_receiver
+				print(f"   Enhanced receiver exists: {receiver is not None}")
+            
+				if receiver and hasattr(receiver, 'audio_output'):
+					audio_mgr = receiver.audio_output
+					print(f"   AudioOutputManager exists: {audio_mgr is not None}")
+                
+					if audio_mgr:
+						print(f"   AudioOutputManager playing: {audio_mgr.playing}")
+						print(f"   AudioOutputManager device: {audio_mgr.output_device}")
+						print(f"   AudioOutputManager sample_rate: {audio_mgr.sample_rate}")
+						print(f"   AudioOutputManager channels: {audio_mgr.channels}")
+                    
+						# Check if we can queue audio
+						if hasattr(audio_mgr, 'queue_audio_for_playback'):
+							print(f"   ✅ queue_audio_for_playback method available")
+						else:
+							print(f"   ❌ queue_audio_for_playback method missing")
+                        
+						# Check playback queue
+						if hasattr(audio_mgr, 'playback_queue'):
+							print(f"   Playback queue size: {audio_mgr.playback_queue.qsize()}")
+                    
+					else:
+						print(f"   ❌ AudioOutputManager is None")
+				else:
+					print(f"   ❌ AudioOutputManager attribute missing")
+			else:
+				print(f"   ❌ Enhanced receiver attribute missing")
+            
+			# Also check if the receiver is the enhanced version
+			if hasattr(radio_system, 'receiver'):
+				receiver_type = type(radio_system.receiver).__name__
+				print(f"   Receiver type: {receiver_type}")
+        
+		print("🔍 ENHANCED RECEIVER DEBUG COMPLETE")
+
+
+
+
+
+
+
+
+
 	async def connect_websocket(self, websocket: WebSocket):
 		"""Handle new WebSocket connection - Enhanced with message history"""
 		try:
@@ -672,6 +775,153 @@ class EnhancedRadioWebInterface:
 
 
 
+	# In web_interface.py, replace the existing handle_transmission_playback_request method with this:
+
+	async def handle_transmission_playback_request(self, websocket: WebSocket, data: Dict):
+		"""Handle playback request using CLI speakers (Option A)"""
+		try:
+			transmission_id = data.get('transmission_id')
+			station_id = data.get('station_id')
+			
+			print(f"🎵 OPTION A PLAYBACK: Request for {transmission_id}")
+			
+			# Find the transmission in completed transmissions
+			target_transmission = None
+			for transmission in self.completed_transmissions:
+				if transmission['transmission_id'] == transmission_id:
+					target_transmission = transmission
+					break
+			
+			if not target_transmission:
+				print(f"🎵 OPTION A PLAYBACK: Transmission {transmission_id} not found")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": f"Transmission {transmission_id} not found"
+				})
+				return
+			
+			audio_packets = target_transmission['audio_packets']
+			if not audio_packets:
+				print(f"🎵 OPTION A PLAYBACK: No audio packets in transmission")
+				await self.send_to_client(websocket, {
+					"type": "error", 
+					"message": "No audio data in transmission"
+				})
+				return
+			
+			print(f"🎵 OPTION A PLAYBACK: Found transmission with {len(audio_packets)} packets")
+			
+			# Get AudioOutputManager from enhanced receiver
+			audio_output_manager = None
+			if (self.radio_system and 
+				hasattr(self.radio_system, 'enhanced_receiver') and 
+				self.radio_system.enhanced_receiver and
+				hasattr(self.radio_system.enhanced_receiver, 'audio_output') and
+				self.radio_system.enhanced_receiver.audio_output):
+				
+				audio_output_manager = self.radio_system.enhanced_receiver.audio_output
+				print(f"🎵 OPTION A PLAYBACK: AudioOutputManager found - device {audio_output_manager.output_device}")
+			
+			if not audio_output_manager:
+				print(f"🎵 OPTION A PLAYBACK: ❌ AudioOutputManager not available")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "CLI audio output not available"
+				})
+				return
+			
+			if not audio_output_manager.playing:
+				print(f"🎵 OPTION A PLAYBACK: ❌ AudioOutputManager not active")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "CLI audio output not active"
+				})
+				return
+			
+			print(f"🎵 OPTION A PLAYBACK: ✅ Using CLI speakers (device {audio_output_manager.output_device})")
+			
+			# Concatenate all audio data
+			concatenated_audio = bytearray()
+			packets_with_data = 0
+			
+			for i, packet in enumerate(audio_packets):
+				audio_data_field = packet.get('audio_data')
+				if audio_data_field:
+					concatenated_audio.extend(audio_data_field)
+					packets_with_data += 1
+				else:
+					print(f"🎵 OPTION A PLAYBACK: ⚠️ Packet {i+1} has no audio_data field")
+			
+			print(f"🎵 OPTION A PLAYBACK: {packets_with_data}/{len(audio_packets)} packets had audio data")
+			
+			if concatenated_audio:
+				# Queue the concatenated audio for playback through CLI speakers!
+				playback_label = f"{station_id}_PLAYBACK"
+				audio_output_manager.queue_audio_for_playback(
+					bytes(concatenated_audio), 
+					playback_label
+				)
+				
+				duration_ms = target_transmission['total_duration_ms']
+				duration_sec = duration_ms / 1000.0
+				
+				print(f"🎵 OPTION A PLAYBACK: ✅ SUCCESS! Queued {len(concatenated_audio)} bytes")
+				print(f"   📊 Stats: {packets_with_data} packets, {duration_sec:.1f}s, device {audio_output_manager.output_device}")
+				print(f"   🔊 Audio should now be playing through CLI speakers!")
+				
+				# Get current queue size for feedback
+				queue_size = 0
+				if hasattr(audio_output_manager, 'playback_queue'):
+					queue_size = audio_output_manager.playback_queue.qsize()
+				
+				# Send success response - no audio data, just confirmation
+				await self.send_to_client(websocket, {
+					"type": "transmission_playback_started",
+					"data": {
+						"transmission_id": transmission_id,
+						"from_station": station_id,
+						"duration_ms": duration_ms,
+						"total_segments": packets_with_data,
+						"playback_method": "cli_speakers",
+						"device_index": audio_output_manager.output_device,
+						"queue_size": queue_size,
+						"audio_bytes": len(concatenated_audio)
+					}
+				})
+				
+			else:
+				print(f"🎵 OPTION A PLAYBACK: ❌ No audio data found in any packets")
+				await self.send_to_client(websocket, {
+					"type": "error",
+					"message": "No audio data found in transmission packets"
+				})
+				
+		except Exception as e:
+			print(f"🎵 OPTION A PLAYBACK ERROR: {e}")
+			import traceback
+			traceback.print_exc()
+			await self.send_to_client(websocket, {
+				"type": "error",
+				"message": f"CLI playback failed: {str(e)}"
+			})
+			
+			# Re-enable button on error
+			if 'transmission_id' in locals():
+				await self.send_to_client(websocket, {
+					"type": "transmission_playback_error",
+					"data": {
+						"transmission_id": transmission_id,
+						"error": str(e)
+					}
+				})
+
+
+
+
+
+
+
+
 
 
 
@@ -682,7 +932,7 @@ class EnhancedRadioWebInterface:
 	# First, let's see what error the server is sending.
 	# Add this debugging to your handle_transmission_playback_request method:
 
-	async def handle_transmission_playback_request(self, websocket: WebSocket, data: Dict):
+	async def handle_transmission_playback_request_replaced_to_move_audio_sources(self, websocket: WebSocket, data: Dict):
 		"""Handle playback request using transmission-based storage"""
 		try:
 			transmission_id = data.get('transmission_id')

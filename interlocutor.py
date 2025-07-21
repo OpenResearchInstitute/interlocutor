@@ -1629,7 +1629,41 @@ if __name__ == "__main__":
 			# Setup enhanced reception (this creates and starts the receiver)
 			# enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
 			enhanced_receiver = radio.setup_enhanced_receiver_with_audio()
+
+
+			# CRITICAL DEBUG: Verify the receiver is accessible
+			print(f"🔍 POST-SETUP RECEIVER DEBUG:")
+			print(f"   enhanced_receiver variable: {enhanced_receiver is not None}")
+			print(f"   radio.enhanced_receiver attribute: {hasattr(radio, 'enhanced_receiver')}")
+			if hasattr(radio, 'enhanced_receiver'):
+				print(f"   radio.enhanced_receiver value: {radio.enhanced_receiver is not None}")
+				if radio.enhanced_receiver and hasattr(radio.enhanced_receiver, 'audio_output'):
+					print(f"   radio.enhanced_receiver.audio_output: {radio.enhanced_receiver.audio_output is not None}")
+					if radio.enhanced_receiver.audio_output:
+						print(f"   AudioOutputManager details:")
+						print(f"     - playing: {radio.enhanced_receiver.audio_output.playing}")
+						print(f"     - device: {radio.enhanced_receiver.audio_output.output_device}")
+						print(f"     - has queue method: {hasattr(radio.enhanced_receiver.audio_output, 'queue_audio_for_playback')}")
+
+			# Double-check assignment
+			if enhanced_receiver and not hasattr(radio, 'enhanced_receiver'):
+				print(f"🔧 FIXING: Manually assigning enhanced_receiver to radio object")
+				radio.enhanced_receiver = enhanced_receiver
+
+			# Triple-check
+			if hasattr(radio, 'enhanced_receiver') and radio.enhanced_receiver:
+				print(f"✅ VERIFIED: Enhanced receiver is accessible via radio.enhanced_receiver")
+			else:
+				print(f"❌ PROBLEM: Enhanced receiver still not accessible")
+
+
+
 			receiver = enhanced_receiver
+
+
+
+
+
 
 			# Connect to web interface
 			if web_interface_instance and enhanced_receiver:
