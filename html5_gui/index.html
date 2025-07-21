@@ -2931,54 +2931,64 @@
 
 
 
-				case 'transmission_playback_started':
-					console.log('🎵 OPTION A SUCCESS: Transmission playback started via CLI speakers');
-					const playbackData = message.data;
+		case 'transmission_playback_started':
+			console.log('🎵 OPTION A SUCCESS: Transmission playback started via CLI speakers');
+			const playbackData = message.data;
 			
-					// Update UI button
-					const transmissionId = playbackData.transmission_id;
-					if (transmissionId) {
-						const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
-						if (button) {
-							const originalText = button.textContent;
-							button.textContent = '🔊 Playing via CLI speakers...';
-							button.disabled = true;
+			// Update ONLY the specific transmission button
+			const transmissionId = playbackData.transmission_id;
+			if (transmissionId) {
+				const transmissionButton = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+				if (transmissionButton) {
+					// Set to playing state
+					transmissionButton.textContent = '🔊 Playing via CLI speakers...';
+					transmissionButton.disabled = true;
+					console.log(`🔧 Updated transmission button ${transmissionId} to playing state`);
 					
-							// Re-enable after duration plus buffer
-							setTimeout(() => {
-								button.textContent = originalText;
-								button.disabled = false;
-							}, playbackData.duration_ms + 1000); // Extra 1 second buffer
-						}
-					}
+					// Re-enable after duration plus buffer - FIXED: Always reset to proper text
+					setTimeout(() => {
+						transmissionButton.textContent = '▶️ Play Transmission';  // ← Always reset to this
+						transmissionButton.disabled = false;
+						console.log(`🔧 Reset transmission button ${transmissionId} to ready state`);
+					}, playbackData.duration_ms + 1000);
+				} else {
+					console.warn(`⚠️ Could not find transmission button for playback response ${transmissionId}`);
+				}
+			}
 			
-					// Show detailed success notification
-					const duration = (playbackData.duration_ms / 1000).toFixed(1);
-					const deviceInfo = `device ${playbackData.device_index}`;
-					const queueInfo = playbackData.queue_size > 0 ? ` [${playbackData.queue_size} in queue]` : '';
-					const bytesInfo = playbackData.audio_bytes ? ` (${(playbackData.audio_bytes/1024).toFixed(1)}KB)` : '';
+			// Show detailed success notification
+			const duration = (playbackData.duration_ms / 1000).toFixed(1);
+			const deviceInfo = `device ${playbackData.device_index}`;
+			const queueInfo = playbackData.queue_size > 0 ? ` [${playbackData.queue_size} in queue]` : '';
+			const bytesInfo = playbackData.audio_bytes ? ` (${(playbackData.audio_bytes/1024).toFixed(1)}KB)` : '';
 			
-					showNotification(`🔊 Playing ${playbackData.from_station} via CLI speakers (${deviceInfo}) - ${duration}s${queueInfo}`, 'success');
-					addLogEntry(`✅ CLI playback: ${playbackData.from_station} → ${deviceInfo} (${playbackData.total_segments} segments)${bytesInfo}`, 'success');
-					break;
+			showNotification(`🔊 Playing ${playbackData.from_station} via CLI speakers (${deviceInfo}) - ${duration}s${queueInfo}`, 'success');
+			addLogEntry(`✅ CLI playback: ${playbackData.from_station} → ${deviceInfo} (${playbackData.total_segments} segments)${bytesInfo}`, 'success');
+			break;
 
-				case 'transmission_playback_error':
-					console.log('🎵 OPTION A ERROR: Transmission playback failed');
-					const errorData = message.data;
-			
-					// Re-enable button
-					if (errorData.transmission_id) {
-						const button = document.querySelector(`[data-transmission-id="${errorData.transmission_id}"] .audio-play-btn`);
-						if (button) {
-							button.textContent = '▶️ Play Transmission';
-							button.disabled = false;
-						}
-					}
-				
-					showNotification(`❌ CLI playback failed: ${errorData.error}`, 'error');
-					addLogEntry(`❌ CLI playback error: ${errorData.error}`, 'error');
-					break;
 
+
+
+
+
+
+
+		case 'transmission_playback_error':
+			console.log('🎵 OPTION A ERROR: Transmission playback failed');
+			const errorData = message.data;
+			
+			// Re-enable button with proper text
+			if (errorData.transmission_id) {
+				const button = document.querySelector(`[data-transmission-id="${errorData.transmission_id}"] .audio-play-btn`);
+				if (button) {
+					button.textContent = '▶️ Play Transmission';  // ← Always reset to this
+					button.disabled = false;
+				}
+			}
+			
+			showNotification(`❌ CLI playback failed: ${errorData.error}`, 'error');
+			addLogEntry(`❌ CLI playback error: ${errorData.error}`, 'error');
+			break;
 
 
 
