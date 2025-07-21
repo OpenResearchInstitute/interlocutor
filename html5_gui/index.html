@@ -2708,8 +2708,65 @@
 			});
 		}
 
+
+
+
+
+
+
+
+	// Also update the playCompleteTransmission function to show clear messaging:
+	function playCompleteTransmission(transmissionId) {
+		const transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
+		if (!transmission) {
+			console.error(`❌ Transmission ${transmissionId} not found`);
+			showNotification('Transmission not found', 'error');
+			return;
+		}
+		
+		console.log(`🎵 OPTION A REQUEST: Playing transmission ${transmissionId}`);
+		console.log(`   Method: CLI speakers (same as live audio)`);
+		console.log(`   Audio packets: ${transmission.audioPackets.length}`);
+		console.log(`   Station: ${transmission.stationId}`);
+		console.log(`   Duration: ${transmission.totalDuration}ms`);
+		
+		// Update button state immediately
+		const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+		if (button) {
+			button.textContent = '⏳ Requesting CLI playback...';
+			button.disabled = true;
+		}
+		
+		// Send request to Python backend for CLI speaker playback
+		sendWebSocketMessage('request_transmission_playback', { 
+			transmission_id: transmissionId,
+			station_id: transmission.stationId,
+			start_time: transmission.startTime,
+			duration_ms: transmission.totalDuration
+		});
+		
+		const duration = (transmission.totalDuration / 1000).toFixed(1);
+		showNotification(`🎵 Requesting ${transmission.stationId} CLI playback (${duration}s)`, 'info');
+		addLogEntry(`🎵 CLI playback request: ${transmission.stationId} (${duration}s)`, 'info');
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		// Play back a complete transmission
-		function playCompleteTransmission(transmissionId) {
+		function playCompleteTransmission_removed(transmissionId) {
 			const transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
 			if (!transmission) {
 				console.error(`❌ Transmission ${transmissionId} not found`);
@@ -2749,6 +2806,15 @@
 			showNotification(`🎵 Playing transmission from ${transmission.stationId} (${duration}s)`, 'info');
 			addLogEntry(`Playing transmission: ${transmission.stationId} (${transmission.totalDuration}ms)`, 'info');
 		}
+
+
+
+
+
+
+
+
+
 
 		// Continue real-time audio (don't interfere with live audio)
 		function playLiveAudio(audioData) {
@@ -2861,6 +2927,63 @@
 				case 'reception_stats':
 					updateReceptionStats(message.data);
 					break;
+
+
+
+
+				case 'transmission_playback_started':
+					console.log('🎵 OPTION A SUCCESS: Transmission playback started via CLI speakers');
+					const playbackData = message.data;
+			
+					// Update UI button
+					const transmissionId = playbackData.transmission_id;
+					if (transmissionId) {
+						const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+						if (button) {
+							const originalText = button.textContent;
+							button.textContent = '🔊 Playing via CLI speakers...';
+							button.disabled = true;
+					
+							// Re-enable after duration plus buffer
+							setTimeout(() => {
+								button.textContent = originalText;
+								button.disabled = false;
+							}, playbackData.duration_ms + 1000); // Extra 1 second buffer
+						}
+					}
+			
+					// Show detailed success notification
+					const duration = (playbackData.duration_ms / 1000).toFixed(1);
+					const deviceInfo = `device ${playbackData.device_index}`;
+					const queueInfo = playbackData.queue_size > 0 ? ` [${playbackData.queue_size} in queue]` : '';
+					const bytesInfo = playbackData.audio_bytes ? ` (${(playbackData.audio_bytes/1024).toFixed(1)}KB)` : '';
+			
+					showNotification(`🔊 Playing ${playbackData.from_station} via CLI speakers (${deviceInfo}) - ${duration}s${queueInfo}`, 'success');
+					addLogEntry(`✅ CLI playback: ${playbackData.from_station} → ${deviceInfo} (${playbackData.total_segments} segments)${bytesInfo}`, 'success');
+					break;
+
+				case 'transmission_playback_error':
+					console.log('🎵 OPTION A ERROR: Transmission playback failed');
+					const errorData = message.data;
+			
+					// Re-enable button
+					if (errorData.transmission_id) {
+						const button = document.querySelector(`[data-transmission-id="${errorData.transmission_id}"] .audio-play-btn`);
+						if (button) {
+							button.textContent = '▶️ Play Transmission';
+							button.disabled = false;
+						}
+					}
+				
+					showNotification(`❌ CLI playback failed: ${errorData.error}`, 'error');
+					addLogEntry(`❌ CLI playback error: ${errorData.error}`, 'error');
+					break;
+
+
+
+
+
+
 					
 				default:
 					console.warn('🔍 Unknown message type:', message.type);
@@ -2957,7 +3080,14 @@
 			}
 		}
 
-		// Handle transmission audio data from server
+
+
+
+
+
+
+
+		// Handle transmission audio data from server (not called!) AI!!!
 		function handleTransmissionAudioData(audioData) {
 			console.log('🎵 TRANSMISSION AUDIO: Received actual audio data');
 			console.log('   Audio data keys:', Object.keys(audioData));
@@ -3085,6 +3215,28 @@
 				}
 			}
 		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 		// Handle audio playback data from server
 		function handleAudioPlaybackData(audioData) {
