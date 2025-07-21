@@ -42,5 +42,58 @@ recommended installations for pyenv:
 
 
 
+Explain potential audio conflicts or mixing:
+
+
+
+            <h4>🐧 Linux/Raspberry Pi Audio Notice</h4>
+            <p><strong>Audio device exclusivity:</strong> Only one application can use each audio device at a time.</p>
+            
+            <div class="audio-recommendations">
+                <h5>✅ Recommended Setup:</h5>
+                <ul>
+                    <li><strong>Radio:</strong> USB headset (selected in --setup-audio)</li>
+                    <li><strong>Browser:</strong> HDMI/built-in speakers</li>
+                </ul>
+                
+                <h5>⚠️ If using same device:</h5>
+                <ul>
+                    <li>Browser audio may stall when radio is active</li>
+                    <li>Stop radio to release audio device for browser</li>
+                    <li>Refresh browser tabs if audio doesn't resume</li>
+                </ul>
+            </div>
+
+Provide a way to see what audio devices are selected
+
+Provide a way to select audio devices from configuration screen
+
+Maybe provide a device release/switching tools
+function 
+            <h3>🥧 Raspberry Pi Audio Guide</h3>
+            
+            <div class="audio-scenario">
+                <h4>✅ Best Setup (No Conflicts)</h4>
+                <p><strong>Radio:</strong> USB headset/microphone</p>
+                <p><strong>Browser:</strong> HDMI output to monitor/TV</p>
+                <p><em>Result: Both work simultaneously</em></p>
+            </div>
+            
+            <div class="audio-scenario">
+                <h4>⚠️ Shared Device Setup</h4>
+                <p><strong>Both using same USB headset</strong></p>
+                <p><em>Result: Only one app can use audio at a time</em></p>
+                
+                <h4>🔧 Hardware Solutions</h4>
+                <ul>
+                    <li><strong>Two USB devices:</strong> One for radio, one for computer</li>
+                    <li><strong>USB hub with multiple audio:</strong> Separate devices</li>
+                    <li><strong>3.5mm splitter:</strong> Share single headset between devices</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
 
 ```
