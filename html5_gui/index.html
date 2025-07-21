@@ -246,6 +246,7 @@
 			border: none;
 			border-radius: 12px;
 			color: white;
+			font-size: 1.2rem;
 			font-weight: 600;
 			cursor: pointer;
 			transition: all 0.3s ease;
@@ -333,9 +334,11 @@
 		}
 
 		.message-input-form {
+			/* border: 1px solid red !important; */
 			display: flex;
 			gap: 0.5rem;
-			align-items: flex-end;
+			/* align-items: flex-end; */
+			align-items: center;
 		}
 
 		.input-container {
@@ -373,16 +376,19 @@
 
 		.send-button {
 			padding: 0.8rem 1rem;
-			background: linear-gradient(45deg, var(--accent-color), #1976d2);
+			background: linear-gradient(45deg, var(--success-color), #43a047) !important;
 			border: none;
 			border-radius: 12px;
 			color: white;
 			cursor: pointer;
 			transition: all 0.3s ease;
-			min-width: 60px;
+			min-width: 60px;		
+			height: 45px;
 			display: flex;
 			align-items: center;
 			justify-content: center;
+			font-size: 1.2rem;
+			font-weight: 600;
 		}
 
 		.send-button:hover {
@@ -1614,23 +1620,21 @@
 					<div>Connection lost to radio system</div>
 					<button class="retry-button" onclick="attemptReconnect()">Retry Connection</button>
 				</div>
-				
 				<form id="message-form" class="message-input-form">
 					<div class="input-container">
 						<label for="message-input" class="sr-only">Message to send</label>
-						<textarea id="message-input" 
-								class="message-input"
-								placeholder="Type your message..."
-								rows="1"
-								disabled></textarea>
+						<textarea id="message-input"
+							class="message-input"
+							placeholder="Type your message..."
+							rows="1"
+							disabled></textarea>
 					</div>
-					<button type="submit" 
-							class="send-button" 
-							aria-label="Send message"
-							disabled>
-						<span aria-hidden="true">📤</span>
+					<button type="submit"
+						class="send-button"
+						disabled>
+					Send
 					</button>
-				</form>
+				</form>				
 			</div>
 		</div>
 
@@ -2661,16 +2665,16 @@
 			
 			transmissionElement.innerHTML = `
 				<div class="audio-content">
-					<div class="audio-header">
+					<!--<div class="audio-header">
 						<span class="audio-icon">📻</span>
 						<span class="message-type-indicator">TRANSMISSION</span>
 						<span class="audio-from">${transmission.stationId}</span>
 						<span class="audio-duration">${totalDurationSec}s</span>
 						<span class="audio-packets">(${packetCount} packets)</span>
-					</div>
+					</div>-->
 					<div class="audio-controls">
 						<button class="audio-play-btn" onclick="playCompleteTransmission('${transmission.transmissionId}')">
-							▶️ Play Transmission
+							▶️ Replay
 						</button>
 						<div class="audio-waveform">
 							<div class="waveform-bars">
@@ -2681,8 +2685,8 @@
 				</div>
 				<div class="message-meta">
 					<span>${transmission.stationId}</span>
+					<span class="transmission-meta"> ${totalDurationSec}s</span>
 					<span>${startTime}</span>
-					<span class="transmission-meta">${packetCount} packets • ${totalDurationSec}s</span>
 				</div>
 			`;
 			
@@ -2788,7 +2792,7 @@
 				
 				// Re-enable after estimated duration
 				setTimeout(() => {
-					button.textContent = '▶️ Play Transmission';
+					button.textContent = '▶️ Replay';
 					button.disabled = false;
 				}, transmission.totalDuration + 500); // Add 500ms buffer
 			}
@@ -2947,7 +2951,7 @@
 					
 					// Re-enable after duration plus buffer - FIXED: Always reset to proper text
 					setTimeout(() => {
-						transmissionButton.textContent = '▶️ Play Transmission';  // ← Always reset to this
+						transmissionButton.textContent = '▶️ Replay';  // ← Always reset to this
 						transmissionButton.disabled = false;
 						console.log(`🔧 Reset transmission button ${transmissionId} to ready state`);
 					}, playbackData.duration_ms + 1000);
@@ -2981,7 +2985,7 @@
 			if (errorData.transmission_id) {
 				const button = document.querySelector(`[data-transmission-id="${errorData.transmission_id}"] .audio-play-btn`);
 				if (button) {
-					button.textContent = '▶️ Play Transmission';  // ← Always reset to this
+					button.textContent = '▶️ Replay';  // ← Always reset to this
 					button.disabled = false;
 				}
 			}
@@ -3219,7 +3223,7 @@
 				if (transmissionId) {
 					const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
 					if (button) {
-						button.textContent = '▶️ Play Transmission';
+						button.textContent = '▶️ Replay';
 						button.disabled = false;
 					}
 				}
@@ -3268,7 +3272,7 @@
 						
 						// Re-enable after estimated duration
 						setTimeout(() => {
-							playButton.textContent = '▶️ Play Transmission';
+							playButton.textContent = '▶️ Replay';
 							playButton.disabled = false;
 						}, audioData.duration_ms || 2000);
 					}
@@ -3413,8 +3417,11 @@
 			// Update last received audio info
 			const lastAudioInfo = document.getElementById('last-audio-info');
 			if (lastAudioInfo) {
-				lastAudioInfo.textContent = `${audioData.from_station} (${audioData.duration_ms}ms)`;
-			}
+				const time = new Date(audioData.timestamp).toLocaleTimeString();
+				lastAudioInfo.textContent = `${audioData.from_station} at ${time}`;
+
+				//lastAudioInfo.textContent = `${audioData.from_station} (${audioData.duration_ms}ms)`;
+				}
 		}
 
 		// Enhanced config message handling
@@ -3763,7 +3770,7 @@
 		// Initialize reception features when DOM is loaded
 		function initializeReceptionFeatures() {
 			// Add audio controls to the interface
-			addAudioControls();
+			//addAudioControls();  //commented out because they don't do anything for us
 			
 			// Add reception statistics display
 			addReceptionStatsDisplay();
@@ -3774,26 +3781,30 @@
 			addLogEntry('Reception features initialized', 'info');
 		}
 
+
+
+
+	
 		function addAudioControls() {
 			// Add audio control panel to the interface
 			const chatPanel = document.getElementById('chat-panel');
 			if (chatPanel) {
-				const audioControls = document.createElement('div');
-				audioControls.className = 'audio-controls-panel';
-				audioControls.innerHTML = `
-					<div class="control-group">
-						<input type="checkbox" id="auto-play-audio" checked>
-						<label for="auto-play-audio">Auto-play received audio</label>
-					</div>
-					<div class="control-group">
-						<input type="checkbox" id="enable-message-sounds" checked>
-						<label for="enable-message-sounds">Message notification sounds</label>
-					</div>
-					<div class="control-group">
-						<input type="checkbox" id="enable-audio-streaming">
-						<label for="enable-audio-streaming">Real-time audio streaming</label>
-					</div>
-				`;
+				//const audioControls = document.createElement('div');
+				//audioControls.className = 'audio-controls-panel';
+				//audioControls.innerHTML = `
+				//	<div class="control-group">
+				//		<input type="checkbox" id="auto-play-audio" checked>
+				//		<label for="auto-play-audio">Auto-play received audio</label>
+				//	</div>
+				//	<div class="control-group">
+				//		<input type="checkbox" id="enable-message-sounds" checked>
+				//		<label for="enable-message-sounds">Message notification sounds</label>
+				//	</div>
+				//	<div class="control-group">
+				//		<input type="checkbox" id="enable-audio-streaming">
+				//		<label for="enable-audio-streaming">Real-time audio streaming</label>
+				//	</div>
+				//`;
 				
 				// Insert before chat container
 				const chatContainer = chatPanel.querySelector('.chat-container');
@@ -3808,7 +3819,7 @@
 				const receptionStats = document.createElement('div');
 				receptionStats.className = 'stat-item';
 				receptionStats.innerHTML = `
-					<span class="stat-label">Audio Received</span>
+					<span class="stat-label">Audio Frames Received</span>
 					<span id="audio-received-count" class="stat-value">0</span>
 				`;
 				statusPanel.appendChild(receptionStats);
