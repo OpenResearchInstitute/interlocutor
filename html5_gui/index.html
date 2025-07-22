@@ -3483,12 +3483,28 @@
 					console.log('🔍 ENHANCED HANDLER DEBUG: Form validation valid:', formTestResult.form_validation?.valid);
 					
 					if (formTestResult.form_validation?.valid) {
-						// Form is valid, show system test results
-						const systemStatus = formTestResult.system_test.success ?
-							'System test passed with form values' :
-							`System test issues: ${formTestResult.system_test.message}`;
-						updateConfigStatus(systemStatus, formTestResult.system_test.success ? 'success' : 'warning');
-						
+						// now check for warnings, even if results were valid
+						let warningText = '';
+						if (formTestResult.form_validation?.field_errors) {
+							const fieldErrors = formTestResult.form_validation.field_errors;
+            
+							Object.keys(fieldErrors).forEach(field => {
+								warningText += `${fieldErrors[field]}; `;
+							});
+						}
+            
+						// Form is valid, show system test results combined with warnings
+
+						let statusMessage = formTestResult.system_test.success ?
+						'System test passed with form values' :
+						`System test issues: ${formTestResult.system_test.message}`;
+
+
+						if (warningText) {	
+							statusMessage = `${statusMessage} | ⚠️ ${warningText}`;
+						}
+
+						updateConfigStatus(statusMessage, formTestResult.system_test.success ? 'success' : 'warning');
 						console.log('🔍 ENHANCED HANDLER DEBUG: System test success:', formTestResult.system_test.success);
 					} else {
 						// Form validation failed
