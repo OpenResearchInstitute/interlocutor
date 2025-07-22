@@ -1656,12 +1656,8 @@
 				<div class="config-status-display">
 					<div class="current-file-status">
 						<div class="status-item">
-							<label class="status-label">📄 Current Configuration:</label>
+							<label class="status-label">📄 Active Configuration File:</label>
 							<span id="current-config-file" class="status-value">No file loaded</span>
-						</div>
-						<div class="status-item">
-							<label class="status-label">🕒 Last Modified:</label>
-							<span id="config-last-modified" class="status-value">Unknown</span>
 						</div>
 					</div>
 				</div>
@@ -2222,7 +2218,10 @@
 				document.getElementById('config-panel').style.display = 'block';
 				
 				if (ws && ws.readyState === WebSocket.OPEN) {
+					console.log("🔍 DEBUG: Requesting current config");
 					sendWebSocketMessage('get_current_config');
+				} else {
+					console.log("🔍 DEBUG: WebSocket not ready, can't request config");
 				}
 			}
 			
@@ -2475,8 +2474,15 @@
 			if (validateConfig(config)) {
 				sendWebSocketMessage('update_config', config);
 				showNotification('Applying configuration...', 'info');
+
+				// UPDATE: Also update the UI station ID immediately
+				if (config.callsign) {
+					currentStation = config.callsign;
+					document.getElementById('current-station').textContent = currentStation;
+				}
 			}
 		}
+
 
 		function saveConfig() {
 			const config = gatherConfigData();
@@ -2835,7 +2841,18 @@
 			}
 		}
 
-		// Enhanced WebSocket message handler with transmission grouping
+
+
+
+
+
+
+
+
+
+
+
+		// Enhanced WebSocket message handler with transmission grouping AI!!!
 		function handleWebSocketMessage(message) {
 			console.log('🔍 WebSocket message received:', message.type);
 			addLogEntry(`Received: ${message.type}`, 'info');
@@ -2848,9 +2865,9 @@
 					}
 					break;
 					
-				case 'current_config':
-					populateConfigFromData(message.data);
-					break;
+				//case 'current_config':   // duplicate case
+				//	populateConfigFromData(message.data);
+				//	break;
 					
 				case 'message_received':
 					handleIncomingMessage(message.data);
@@ -2972,11 +2989,6 @@
 
 
 
-
-
-
-
-
 		case 'transmission_playback_error':
 			console.log('🎵 OPTION A ERROR: Transmission playback failed');
 			const errorData = message.data;
@@ -2996,14 +3008,29 @@
 
 
 
-
-
-					
 				default:
-					console.warn('🔍 Unknown message type:', message.type);
-					addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+					// Try enhanced config handler for any unhandled messages
+					handleEnhancedConfigMessage(message);
+    
+					// Only log as unknown if it's NOT a config-related message
+					if (!message.type.includes('config') && !message.type.includes('connection_test')) {
+						console.warn('🔍 Unknown message type:', message.type);
+						addLogEntry(`Unknown message type: ${message.type}`, 'warning');
+					}
+					break;
 			}
 		}
+
+
+
+
+
+
+
+
+
+
+
 
 		// Handle PTT control messages to define transmission boundaries
 		function handleControlMessage(controlData) {
@@ -3504,8 +3531,13 @@
 			}
 		}
 
-		// Configuration management functions
+		// Configuration management functions - check
 		function populateEnhancedConfigFromData(config) {
+
+			console.log("🔍 DEBUG: populateEnhancedConfigFromData called");
+			console.log("🔍 DEBUG: config object:", config);
+			console.log("🔍 DEBUG: metadata:", config._metadata);
+
 			currentConfig = config;
 			
 			// Update current file display
@@ -3515,6 +3547,7 @@
 				document.getElementById('current-config-file').textContent = 'Default configuration';
 			}
 			
+
 			// Station settings
 			if (config.callsign) {
 				document.getElementById('callsign').value = config.callsign;
