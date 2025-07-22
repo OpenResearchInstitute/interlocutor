@@ -1406,6 +1406,11 @@ class EnhancedRadioWebInterface:
 		"""Send current configuration to the web interface - FULLY RESTORED"""
 		try:
 			if self.config:
+				# ADD DEBUG HERE
+				print(f"🔍 DEBUG: config_manager exists: {self.config_manager is not None}")
+				if self.config_manager:
+					print(f"🔍 DEBUG: config_file_path: {getattr(self.config_manager, 'config_file_path', 'NOT_SET')}")
+
 				# Convert config to dictionary format for the web interface
 				config_dict = {
 					'callsign': getattr(self.config, 'callsign', 'NOCALL'),
