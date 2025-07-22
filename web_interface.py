@@ -7,6 +7,7 @@ Addresses connection issues and improves chat integration
 import asyncio
 import json
 import logging
+import ipaddress
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Optional, Any
@@ -1988,7 +1989,35 @@ class EnhancedRadioWebInterface:
 		
 		# Validate network settings
 		network = form_config.get('network', {})
-		
+
+		target_ip = network.get('target_ip', '').strip()
+		print(f"🔍 IP VALIDATION DEBUG: target_ip = '{target_ip}'")
+
+		if target_ip:
+			try:
+				# Validate IP address format
+				ip_obj = ipaddress.ip_address(target_ip)
+				print(f"🔍 IP VALIDATION DEBUG: ip_obj = {ip_obj}")
+				print(f"🔍 IP VALIDATION DEBUG: is_loopback = {ip_obj.is_loopback}")
+
+				# Optional: Warn about unusual addresses
+				if ip_obj.is_loopback:
+					print(f"🔍 IP VALIDATION DEBUG: LOOPBACK DETECTED")
+					field_errors['target-ip'] = "Warning: Loopback address (127.x.x.x)"
+				elif ip_obj.is_multicast:
+					print(f"🔍 IP VALIDATION DEBUG: MULTICAST DETECTED!")
+					field_errors['target-ip'] = "Multicast addresses not yet implemented"
+                
+			except ValueError:
+				print(f"🔍 IP VALIDATION DEBUG: INVALID IP")
+				errors.append("Invalid IP address format")
+				field_errors['target-ip'] = "Must be valid IP address (e.g., 192.168.1.100)"
+		else:
+			print(f"🔍 IP VALIDATION DEBUG: NO IP PROVIDED")
+			errors.append("Target IP is required")
+			field_errors['target-ip'] = "IP address is required"
+
+
 		target_port = network.get('target_port')
 		if target_port and not (1 <= int(target_port) <= 65535):
 			errors.append("Invalid target port")
@@ -2017,6 +2046,12 @@ class EnhancedRadioWebInterface:
 			field_errors['ptt-pin'] = "Cannot be same as LED pin"
 			field_errors['led-pin'] = "Cannot be same as PTT pin"
 		
+
+
+		print(f"🔍 IP VALIDATION DEBUG: Final errors = {errors}")
+		print(f"🔍 IP VALIDATION DEBUG: Final field_errors = {field_errors}")
+
+
 		return {
 			'valid': len(errors) == 0,
 			'errors': errors,
@@ -2090,26 +2125,55 @@ class EnhancedRadioWebInterface:
 			test_results["audio_system"] = hasattr(self.radio_system, 'audio_input_stream')
 			test_results["gpio_system"] = hasattr(self.radio_system, 'ptt_button')
 			
-			# Test network transmission
+			# IMPROVED NETWORK TEST
+			target_ip = self.config.network.target_ip
+			target_port = self.config.network.target_port
+        
 			try:
-				if hasattr(self.radio_system, 'transmitter'):
-					test_data = b"TEST_CONNECTION_FORM"
-					test_results["target_reachable"] = self.radio_system.transmitter.send_frame(test_data)
+				import socket
+            
+				# Test UDP connectivity with timeout
+				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				sock.settimeout(3.0)  # 3 second timeout
+            
+				# Try to connect (for UDP this just validates the address)
+				try:
+					sock.connect((target_ip, target_port))
+                
+					# Send actual test frame like before
+					if hasattr(self.radio_system, 'transmitter'):
+						test_data = b"TEST_CONNECTION_FORM"
+						test_success = self.radio_system.transmitter.send_frame(test_data)
+						test_results["target_reachable"] = test_success
+					else:
+						test_results["target_reachable"] = True  # At least IP is valid
+                    
+				except socket.gaierror:
+					# DNS resolution failed
+					test_results["target_reachable"] = False
+					self.logger.warning(f"Cannot resolve hostname: {target_ip}")
+				except socket.error as e:
+					# Network unreachable, host unreachable, etc.
+					test_results["target_reachable"] = False
+					self.logger.warning(f"Network error to {target_ip}:{target_port}: {e}")
+				finally:
+					sock.close()
+                
 			except Exception as e:
+				test_results["target_reachable"] = False
 				self.logger.warning(f"Network test failed: {e}")
-		
+    
 		overall_success = all([
-			test_results["network_available"],
-			test_results["target_reachable"],
-			test_results["config_valid"]
+		test_results["network_available"],
+		test_results["target_reachable"],
+		test_results["config_valid"]
 		])
-		
+    
 		return {
 			"success": overall_success,
 			"results": test_results,
 			"message": "System test completed" if overall_success else "System test found issues"
 		}
-
 
 
 
