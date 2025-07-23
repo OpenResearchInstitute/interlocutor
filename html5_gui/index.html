@@ -1532,6 +1532,105 @@
 		        grid-template-columns: 1fr;
 		    }
 		}
+
+
+
+
+
+
+/* Add these CSS rules to the existing styles in index.html */
+
+/* Enhanced Audio Message Styles - Both Directions */
+.message.audio-message {
+	background: linear-gradient(135deg, rgba(66, 165, 245, 0.1), rgba(66, 165, 245, 0.2));
+	border: 2px solid rgba(66, 165, 245, 0.3);
+	border-radius: 16px;
+	padding: 1rem;
+	margin: 0.5rem 0;
+}
+
+/* Incoming Audio Messages (existing - keep as is) */
+.message.incoming.audio-message {
+	background: linear-gradient(135deg, rgba(66, 165, 245, 0.1), rgba(66, 165, 245, 0.2));
+	border: 2px solid rgba(66, 165, 245, 0.3);
+	border-left: 4px solid var(--accent-color);
+	align-self: flex-start;
+	animation: messageSlideIn 0.4s ease;
+}
+
+/* NEW: Outgoing Audio Messages */
+.message.outgoing.audio-message {
+	background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.2));
+	border: 2px solid rgba(76, 175, 80, 0.3);
+	border-right: 4px solid var(--success-color);
+	align-self: flex-end;
+	margin-left: auto;
+	animation: messageSlideInRight 0.4s ease;
+}
+
+/* NEW: Slide-in animation for outgoing messages */
+@keyframes messageSlideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Enhanced waveform for outgoing messages */
+.message.outgoing.audio-message .waveform-bars .bar {
+	background: linear-gradient(to top, var(--success-color), rgba(76, 175, 80, 0.3));
+}
+
+.message.outgoing.audio-message .waveform-bars .bar:nth-child(odd) {
+	background: linear-gradient(to top, #4caf50, rgba(76, 175, 80, 0.5));
+}
+
+/* Enhanced audio controls for outgoing */
+.message.outgoing.audio-message .audio-play-btn {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.message.outgoing.audio-message .audio-play-btn:hover:not(:disabled) {
+	background: linear-gradient(45deg, #4caf50, #66bb6a);
+	box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+/* Different meta styling for outgoing */
+.message.outgoing.audio-message .message-meta {
+	text-align: right;
+}
+
+.message.outgoing.audio-message .transmission-meta {
+	color: var(--success-color);
+	font-weight: 600;
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+	.message.outgoing.audio-message {
+		margin-left: 0;
+		align-self: stretch;
+	}
+	
+	.message.outgoing.audio-message .message-meta {
+		text-align: left;
+	}
+}
+
+
+
+
+
+
+
+
+
 	</style>
 </head>
 <body>
@@ -2078,6 +2177,11 @@
 		// TRANSMISSION-BASED storage for GUI
 		let activeTransmissions = new Map(); // station_id -> current transmission data
 		let completedTransmissions = []; // List of complete transmissions
+
+		// Outgoing transmission storage
+		let activeOutgoingTransmissions = new Map(); // station_id -> current outgoing transmission data
+		let completedOutgoingTransmissions = []; // List of complete outgoing transmissions
+
 		let maxCompletedTransmissions = 50; // Store last 50 complete transmissions
 
 		// Keep individual packets for live audio only (small buffer)
@@ -2658,17 +2762,19 @@
 		}
 
 		// Create UI bubble for completed transmission
-		function createTransmissionUIBubble(transmission) {
+		function createTransmissionUIBubble(transmission, direction = 'incoming') {
 			const messageHistory = document.getElementById('message-history');
-			
-			const transmissionElement = document.createElement('div');
-			transmissionElement.className = 'message incoming audio-message';
+			const transmissionElement = document.createElement('div');			
+			transmissionElement.className = `message ${direction} audio-message`;
 			transmissionElement.setAttribute('data-transmission-id', transmission.transmissionId);
 			
 			const totalDurationSec = (transmission.totalDuration / 1000).toFixed(1);
 			const packetCount = transmission.audioPackets.length;
 			const startTime = new Date(transmission.startTime).toLocaleTimeString();
-			
+
+			// NEW: Different display based on direction
+			const displayName = direction === 'outgoing' ? 'You' : transmission.stationId;			
+
 			transmissionElement.innerHTML = `
 				<div class="audio-content">
 					<!--<div class="audio-header">
@@ -2690,8 +2796,8 @@
 					</div>
 				</div>
 				<div class="message-meta">
-					<span>${transmission.stationId}</span>
-					<span class="transmission-meta"> ${totalDurationSec}s</span>
+					<span>${displayName}</span>
+					<span class="transmission-meta">${totalDurationSec}s</span>
 					<span>${startTime}</span>
 				</div>
 			`;
@@ -2721,12 +2827,64 @@
 
 
 
+function playCompleteTransmission(transmissionId) {
+    console.log(`🎵 TRANSMISSION PLAYBACK: Request for ${transmissionId}`);
+    
+    // DEBUG: Show what's in storage
+    console.log(`🔍 STORAGE DEBUG: Looking for transmission ${transmissionId}`);
+    console.log(`🔍 STORAGE DEBUG: Incoming transmissions:`, completedTransmissions.map(t => t.transmissionId));
+    console.log(`🔍 STORAGE DEBUG: Outgoing transmissions:`, completedOutgoingTransmissions.map(t => t.transmissionId));
+    
+    // Search in both incoming and outgoing completed transmissions
+    let transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
+    let direction = 'incoming';
+    
+    if (!transmission) {
+        transmission = completedOutgoingTransmissions.find(t => t.transmissionId === transmissionId);
+        direction = 'outgoing';
+        console.log(`🔍 STORAGE DEBUG: Found in outgoing:`, transmission ? 'YES' : 'NO');
+    }
+    
+    if (!transmission) {
+        console.error(`❌ Transmission ${transmissionId} not found in incoming or outgoing`);
+        showNotification('Transmission not found', 'error');
+        return;
+    }
+    
+    console.log(`🎵 PLAYBACK: Found ${direction} transmission with ${transmission.audioPackets.length} packets`);
+    
+    // Update button state immediately
+    const button = document.querySelector(`[data-transmission-id="${transmissionId}"] .audio-play-btn`);
+    if (button) {
+        const directionText = direction === 'outgoing' ? 'your own' : transmission.stationId + "'s";
+        button.textContent = `⏳ Requesting playback of ${directionText} message...`;
+        button.disabled = true;
+    }
+    
+    // Send request to Python backend for CLI speaker playback
+    sendWebSocketMessage('request_transmission_playback', { 
+        transmission_id: transmissionId,
+        station_id: transmission.stationId,
+        start_time: transmission.startTime,
+        duration_ms: transmission.totalDuration,
+        direction: direction  // NEW: Include direction in request
+    });
+    
+    const duration = (transmission.totalDuration / 1000).toFixed(1);
+    const directionText = direction === 'outgoing' ? 'your own' : transmission.stationId + "'s";
+    showNotification(`🎵 Requesting ${directionText} CLI playback (${duration}s)`, 'info');
+    addLogEntry(`🎵 CLI playback request: ${directionText} transmission (${duration}s)`, 'info');
+}
+
+
+
+
 
 
 
 
 	// Also update the playCompleteTransmission function to show clear messaging:
-	function playCompleteTransmission(transmissionId) {
+	function playCompleteTransmission_before_incoming_added(transmissionId) {
 		const transmission = completedTransmissions.find(t => t.transmissionId === transmissionId);
 		if (!transmission) {
 			console.error(`❌ Transmission ${transmissionId} not found`);
@@ -2854,6 +3012,11 @@
 
 		// Enhanced WebSocket message handler with transmission grouping AI!!!
 		function handleWebSocketMessage(message) {
+
+			// DEBUG: Log ALL message types
+			console.log('🔍 ALL WEBSOCKET MESSAGES:', message.type, message.data);
+
+
 			console.log('🔍 WebSocket message received:', message.type);
 			addLogEntry(`Received: ${message.type}`, 'info');
 
@@ -3005,6 +3168,40 @@
 			showNotification(`❌ CLI playback failed: ${errorData.error}`, 'error');
 			addLogEntry(`❌ CLI playback error: ${errorData.error}`, 'error');
 			break;
+
+
+
+
+     // NEW: Outgoing transmission handling
+        case 'outgoing_transmission_started':
+            console.log('📤 OUTGOING: Received outgoing_transmission_started');
+            const outStartData = message.data;
+            startNewOutgoingTransmission(outStartData.station_id, outStartData.start_time, outStartData.transmission_id);
+            break;
+        
+        case 'outgoing_transmission_ended':
+            console.log('📤 OUTGOING: Received outgoing_transmission_ended');
+            const outEndData = message.data;
+            endOutgoingTransmission(outEndData.station_id, outEndData.end_time, outEndData.transmission_id);
+            break;
+
+        case 'outgoing_audio_received':
+            console.log('📤 OUTGOING AUDIO: Received outgoing audio packet');
+            handleOutgoingAudioPacket(message.data);
+            break;
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3258,6 +3455,137 @@
 		}
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+// NEW: Outgoing transmission management functions
+function startNewOutgoingTransmission(stationId, startTime, transmissionId) {
+    console.log(`📤 OUTGOING START: ${transmissionId} from ${stationId}`);
+    
+    // End any previous incomplete outgoing transmission
+    if (activeOutgoingTransmissions.has(stationId)) {
+        console.log(`⚠️ Force-ending previous incomplete outgoing transmission from ${stationId}`);
+        const oldTransmission = activeOutgoingTransmissions.get(stationId);
+        endOutgoingTransmission(stationId, new Date().toISOString(), oldTransmission.transmissionId);
+    }
+    
+    const transmission = {
+        stationId: stationId,
+        startTime: startTime,
+        endTime: null,
+        audioPackets: [],
+        totalDuration: 0,
+        firstPacketTime: null,
+        lastPacketTime: null,
+        transmissionId: transmissionId,
+        incomplete: true,
+        timeoutId: null,
+        direction: 'outgoing'
+    };
+    
+    activeOutgoingTransmissions.set(stationId, transmission);
+    addLogEntry(`📤 Outgoing transmission started: ${transmissionId}`, 'success');
+    
+    // Show temporary indicator
+    showNotification(`📻 You started transmitting`, 'info');
+}
+
+function endOutgoingTransmission(stationId, endTime, transmissionId) {
+    const transmission = activeOutgoingTransmissions.get(stationId);
+    if (!transmission) {
+        console.log(`⚠️ Tried to end outgoing transmission for ${stationId} but none active`);
+        return;
+    }
+    
+    // Update transmission with server's final ID
+    console.log(`🔄 OUTGOING ID SYNC: Updating transmission ID from ${transmission.transmissionId} to ${transmissionId}`);
+    transmission.transmissionId = transmissionId;
+    transmission.endTime = endTime;
+    transmission.incomplete = false;
+    
+    // Clear timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    console.log(`📤 OUTGOING TRANSMISSION COMPLETE: ${transmission.transmissionId} - `
+                + `${transmission.audioPackets.length} packets, ${transmission.totalDuration}ms`);
+    
+    // Move to completed outgoing transmissions
+    completedOutgoingTransmissions.push(transmission);
+    activeOutgoingTransmissions.delete(stationId);
+    
+    // Cleanup old outgoing transmissions
+    if (completedOutgoingTransmissions.length > maxTransmissions) {
+        completedOutgoingTransmissions = completedOutgoingTransmissions.slice(-maxTransmissions);
+    }
+    
+    // Create UI bubble for the complete outgoing transmission
+    if (transmission.audioPackets.length > 0) {
+        createTransmissionUIBubble(transmission, 'outgoing');  // NEW: Pass direction
+        const duration = (transmission.totalDuration / 1000).toFixed(1);
+        addLogEntry(`📻 Outgoing transmission completed: ${stationId} (${transmission.audioPackets.length} packets, ${duration}s)`, 'success');
+        showNotification(`📻 Your transmission complete (${duration}s)`, 'success');
+    } else {
+        console.log(`⚠️ No audio packets in outgoing transmission from ${stationId}`);
+        addLogEntry(`⚠️ Empty outgoing transmission from ${stationId}`, 'warning');
+    }
+}
+
+function handleOutgoingAudioPacket(audioData) {
+    const stationId = audioData.from_station;
+    
+    console.log(`📤 OUTGOING AUDIO: Audio packet from ${stationId}: ${audioData.duration_ms}ms`);
+    
+    // Get active outgoing transmission
+    let transmission = activeOutgoingTransmissions.get(stationId);
+    
+    if (!transmission) {
+        // No active outgoing transmission - this shouldn't happen but handle gracefully
+        console.log(`📤 ⚠️ Auto-starting outgoing transmission for ${stationId} (no transmission start received)`);
+        startNewOutgoingTransmission(stationId, audioData.timestamp, `tx_out_${stationId}_${Date.now()}`);
+        transmission = activeOutgoingTransmissions.get(stationId);
+    }
+    
+    // Add packet to outgoing transmission
+    transmission.audioPackets.push(audioData);
+    transmission.totalDuration += audioData.duration_ms;
+    transmission.lastPacketTime = audioData.timestamp;
+    
+    if (!transmission.firstPacketTime) {
+        transmission.firstPacketTime = audioData.timestamp;
+    }
+    
+    // Reset auto-timeout for this outgoing transmission
+    resetOutgoingTransmissionTimeout(stationId);
+    
+    console.log(`📤 Added packet to outgoing transmission ${transmission.transmissionId} (${transmission.audioPackets.length} packets, ${transmission.totalDuration}ms total)`);
+}
+
+function resetOutgoingTransmissionTimeout(stationId) {
+    const transmission = activeOutgoingTransmissions.get(stationId);
+    if (!transmission) return;
+    
+    // Clear existing timeout
+    if (transmission.timeoutId) {
+        clearTimeout(transmission.timeoutId);
+    }
+    
+    // Set new timeout
+    transmission.timeoutId = setTimeout(() => {
+        console.log(`⏰ Auto-ending outgoing transmission from ${stationId} (timeout)`);
+        endOutgoingTransmission(stationId, new Date().toISOString(), transmission.transmissionId);
+    }, transmissionTimeoutMs);
+}
 
 
 
