@@ -78,6 +78,8 @@ import time
 import threading
 import argparse
 import re
+from datetime import datetime
+import asyncio
 from queue import PriorityQueue, Empty, Queue
 #from queue import Empty, Queue
 from enum import Enum
@@ -104,7 +106,6 @@ from audio_device_manager import (
 	create_audio_manager_for_interactive
 )
 
-import asyncio
 from web_interface import initialize_web_interface, run_web_server
 
 from enhanced_receiver import integrate_enhanced_receiver
@@ -1020,23 +1021,11 @@ class GPIOZeroPTTHandler:
 	def audio_callback(self, in_data, frame_count, time_info, status):
 		"""
 		MODIFIED audio callback that drives all transmission
-		This replaces the existing audio_callback method
 		"""
 		if status:
 			print(f"⚠ Audio status flags: {status}")
 
 		current_time = time.time()
-
-		# Debug: print contents
-		#is_all_zeros = all(b == 0 for b in in_data)
-		#DebugConfig.debug_print(f"🎤 Callback: {len(in_data)}B, frame_count={frame_count}, all_zeros={is_all_zeros}")
-
-		# Debug: Track callback intervals
-		#if hasattr(self, 'last_callback_time'):
-		#	interval_ms = (current_time - self.last_callback_time) * 1000
-		#	if interval_ms < 35 or interval_ms > 45:  # Outside normal range
-		#		DebugConfig.debug_print(f"🕒 Audio callback: {interval_ms:.1f}ms")
-		#self.last_callback_time = current_time
 
 		# PART 1: Process incoming audio (existing logic)
 		if self.ptt_active:
@@ -1057,7 +1046,11 @@ class GPIOZeroPTTHandler:
 					DebugConfig.debug_print(f"⚠ Dropping invalid OPUS packet")
 					return (None, pyaudio.paContinue)
 
-				# NEW: Send voice frame immediately using audio timing
+				# NEW: Capture outgoing audio for web interface (ONLY if web interface exists)
+				if hasattr(self, 'enhanced_receiver') and hasattr(self.enhanced_receiver, 'web_bridge'):
+					self._capture_outgoing_audio_for_web(opus_packet, current_time)
+
+				# Send voice frame immediately using audio timing
 				if self.audio_frame_manager.process_voice_and_transmit(opus_packet, current_time):
 					self.audio_stats['frames_sent'] += 1
 
@@ -1104,7 +1097,49 @@ class GPIOZeroPTTHandler:
 
 		self.protocol.notify_ptt_pressed()
 		self._is_first_voice_frame = True
-		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT pressed - immediate control + audio-driven transmission")
+
+		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT pressed - immediate control + audio driven transmission")
+
+
+
+		# DEBUG: Check if enhanced receiver is available
+		DebugConfig.debug_print(f"🔍 DEBUG: hasattr enhanced_receiver: {hasattr(self, 'enhanced_receiver')}")
+		if hasattr(self, 'enhanced_receiver'):
+			DebugConfig.debug_print(f"🔍 DEBUG: enhanced_receiver exists: {self.enhanced_receiver is not None}")
+			if self.enhanced_receiver:
+				DebugConfig.debug_print(f"🔍 DEBUG: hasattr web_bridge: {hasattr(self.enhanced_receiver, 'web_bridge')}")
+				if hasattr(self.enhanced_receiver, 'web_bridge'):
+					DebugConfig.debug_print(f"🔍 DEBUG: web_bridge exists: {self.enhanced_receiver.web_bridge is not None}")
+
+
+
+
+
+		# NEW: Start tracking our own outgoing transmission for web interface
+		if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver and hasattr(self.enhanced_receiver, 'web_bridge'):
+			try:
+				# Create outgoing transmission tracking
+				def notify_outgoing_start():
+					try:
+						loop = asyncio.new_event_loop()
+						asyncio.set_event_loop(loop)
+						loop.run_until_complete(
+							self.enhanced_receiver.web_bridge.notify_outgoing_transmission_started({
+								"station_id": str(self.station_id),
+								"start_time": datetime.now().isoformat(),
+								"direction": "outgoing"
+							})
+						)
+						loop.close()
+					except Exception as e:
+						DebugConfig.debug_print(f"Error notifying outgoing start: {e}")
+            
+				# Run in separate thread to avoid blocking audio
+				threading.Thread(target=notify_outgoing_start, daemon=True).start()
+				DebugConfig.debug_print(f"📤 Started tracking outgoing transmission")
+			except Exception as e:
+				DebugConfig.debug_print(f"Error starting outgoing transmission tracking: {e}")
+
 
 		# LED on
 		self.led.on()
@@ -1117,6 +1152,34 @@ class GPIOZeroPTTHandler:
 		self.chat_manager.set_ptt_state(False)
 		self.audio_frame_manager.set_voice_active(False)
 		self.protocol.notify_ptt_released()
+
+		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT released - immediate control sent")
+
+		# NEW: End tracking our own outgoing transmission for web interface
+		if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver and hasattr(self.enhanced_receiver, 'web_bridge'):
+			try:
+				# Create outgoing transmission end tracking
+				def notify_outgoing_end():
+					try:
+						loop = asyncio.new_event_loop()
+						asyncio.set_event_loop(loop)
+						loop.run_until_complete(
+							self.enhanced_receiver.web_bridge.notify_outgoing_transmission_ended({
+								"station_id": str(self.station_id),
+								"end_time": datetime.now().isoformat(),
+								"direction": "outgoing"
+							})
+						)
+						loop.close()
+					except Exception as e:
+						DebugConfig.debug_print(f"Error notifying outgoing end: {e}")
+            
+				# Run in separate thread to avoid blocking audio
+				threading.Thread(target=notify_outgoing_end, daemon=True).start()
+				DebugConfig.debug_print(f"📤 Ended tracking outgoing transmission")
+			except Exception as e:
+				DebugConfig.debug_print(f"Error ending outgoing transmission tracking: {e}")
+
     
 		# STEP 2: Brief delay to ensure last voice frame is sent
 		time.sleep(0.050)  # 50ms delay
@@ -1134,7 +1197,6 @@ class GPIOZeroPTTHandler:
 		except Exception as e:
 			DebugConfig.debug_print(f"✗ Error sending immediate PTT_STOP: {e}")
 
-		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT released - immediate control sent")
 
 		# Show stats and LED off (existing code)
 		time.sleep(0.1)
@@ -1146,6 +1208,51 @@ class GPIOZeroPTTHandler:
 
 
 
+	def _capture_outgoing_audio_for_web(self, opus_packet, current_time):
+		"""
+		NEW: Capture outgoing audio for web interface replay (does not affect live audio)
+		"""
+		try:
+			# Only capture if web interface is connected
+			if not (hasattr(self, 'enhanced_receiver') and 
+					hasattr(self.enhanced_receiver, 'web_bridge') and
+					self.enhanced_receiver.web_bridge.web_interface):
+				return
+        
+			# Decode OPUS to PCM for web interface storage
+			# (Same as incoming audio processing)
+			if hasattr(self.enhanced_receiver, 'audio_decoder'):
+				audio_pcm = self.enhanced_receiver.audio_decoder.decode_opus(opus_packet)
+            
+				if audio_pcm:
+					# Create audio data packet (same format as incoming)
+					audio_data = {
+						'audio_data': audio_pcm,
+						'from_station': str(self.station_id),  # Our own station
+						'timestamp': datetime.now().isoformat(),
+						'sample_rate': self.sample_rate,
+						'duration_ms': self.frame_duration_ms,
+						'direction': 'outgoing'  # Mark as outgoing
+					}
+                
+					# Send to web interface asynchronously (doesn't block audio)
+					def notify_web():
+						try:
+							loop = asyncio.new_event_loop()
+							asyncio.set_event_loop(loop)
+							loop.run_until_complete(
+								self.enhanced_receiver.web_bridge.notify_audio_received(audio_data)
+							)
+							loop.close()
+						except Exception as e:
+							DebugConfig.debug_print(f"Web outgoing audio notification error: {e}")
+                
+					# Run in separate thread to avoid blocking audio callback
+					threading.Thread(target=notify_web, daemon=True).start()
+                
+		except Exception as e:
+			# Never let web interface issues affect live audio
+			DebugConfig.debug_print(f"Outgoing audio capture error (non-fatal): {e}")
 
 
 

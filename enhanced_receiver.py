@@ -33,6 +33,7 @@ class WebSocketBridge:
         self.message_callbacks = []
         self.audio_callbacks = []
         self.control_callbacks = []
+        self.outgoing_transmission_callbacks = []
         
     def set_web_interface(self, web_interface):
         """Connect to web interface instance"""
@@ -104,8 +105,69 @@ class WebSocketBridge:
             except Exception as e:
                 print(f"Error in control callback: {e}")
 
+    # New for UI bubbles for outgoing transmission
+    def add_outgoing_transmission_callback(self, callback):
+        """Add callback for outgoing transmission events"""
+        self.outgoing_transmission_callbacks.append(callback)
+    
+    async def notify_outgoing_transmission_started(self, transmission_data):
+        """Notify web interface of outgoing transmission start"""
+        print(f"🌐 BRIDGE DEBUG: Outgoing transmission start notification")
+        
+        if self.web_interface:
+            try:
+                # Check if the web interface has outgoing transmission methods
+                if hasattr(self.web_interface, 'on_outgoing_transmission_started'):
+                    await self.web_interface.on_outgoing_transmission_started(transmission_data)
+                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_outgoing_transmission_started")
+                else:
+                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_outgoing_transmission_started method")
+            except Exception as e:
+                print(f"Error notifying web interface of outgoing transmission start: {e}")
+                
+        # Also notify other callbacks
+        for callback in self.outgoing_transmission_callbacks:
+            try:
+                callback(transmission_data)
+            except Exception as e:
+                print(f"Error in outgoing transmission callback: {e}")
+    
+    async def notify_outgoing_transmission_ended(self, transmission_data):
+        """Notify web interface of outgoing transmission end"""
+        print(f"🌐 BRIDGE DEBUG: Outgoing transmission end notification")
+        
+        if self.web_interface:
+            try:
+                if hasattr(self.web_interface, 'on_outgoing_transmission_ended'):
+                    await self.web_interface.on_outgoing_transmission_ended(transmission_data)
+                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_outgoing_transmission_ended")
+                else:
+                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_outgoing_transmission_ended method")
+            except Exception as e:
+                print(f"Error notifying web interface of outgoing transmission end: {e}")
+                
+        # Also notify other callbacks
+        for callback in self.outgoing_transmission_callbacks:
+            try:
+                callback(transmission_data)
+            except Exception as e:
+                print(f"Error in outgoing transmission callback: {e}")
 
-
+    async def notify_outgoing_audio_received(self, audio_data):
+        """Notify web interface of outgoing audio (our own transmission)"""
+        if self.web_interface:
+            try:
+                # Use the same audio notification but mark as outgoing
+                await self.web_interface.on_audio_received(audio_data)
+            except Exception as e:
+                print(f"Error notifying web interface of outgoing audio: {e}")
+                
+        # Also notify other callbacks
+        for callback in self.audio_callbacks:
+            try:
+                callback(audio_data)
+            except Exception as e:
+                print(f"Error in outgoing audio callback: {e}")
 
 
 
