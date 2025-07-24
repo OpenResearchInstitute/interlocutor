@@ -744,7 +744,7 @@ class MessageReceiver:
 				print(f"❓ [{from_station}] Unknown port {udp_dest_port}: {len(udp_payload)}B")
 
 		except Exception as e:
-			DebugConfig.debug_print(f"Error processing IP frame: {e}")
+			print(f"Error processing IP frame: {e}")
 
 
 # ===================================================================
@@ -1008,22 +1008,17 @@ class GPIOZeroPTTHandler:
 			return False
 		return True
 
-	# minimal audio_callback to see where audio overflow problem was
-	# swap in for audio_callback to test things
-	# results were: problem is not in our code
-	def audio_callback_minimal(self, in_data, frame_count, time_info, status):
-		if status:
-			print(f"⚠ Audio status flags: {status}")
-	
-		# Do absolutely nothing else - just return
-		return (None, pyaudio.paContinue)
+
+
+
+
 
 	def audio_callback(self, in_data, frame_count, time_info, status):
 		"""
 		MODIFIED audio callback that drives all transmission
 		"""
 		if status:
-			print(f"⚠ Audio status flags: {status}")
+			DebugConfig.debug_print(f"⚠ Audio status flags: {status}")
 
 		current_time = time.time()
 
@@ -1036,8 +1031,6 @@ class GPIOZeroPTTHandler:
 			try:
 				# Encode audio (existing logic)
 				opus_packet = self.encoder.encode(in_data, self.samples_per_frame)
-				#Debug!!!
-				DebugConfig.debug_print(f"🔍 Real OPUS data: {opus_packet.hex()}")
 				self.audio_stats['frames_encoded'] += 1
 
 				# Validate packet (existing logic)
@@ -1081,11 +1074,11 @@ class GPIOZeroPTTHandler:
 			for frame in control_frames:
 				success = self.transmitter.send_frame(frame)
 				if success:
-					DebugConfig.user_print(f"📡 PTT_START sent immediately")
+					DebugConfig.user_print(f"📡 PTT_START control frame sent immediately")
 				else:
 					DebugConfig.debug_print(f"✗ Failed to send immediate PTT_START")
 		except Exception as e:
-			DebugConfig.debug_print(f"✗ Error sending immediate PTT_START: {e}")
+			DebugConfig.debug_print(f"✗ Error sending PTT_START control frame immediately: {e}")
     
 		# STEP 2: Brief delay to ensure control message is transmitted before voice
 		time.sleep(0.050)  # 50ms delay - more than one frame period
@@ -1098,7 +1091,7 @@ class GPIOZeroPTTHandler:
 		self.protocol.notify_ptt_pressed()
 		self._is_first_voice_frame = True
 
-		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT pressed - immediate control + audio driven transmission")
+		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT was pressed")
 
 
 
@@ -1153,7 +1146,7 @@ class GPIOZeroPTTHandler:
 		self.audio_frame_manager.set_voice_active(False)
 		self.protocol.notify_ptt_released()
 
-		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT released - immediate control sent")
+		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT was released")
 
 		# NEW: End tracking our own outgoing transmission for web interface
 		if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver and hasattr(self.enhanced_receiver, 'web_bridge'):
@@ -1191,7 +1184,7 @@ class GPIOZeroPTTHandler:
 			for frame in control_frames:
 				success = self.transmitter.send_frame(frame)
 				if success:
-					DebugConfig.user_print(f"📡 PTT_STOP sent immediately")
+					DebugConfig.user_print(f"📡 PTT_STOP control frame was sent immediately")
 				else:
 					DebugConfig.debug_print(f"✗ Failed to send immediate PTT_STOP")
 		except Exception as e:
@@ -1208,9 +1201,16 @@ class GPIOZeroPTTHandler:
 
 
 
+
+
+
+
+
+
+
 	def _capture_outgoing_audio_for_web(self, opus_packet, current_time):
 		"""
-		NEW: Capture outgoing audio for web interface replay (does not affect live audio)
+		Capture outgoing audio for web interface replay (does not affect live audio)
 		"""
 		try:
 			# Only capture if web interface is connected
@@ -1218,23 +1218,22 @@ class GPIOZeroPTTHandler:
 					hasattr(self.enhanced_receiver, 'web_bridge') and
 					self.enhanced_receiver.web_bridge.web_interface):
 				return
-        
+			
 			# Decode OPUS to PCM for web interface storage
-			# (Same as incoming audio processing)
 			if hasattr(self.enhanced_receiver, 'audio_decoder'):
 				audio_pcm = self.enhanced_receiver.audio_decoder.decode_opus(opus_packet)
-            
+				
 				if audio_pcm:
 					# Create audio data packet (same format as incoming)
 					audio_data = {
 						'audio_data': audio_pcm,
-						'from_station': str(self.station_id),  # Our own station
+						'from_station': str(self.station_id),
 						'timestamp': datetime.now().isoformat(),
 						'sample_rate': self.sample_rate,
 						'duration_ms': self.frame_duration_ms,
-						'direction': 'outgoing'  # Mark as outgoing
+						'direction': 'outgoing'
 					}
-                
+					
 					# Send to web interface asynchronously (doesn't block audio)
 					def notify_web():
 						try:
@@ -1246,10 +1245,15 @@ class GPIOZeroPTTHandler:
 							loop.close()
 						except Exception as e:
 							DebugConfig.debug_print(f"Web outgoing audio notification error: {e}")
-                
+					
 					# Run in separate thread to avoid blocking audio callback
 					threading.Thread(target=notify_web, daemon=True).start()
-                
+					DebugConfig.debug_print(f"📤 Captured outgoing audio: {len(opus_packet)}B OPUS → {len(audio_pcm)}B PCM")
+				else:
+					DebugConfig.debug_print(f"⚠️ OPUS decode failed for outgoing audio")
+			else:
+				DebugConfig.debug_print(f"⚠️ No audio decoder available for outgoing capture")
+				
 		except Exception as e:
 			# Never let web interface issues affect live audio
 			DebugConfig.debug_print(f"Outgoing audio capture error (non-fatal): {e}")
@@ -1261,48 +1265,6 @@ class GPIOZeroPTTHandler:
 
 
 
-
-
-
-
-
-
-
-	def ptt_pressed_remove(self):
-		"""PTT button pressed - no more timer management needed"""
-		# Send PTT_START control message
-		self.audio_frame_manager.queue_control_message(b"PTT_START")
-
-		# Enable voice (audio callback will handle transmission)
-		self.ptt_active = True
-		self.chat_manager.set_ptt_state(True)
-		self.audio_frame_manager.set_voice_active(True)
-
-		self.protocol.notify_ptt_pressed()
-		self._is_first_voice_frame = True
-		DebugConfig.user_print(f"\n🎤 {self.station_id}: PTT pressed - audio-driven transmission")
-
-		# LED on
-		self.led.on()
-
-	def ptt_released_remove(self):
-		"""PTT button released - no more timer management needed"""
-		self.ptt_active = False
-		self.chat_manager.set_ptt_state(False)
-		self.audio_frame_manager.set_voice_active(False)
-
-		# Send PTT_STOP control message  
-		self.audio_frame_manager.queue_control_message(b"PTT_STOP")
-		self.protocol.notify_ptt_released()
-		DebugConfig.user_print(f"\n🔇 {self.station_id}: PTT released - audio-driven continues")
-
-		time.sleep(0.1)
-		if DebugConfig.VERBOSE:
-			self.print_stats()
-
-		# LED off
-		self.led.off()
-
 	def start(self):
 		"""Start the continuous stream system"""
 		if self.audio_input_stream:
@@ -1311,7 +1273,7 @@ class GPIOZeroPTTHandler:
 		# Start chat interface
 		self.chat_interface.start()
 
-		print(f"\n🚀 {self.station_id} Continuous stream system ready")
+		print(f"\n🚀 {self.station_id} Start Chat Interface")
 		print("📋 Configuration:")
 		print(f"   Station: {self.station_id}")
 		print(f"   Sample rate: {self.sample_rate} Hz")

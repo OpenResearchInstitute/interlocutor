@@ -629,7 +629,7 @@ class ConfigurationManager:
 # CLI arguments will override these settings when provided
 
 # Station identification (required)
-callsign: "W1ABC"  # Your station callsign - supports A-Z, 0-9, -, /, .
+callsign: "N0CALL"  # Your station callsign - supports A-Z, 0-9, -, /, .
 
 # Network configuration
 network:

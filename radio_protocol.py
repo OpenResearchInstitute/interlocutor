@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Complete Radio Protocol Classes
-Contains all protocol classes moved from interlocutor.py - unmodified and complete
+Radio Protocol Classes for Interlocutor
 """
 
 import struct
@@ -295,7 +294,6 @@ class COBSEncoder:
 			block_len = code - 1
     
 			if pos + block_len > len(data):
-				# print(f"⚠️ COBS decode error: pos={pos} block_len={block_len} extends beyond data length {len(data)} in {data}")
 				raise ValueError("COBS block extends beyond data")
         
 			# Add the data block
@@ -370,71 +368,34 @@ class COBSFrameBoundaryManager:
 
 
 
-
 	# 2. In COBSFrameBoundaryManager class, replace the decode_frame method:
 	def decode_frame(self, encoded_data: bytes) -> Tuple[bytes, int]:
 		"""Decode COBS frame and return original IP data - FIXED FOR 1-BYTE LOSS"""
 		try:
-			print(f"🔍 FRAME MANAGER DEBUG: Input frame size: {len(encoded_data)} bytes")
-			print(f"🔍 FRAME MANAGER DEBUG: Input preview: {encoded_data[:16].hex()}...")
-        
-			# The encoded_data should be pure COBS data without terminator
-			# Add terminator for decoding
+			# Add terminator for decoding if needed
 			if encoded_data.endswith(b'\x00'):
-				print(f"🔍 FRAME MANAGER DEBUG: Frame already has terminator")
 				cobs_data_with_terminator = encoded_data
 			else:
-				print(f"🔍 FRAME MANAGER DEBUG: Adding terminator to frame")
 				cobs_data_with_terminator = encoded_data + b'\x00'
-        
-			print(f"🔍 FRAME MANAGER DEBUG: Data for decode: {len(cobs_data_with_terminator)} bytes")
-        
+
 			# Decode the COBS data
 			decoded_frame = COBSEncoder.decode(cobs_data_with_terminator)
-        
-			print(f"🔍 FRAME MANAGER DEBUG: Decoded frame size: {len(decoded_frame)} bytes")
-			print(f"🔍 FRAME MANAGER DEBUG: Expected size: 120 bytes for audio")
-        
+
+			# Only show debug info in verbose mode
+			DebugConfig.debug_print(f"🔍 COBS decode: {len(encoded_data)}B → {len(decoded_frame)}B")
+
+			# Only show size mismatches (potential issues)
+			if len(decoded_frame) != 120:
+				DebugConfig.debug_print(f"⚠️ Unexpected frame size: {len(decoded_frame)}B (expected 120B)")
+
 			self.stats['frames_decoded'] += 1
 			return decoded_frame, len(cobs_data_with_terminator)
-        
+
 		except Exception as e:
-			print(f"🔍 FRAME MANAGER DEBUG: Decode failed: {e}")
+			# Always show decode failures (they're important)
+			print(f"❌ COBS decode failed: {len(encoded_data)}B frame - {e}")
 			self.stats['decoding_errors'] += 1
 			raise ValueError(f"COBS decoding failed: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-	def decode_frame_temp_replace_with_debug_version_above(self, encoded_data: bytes) -> Tuple[bytes, int]:
-		"""Decode COBS frame and return original IP data"""
-		try:
-			# Check if frame already has delimiter (shouldn't happen from reassembler)
-			if encoded_data.endswith(b'\x00'):
- 				# Frame already has terminator, use as-is
-				cobs_data_with_terminator = encoded_data
-			else:
-				# Add terminator for COBS decoding (correct way for bytes)
-				cobs_data_with_terminator = encoded_data + b'\x00'
-        
-			# Decode the COBS data
-			decoded_frame = COBSEncoder.decode(cobs_data_with_terminator)
-        
-			self.stats['frames_decoded'] += 1
-			return decoded_frame, len(cobs_data_with_terminator)
-        
-		except Exception as e:
-			self.stats['decoding_errors'] += 1
-			raise ValueError(f"COBS decoding failed: {e}")
-
 
 
 
@@ -488,8 +449,7 @@ class SimpleFrameSplitter:
 			padded_data = cobs_encoded_data + b'\x00' * (self.payload_size - len(cobs_encoded_data))
 			self.stats['single_frame_messages'] += 1
 			self.stats['total_frames_created'] += 1
-            
-			print(f"📦 {frame_type}: {len(cobs_encoded_data)}B COBS → 1 frame ({len(padded_data)}B) ✅")
+			#print(f"📦 {frame_type}: {len(cobs_encoded_data)}B COBS → 1 frame ({len(padded_data)}B) ✅")
 			return [padded_data]
         
 		# Multi-frame - this should NOT happen for audio!
@@ -1594,8 +1554,7 @@ class OpulentVoiceProtocolWithIP:
         
 		# COBS encode the complete IP frame
 		cobs_frame = self.cobs_manager.encode_frame(ip_frame)
-        
-		print(f"🔍 Audio frame sizes: RTP({len(rtp_frame)}B) → UDP({len(udp_frame)}B) → IP({len(ip_frame)}B) → COBS({len(cobs_frame)}B)")
+		#print(f"🔍 Audio frame sizes: RTP({len(rtp_frame)}B) → UDP({len(udp_frame)}B) → IP({len(ip_frame)}B) → COBS({len(cobs_frame)}B)")
         
 		# CRITICAL: Split with frame type tracking
 		frame_payloads = self.frame_splitter.split_cobs_frame(cobs_frame, frame_type="audio")

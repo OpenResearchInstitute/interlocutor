@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-FIXED Web Interface for Opulent Voice Radio System
-Addresses connection issues and improves chat integration
+Web Interface for Opulent Voice Radio System
 """
 
 import asyncio
@@ -21,10 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import re
 
-# Import your existing radio system components
 from config_manager import OpulentVoiceConfig
-
-
+from radio_protocol import DebugConfig
 
 
 class EnhancedRadioWebInterface:
@@ -58,9 +55,9 @@ class EnhancedRadioWebInterface:
 		self.live_audio_packets = {}  # For real-time streaming
 		self.max_live_packets = 200  # Small buffer for live audio
 	
-		print(f"✅ Incoming transmission storage: {self.max_completed_transmissions} transmissions")
+		DebugConfig.debug_print(f"✅ Incoming transmission storage: {self.max_completed_transmissions} transmissions")
 
-		print(f"✅ Outgoing transmission storage: {self.max_outgoing_completed_transmissions} transmissions")
+		DebugConfig.debug_print(f"✅ Outgoing transmission storage: {self.max_outgoing_completed_transmissions} transmissions")
 		
 		self.logger = logging.getLogger(__name__)
 		
@@ -75,103 +72,7 @@ class EnhancedRadioWebInterface:
 		else:
 			self.logger.info("Web interface using default configuration")
 
-
-
-
-
-
-
-
-
-
-
-		# ADD THESE DEBUG LINES:
-		print("🔍 AUDIO CONFIG DEBUG:")
     
-		# Check if radio system has audio config
-		if radio_system:
-			if hasattr(radio_system, 'selected_output_device'):
-				print(f"   Radio system output device: {radio_system.selected_output_device}")
-			if hasattr(radio_system, 'audio_params'):
-				print(f"   Radio system audio params: {radio_system.audio_params}")
-			if hasattr(radio_system, 'enhanced_receiver'):
-				print(f"   Enhanced receiver available: {hasattr(radio_system, 'enhanced_receiver')}")
-				if hasattr(radio_system, 'enhanced_receiver') and radio_system.enhanced_receiver:
-					if hasattr(radio_system.enhanced_receiver, 'audio_output'):
-						print(f"   AudioOutputManager available: {radio_system.enhanced_receiver.audio_output is not None}")
-						if radio_system.enhanced_receiver.audio_output:
-							print(f"   AudioOutputManager playing: {radio_system.enhanced_receiver.audio_output.playing}")
-							print(f"   AudioOutputManager device: {radio_system.enhanced_receiver.audio_output.output_device}")
-    
-		# Check if config has audio settings
-		if config and hasattr(config, 'audio'):
-			print(f"   Config audio device: {getattr(config.audio, 'output_device', 'Not set')}")
-			print(f"   Config sample rate: {config.audio.sample_rate}")
-    
-		# Check for audio_config.yaml
-		import os
-		audio_config_path = "audio_config.yaml"
-		if os.path.exists(audio_config_path):
-			print(f"   audio_config.yaml exists: {audio_config_path}")
-			try:
-				import yaml
-				with open(audio_config_path, 'r') as f:
-					audio_config = yaml.safe_load(f)
-				print(f"   audio_config.yaml contents: {audio_config}")
-			except Exception as e:
-				print(f"   Error reading audio_config.yaml: {e}")
-		else:
-			print(f"   audio_config.yaml not found at: {audio_config_path}")
-    
-		print("🔍 AUDIO CONFIG DEBUG COMPLETE")
-
-
-
-
-
-		#Enhanced AudioOutputManager debugging
-		if radio_system:
-			print("🔍 ENHANCED RECEIVER DEBUG:")
-			if hasattr(radio_system, 'enhanced_receiver'):
-				receiver = radio_system.enhanced_receiver
-				print(f"   Enhanced receiver exists: {receiver is not None}")
-            
-				if receiver and hasattr(receiver, 'audio_output'):
-					audio_mgr = receiver.audio_output
-					print(f"   AudioOutputManager exists: {audio_mgr is not None}")
-                
-					if audio_mgr:
-						print(f"   AudioOutputManager playing: {audio_mgr.playing}")
-						print(f"   AudioOutputManager device: {audio_mgr.output_device}")
-						print(f"   AudioOutputManager sample_rate: {audio_mgr.sample_rate}")
-						print(f"   AudioOutputManager channels: {audio_mgr.channels}")
-                    
-						# Check if we can queue audio
-						if hasattr(audio_mgr, 'queue_audio_for_playback'):
-							print(f"   ✅ queue_audio_for_playback method available")
-						else:
-							print(f"   ❌ queue_audio_for_playback method missing")
-                        
-						# Check playback queue
-						if hasattr(audio_mgr, 'playback_queue'):
-							print(f"   Playback queue size: {audio_mgr.playback_queue.qsize()}")
-                    
-					else:
-						print(f"   ❌ AudioOutputManager is None")
-				else:
-					print(f"   ❌ AudioOutputManager attribute missing")
-			else:
-				print(f"   ❌ Enhanced receiver attribute missing")
-            
-			# Also check if the receiver is the enhanced version
-			if hasattr(radio_system, 'receiver'):
-				receiver_type = type(radio_system.receiver).__name__
-				print(f"   Receiver type: {receiver_type}")
-        
-		print("🔍 ENHANCED RECEIVER DEBUG COMPLETE")
-
-
-
 
 
 
@@ -223,7 +124,7 @@ class EnhancedRadioWebInterface:
 			'packet_count': 0
 		}
 		
-		print(f"📡 TRANSMISSION START: {transmission_id} from {station_id}")
+		DebugConfig.debug_print(f"📡 TRANSMISSION START: {transmission_id} from {station_id}")
 
 
 
@@ -233,7 +134,7 @@ class EnhancedRadioWebInterface:
 	def end_transmission(self, station_id: str, end_time: str):
 		"""End transmission and move to completed storage"""
 		if station_id not in self.active_transmissions:
-			print(f"⚠️ TRANSMISSION END: No active transmission for {station_id}")
+			DebugPrint.debug_print(f"⚠️ TRANSMISSION END: No active transmission for {station_id}")
 			return
 		
 		transmission = self.active_transmissions[station_id]
@@ -244,7 +145,7 @@ class EnhancedRadioWebInterface:
 		self.completed_transmissions.append(transmission)
 		del self.active_transmissions[station_id]
 		
-		print(f"📡 TRANSMISSION COMPLETE: {transmission['transmission_id']} - "
+		DebugConfig.debug_print(f"📡 TRANSMISSION COMPLETE: {transmission['transmission_id']} - "
 			  f"{transmission['packet_count']} packets, {transmission['total_duration_ms']}ms")
 		
 		# Cleanup old transmissions
@@ -254,7 +155,7 @@ class EnhancedRadioWebInterface:
 		"""Remove oldest complete transmissions when limit exceeded"""
 		while len(self.completed_transmissions) > self.max_completed_transmissions:
 			old_transmission = self.completed_transmissions.pop(0)  # Remove oldest
-			print(f"🗑️ CLEANUP: Removed old transmission {old_transmission['transmission_id']} "
+			DebugConfig.debug_print(f"🗑️ CLEANUP: Removed old transmission {old_transmission['transmission_id']} "
 				  f"({old_transmission['packet_count']} packets)")
 
 
@@ -267,11 +168,11 @@ class EnhancedRadioWebInterface:
 			station_id = transmission_data.get('station_id')
 			start_time = transmission_data.get('start_time')
             
-			print(f"📤 OUTGOING START: {station_id} at {start_time}")
+			DebugConfig.debug_print(f"📤 OUTGOING START: {station_id} at {start_time}")
             
 			# End any previous incomplete outgoing transmission
 			if station_id in self.outgoing_active_transmissions:
-				print(f"⚠️ Force-ending previous incomplete outgoing transmission from {station_id}")
+				DebugConfig.debug_print(f"⚠️ Force-ending previous incomplete outgoing transmission from {station_id}")
 				await self.on_outgoing_transmission_ended({
 					"station_id": station_id,
 					"end_time": datetime.now().isoformat(),
@@ -291,7 +192,7 @@ class EnhancedRadioWebInterface:
 				'direction': 'outgoing'
 			}
             
-			print(f"📤 OUTGOING TRANSMISSION START: {transmission_id} from {station_id}")
+			DebugConfig.debug_print(f"📤 OUTGOING TRANSMISSION START: {transmission_id} from {station_id}")
             
 			# Notify web clients
 			await self.broadcast_to_all({
@@ -315,10 +216,10 @@ class EnhancedRadioWebInterface:
 			station_id = transmission_data.get('station_id')
 			end_time = transmission_data.get('end_time')
             
-			print(f"📤 OUTGOING END: {station_id} at {end_time}")
+			DebugConfig.debug_print(f"📤 OUTGOING END: {station_id} at {end_time}")
             
 			if station_id not in self.outgoing_active_transmissions:
-				print(f"⚠️ OUTGOING END: No active outgoing transmission for {station_id}")
+				DebugConfig.debug_print(f"⚠️ OUTGOING END: No active outgoing transmission for {station_id}")
 				return
             
 			transmission = self.outgoing_active_transmissions[station_id]
@@ -329,7 +230,7 @@ class EnhancedRadioWebInterface:
 			self.outgoing_completed_transmissions.append(transmission)
 			del self.outgoing_active_transmissions[station_id]
             
-			print(f"📤 OUTGOING TRANSMISSION COMPLETE: {transmission['transmission_id']} - "
+			DebugConfig.debug_print(f"📤 OUTGOING TRANSMISSION COMPLETE: {transmission['transmission_id']} - "
 				f"{transmission['packet_count']} packets, {transmission['total_duration_ms']}ms")
             
 			# Cleanup old outgoing transmissions
@@ -357,7 +258,7 @@ class EnhancedRadioWebInterface:
 		"""Remove oldest complete outgoing transmissions when limit exceeded"""
 		while len(self.outgoing_completed_transmissions) > self.max_outgoing_completed_transmissions:
 			old_transmission = self.outgoing_completed_transmissions.pop(0)  # Remove oldest
-			print(f"🗑️ OUTGOING CLEANUP: Removed old outgoing transmission {old_transmission['transmission_id']} "
+			DebugConfig.debug_print(f"🗑️ OUTGOING CLEANUP: Removed old outgoing transmission {old_transmission['transmission_id']} "
 				f"({old_transmission['packet_count']} packets)")
 
 
@@ -471,28 +372,6 @@ class EnhancedRadioWebInterface:
 
 
 
-	async def broadcast_to_all_temp_replace_with_debug_below(self, message: Dict):
-		"""Broadcast message to all connected clients"""
-		if not self.websocket_clients:
-			return
-
-		disconnected = set()
-
-		for websocket in self.websocket_clients.copy():
-			try:
-				await websocket.send_text(json.dumps(message))
-			except Exception as e:
-				self.logger.warning(f"Failed to broadcast to client: {e}")
-				disconnected.add(websocket)
-
-		# Clean up disconnected clients
-		self.websocket_clients -= disconnected
-
-
-
-
-
-
 
 
 	async def on_audio_received(self, audio_data: Dict):
@@ -508,7 +387,7 @@ class EnhancedRadioWebInterface:
 				'received_at': datetime.now().isoformat()
 			}
 
-			print(f"🎤 AUDIO PACKET: {direction} from {station_id}")
+			DebugConfig.debug_print(f"🎤 AUDIO PACKET: {direction} from {station_id}")
 
 			if direction == 'outgoing':
 				# OUTGOING: Add to our own outgoing transmission if exists
@@ -518,7 +397,7 @@ class EnhancedRadioWebInterface:
 					transmission['packet_count'] += 1
 					transmission['total_duration_ms'] += audio_data.get('duration_ms', 40)
         
-					print(f"📤 OUTGOING AUDIO: Added packet to {transmission['transmission_id']} "
+					DebugConfig.debug_print(f"📤 OUTGOING AUDIO: Added packet to {transmission['transmission_id']} "
 						f"({transmission['packet_count']} packets)")
 				else:
 					print(f"⚠️ OUTGOING AUDIO: No active outgoing transmission for {station_id}")
@@ -544,7 +423,7 @@ class EnhancedRadioWebInterface:
 					transmission['packet_count'] += 1
 					transmission['total_duration_ms'] += audio_data.get('duration_ms', 40)
         
-					print(f"📡 INCOMING AUDIO: Added packet to {transmission['transmission_id']} "
+					DebugConfig.debug_print(f"📡 INCOMING AUDIO: Added packet to {transmission['transmission_id']} "
 						f"({transmission['packet_count']} packets)")
 				else:
 					# No active transmission - add to live buffer for real-time audio
@@ -555,7 +434,7 @@ class EnhancedRadioWebInterface:
 						oldest_id = min(self.live_audio_packets.keys())
 						del self.live_audio_packets[oldest_id]
         
-					print(f"🔊 LIVE AUDIO: Added packet to live buffer ({len(self.live_audio_packets)} packets)")
+					DebugConfig.debug_print(f"🔊 LIVE AUDIO: Added packet to live buffer ({len(self.live_audio_packets)} packets)")
     
 				# Broadcast to web clients (existing notification)
 				await self.broadcast_to_all({
@@ -588,7 +467,7 @@ class EnhancedRadioWebInterface:
 			from_station = control_data.get('from', 'UNKNOWN')
 			timestamp = control_data.get('timestamp', datetime.now().isoformat())
 		
-			print(f"🎛️ TRANSMISSION CONTROL: {control_msg} from {from_station}")
+			DebugConfig.debug_print(f"🎛️ TRANSMISSION CONTROL: {control_msg} from {from_station}")
 		
 			if control_msg == 'PTT_START':
 				# Start new transmission and get ID
@@ -603,7 +482,7 @@ class EnhancedRadioWebInterface:
 						"start_time": timestamp
 					}
 				})
-				print(f"🎛️ TRANSMISSION: Sent transmission_started with ID {transmission_id}")
+				DebugConfig.debug_print(f"🎛️ TRANSMISSION: Sent transmission_started with ID {transmission_id}")
 				
 			elif control_msg == 'PTT_STOP':
 				# Get transmission ID before ending
@@ -624,7 +503,7 @@ class EnhancedRadioWebInterface:
 							"end_time": timestamp
 						}
 					})
-					print(f"🎛️ TRANSMISSION: Sent transmission_ended with ID {transmission_id}")
+					DebugConfig.debug_print(f"🎛️ TRANSMISSION: Sent transmission_ended with ID {transmission_id}")
 		
 			# Send original control message unchanged (don't modify PTT messages!)
 			await self.broadcast_to_all({
@@ -638,7 +517,7 @@ class EnhancedRadioWebInterface:
 				}
 			})
 		
-			print(f"🌐 WEB CONTROL DEBUG: Control broadcast complete as control_received type")
+			DebugConfig.debug_print(f"🌐 WEB CONTROL DEBUG: Control broadcast complete as control_received type")
 		
 		except Exception as e:
 			print(f"🌐 WEB CONTROL DEBUG ERROR: Error handling control message: {e}")
@@ -652,64 +531,14 @@ class EnhancedRadioWebInterface:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-	async def on_control_received_remove(self, control_data: Dict):
-		"""Handle received control messages - especially PTT boundaries for transmission grouping"""
-		try:
-			control_msg = control_data.get('content', '')
-			from_station = control_data.get('from', 'UNKNOWN')
-			timestamp = control_data.get('timestamp', datetime.now().isoformat())
-        
-			print(f"🌐 WEB CONTROL DEBUG: Control received from {from_station}: {control_msg}")
-        
-			# Broadcast control message to all web clients with correct type
-			await self.broadcast_to_all({
-				"type": "control_received",  # This is the key - correct message type!
-				"data": {
-					"content": control_msg,
-					"from": from_station,
-					"timestamp": timestamp,
-					"type": "control",
-					"priority": "high" if control_msg.startswith('PTT_') else "normal"
-				}
-			})
-        
-			print(f"🌐 WEB CONTROL DEBUG: Control broadcast complete as control_received type")
-        
-		except Exception as e:
-			print(f"🌐 WEB CONTROL DEBUG ERROR: Error handling control message: {e}")
-			import traceback
-			traceback.print_exc()
-
-
-
-
-
-
-
-
-
-
-
-
 	# Also add debug to the broadcast method (just above)
 	async def broadcast_to_all(self, message: Dict):
 		"""Broadcast message to all connected clients with debugging"""
 		if not self.websocket_clients:
-			print(f"🌐 BROADCAST DEBUG: No clients connected")
+			DebugConfig.debug_print(f"🌐 BROADCAST DEBUG: No clients connected")
 			return
         
-		print(f"🌐 BROADCAST DEBUG: Broadcasting {message.get('type', 'unknown')} to {len(self.websocket_clients)} clients")
+		DebugConfig.debug_print(f"🌐 BROADCAST DEBUG: Broadcasting {message.get('type', 'unknown')} to {len(self.websocket_clients)} clients")
     
 		disconnected = set()
 		successful_sends = 0
@@ -725,23 +554,9 @@ class EnhancedRadioWebInterface:
 		# Clean up disconnected clients
 		self.websocket_clients -= disconnected
     
-		print(f"🌐 BROADCAST DEBUG: Sent to {successful_sends}/{len(self.websocket_clients) + len(disconnected)} clients")
+		DebugConfig.debug_print(f"🌐 BROADCAST DEBUG: Sent to {successful_sends}/{len(self.websocket_clients) + len(disconnected)} clients")
 		if disconnected:
-			print(f"🌐 BROADCAST DEBUG: Removed {len(disconnected)} disconnected clients")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+			DebugConfig.debug_print(f"🌐 BROADCAST DEBUG: Removed {len(disconnected)} disconnected clients")
 
 
 
@@ -899,7 +714,7 @@ class EnhancedRadioWebInterface:
 			transmission_id = data.get('transmission_id')
 			station_id = data.get('station_id')
 			
-			print(f"🎵 PLAYBACK REQUEST: {transmission_id}")
+			DebugConfig.debug_print(f"🎵 PLAYBACK REQUEST: {transmission_id}")
 	
 			# Search in both incoming AND outgoing completed transmissions
 			target_transmission = None
@@ -920,10 +735,10 @@ class EnhancedRadioWebInterface:
 						direction = 'outgoing'
 						break
 	
-			print(f"🎵 PLAYBACK: Found {direction} transmission with {len(target_transmission['audio_packets']) if target_transmission else 0} packets")
+			DebugConfig.debug_print(f"🎵 PLAYBACK: Found {direction} transmission with {len(target_transmission['audio_packets']) if target_transmission else 0} packets")
 	
 			if not target_transmission:
-				print(f"🎵 PLAYBACK: Transmission {transmission_id} not found in incoming or outgoing")
+				DebugConfig.debug_print(f"🎵 PLAYBACK: Transmission {transmission_id} not found in incoming or outgoing")
 				await self.send_to_client(websocket, {
 					"type": "transmission_playback_error",
 					"data": {
@@ -945,7 +760,7 @@ class EnhancedRadioWebInterface:
 				})
 				return
 		
-			print(f"🎵 REQUEST PLAYBACK: Found {direction} transmission with {len(audio_packets)} packets")
+			DebugConfig.debug_print(f"🎵 REQUEST PLAYBACK: Found {direction} transmission with {len(audio_packets)} packets")
 			
 			# Get AudioOutputManager from enhanced receiver
 			audio_output_manager = None
@@ -956,7 +771,7 @@ class EnhancedRadioWebInterface:
 				self.radio_system.enhanced_receiver.audio_output):
 				
 				audio_output_manager = self.radio_system.enhanced_receiver.audio_output
-				print(f"🎵 PLAYBACK: AudioOutputManager found - device {audio_output_manager.output_device}")
+				DebugConfig.debug_print(f"🎵 PLAYBACK: AudioOutputManager found - device {audio_output_manager.output_device}")
 			
 			if not audio_output_manager or not audio_output_manager.playing:
 				print(f"🎵 PLAYBACK: ❌ AudioOutputManager not available or not active")
@@ -969,7 +784,7 @@ class EnhancedRadioWebInterface:
 				})
 				return
 		
-			print(f"🎵 PLAYBACK: ✅ Using CLI speakers (device {audio_output_manager.output_device})")
+			DebugConfig.debug_print(f"🎵 PLAYBACK: ✅ Using CLI speakers (device {audio_output_manager.output_device})")
 			
 			# Concatenate all audio data
 			concatenated_audio = bytearray()
@@ -983,7 +798,7 @@ class EnhancedRadioWebInterface:
 				else:
 					print(f"🎵 PLAYBACK: ⚠️ Packet {i+1} has no audio_data field")
 			
-			print(f"🎵 PLAYBACK: {packets_with_data}/{len(audio_packets)} packets had audio data")
+			DebugConfig.debug_print(f"🎵 PLAYBACK: {packets_with_data}/{len(audio_packets)} packets had audio data")
 			
 			if concatenated_audio:
 				# Queue the concatenated audio for playback through CLI speakers!

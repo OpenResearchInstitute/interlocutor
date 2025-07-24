@@ -83,16 +83,12 @@ class WebSocketBridge:
 
     async def notify_control_received(self, control_data):
         """Notify web interface of received control messages"""
-        print(f"🌐 BRIDGE DEBUG: Control message bridge called")
-        
         if self.web_interface:
             try:
                 # Check if the web interface has the on_control_received method
                 if hasattr(self.web_interface, 'on_control_received'):
                     await self.web_interface.on_control_received(control_data)
-                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_control_received")
                 else:
-                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_control_received method")
                     # Fallback to regular message handling
                     await self.web_interface.on_message_received(control_data)
             except Exception as e:
@@ -112,16 +108,11 @@ class WebSocketBridge:
     
     async def notify_outgoing_transmission_started(self, transmission_data):
         """Notify web interface of outgoing transmission start"""
-        print(f"🌐 BRIDGE DEBUG: Outgoing transmission start notification")
-        
         if self.web_interface:
             try:
                 # Check if the web interface has outgoing transmission methods
                 if hasattr(self.web_interface, 'on_outgoing_transmission_started'):
                     await self.web_interface.on_outgoing_transmission_started(transmission_data)
-                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_outgoing_transmission_started")
-                else:
-                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_outgoing_transmission_started method")
             except Exception as e:
                 print(f"Error notifying web interface of outgoing transmission start: {e}")
                 
@@ -134,15 +125,10 @@ class WebSocketBridge:
     
     async def notify_outgoing_transmission_ended(self, transmission_data):
         """Notify web interface of outgoing transmission end"""
-        print(f"🌐 BRIDGE DEBUG: Outgoing transmission end notification")
-        
         if self.web_interface:
             try:
                 if hasattr(self.web_interface, 'on_outgoing_transmission_ended'):
                     await self.web_interface.on_outgoing_transmission_ended(transmission_data)
-                    print(f"🌐 BRIDGE DEBUG: Called web_interface.on_outgoing_transmission_ended")
-                else:
-                    print(f"🌐 BRIDGE DEBUG: web_interface has no on_outgoing_transmission_ended method")
             except Exception as e:
                 print(f"Error notifying web interface of outgoing transmission end: {e}")
                 
@@ -212,7 +198,6 @@ class EnhancedMessageReceiver:
     def set_web_interface(self, web_interface):
         """Connect to web interface for real-time updates"""
         self.web_bridge.set_web_interface(web_interface)
-        print("✅ MessageReceiver connected to web interface")
         
     def start(self):
         """Start the enhanced message receiver"""
@@ -333,27 +318,20 @@ class EnhancedMessageReceiver:
             if token != OpulentVoiceProtocolWithIP.TOKEN:
                 return
 
-            print(f"📥 RX DEBUG 2: Valid OV header, payload {len(fragment_payload)} bytes")
-
             # Step 2: Try to reassemble COBS frames
             cobs_frames = self.reassembler.add_frame_payload(fragment_payload)
-            print(f"📥 RX DEBUG 3: Got {len(cobs_frames)} complete COBS frames")
 
             # Step 3: Process each complete COBS frame
             for i, frame in enumerate(cobs_frames):
-                print(f"📥 RX DEBUG 4: Processing COBS frame {i+1}, size {len(frame)} bytes")
 
                 try:
                     # CRITICAL: Pass the frame WITHOUT adding terminator here
                     # The decode_frame method will handle terminator addition
                     ip_frame, _ = self.cobs_manager.decode_frame(frame)
-                
-                    print(f"📥 RX DEBUG 5: SUCCESS - IP frame {len(ip_frame)} bytes")
                     self._process_complete_ip_frame_async_debug(ip_frame, station_bytes, addr)
 
                 except Exception as e:
                     self.stats['decode_errors'] += 1
-                    print(f"📥 RX DEBUG 5: COBS decode ERROR: {e}")
 
         except Exception as e:
             print(f"📥 RX DEBUG ERROR: {e}")
@@ -410,11 +388,6 @@ class EnhancedMessageReceiver:
             elif udp_dest_port == 57375:  # Control
                 self._handle_control_packet(udp_payload, from_station_str, current_time)
 
-            # DEBUG!!!
-            print(f"🔍 UDP dest port: {udp_dest_port}, payload length: {len(udp_payload)}")
-
-
-                
         except Exception as e:
             print(f"Error processing IP frame: {e}")
 
@@ -425,13 +398,9 @@ class EnhancedMessageReceiver:
 
 
 
-    # hi
     def _process_complete_ip_frame_async_debug(self, ip_frame, station_bytes, addr):
         """Process complete IP frame with async web notifications - DEBUG VERSION"""
         try:
-            print(f"🌐 ASYNC IP DEBUG 1: IP frame processing")
-            print(f"   IP frame total size: {len(ip_frame)} bytes")
-        
             # Get station identifier
             try:
                 from_station = StationIdentifier.from_bytes(station_bytes)
@@ -439,79 +408,49 @@ class EnhancedMessageReceiver:
             except:
                 from_station_str = f"UNKNOWN-{station_bytes.hex()[:8]}"
 
-            print(f"🌐 ASYNC IP DEBUG 1: From station: {from_station_str}")
-
             # Parse IP header to get protocol info
             if len(ip_frame) < 20:
-                print(f"🌐 ASYNC IP DEBUG 1: IP frame too small for IP header")
+                print(f"🌐 IP frame too small for IP header")
                 return
 
             # Quick IP header parse to get UDP payload
             ip_header_length = (ip_frame[0] & 0x0F) * 4
-            print(f"🌐 ASYNC IP DEBUG 2: IP header analysis")
-            print(f"   IP header length: {ip_header_length} bytes (expected: 20)")
-            print(f"   IP payload starts at offset: {ip_header_length}")
         
             if len(ip_frame) < ip_header_length + 8:  # Need at least UDP header
-                print(f"🌐 ASYNC IP DEBUG 2: Not enough data for UDP header")
+                print(f"🌐 Not enough data for UDP header")
                 return
 
             # Extract UDP frame and payload
             udp_frame = ip_frame[ip_header_length:]
             udp_payload = ip_frame[ip_header_length + 8:]  # Skip IP + UDP headers
         
-            print(f"🌐 ASYNC IP DEBUG 3: UDP frame analysis")
-            print(f"   UDP frame size: {len(udp_frame)} bytes")
-            print(f"   UDP payload size: {len(udp_payload)} bytes")
-            print(f"   Expected for audio: RTP(12) + OPUS(80) = 92 bytes")
-
             # Parse UDP header to determine port/type
             if len(udp_frame) >= 8:
                 udp_header = udp_frame[:8]
                 src_port, dst_port, udp_length, udp_checksum = struct.unpack('!HHHH', udp_header)
             
-                print(f"🌐 ASYNC IP DEBUG 3: UDP header details")
-                print(f"   Source port: {src_port}")
-                print(f"   Dest port: {dst_port}")
-                print(f"   UDP length: {udp_length} bytes (header + payload)")
-                print(f"   UDP checksum: 0x{udp_checksum:04X}")
-                print(f"   Calculated payload: {udp_length - 8} bytes")
-                print(f"   Actual payload extracted: {len(udp_payload)} bytes")
-            
-                # Check if the lengths match
-                if udp_length - 8 != len(udp_payload):
-                    print(f"🌐 ASYNC IP DEBUG 3: ⚠️  UDP length mismatch!")
-                    print(f"   UDP header says payload: {udp_length - 8} bytes")
-                    print(f"   Actual payload: {len(udp_payload)} bytes")
-                else:
-                    print(f"🌐 ASYNC IP DEBUG 3: ✅ UDP length matches payload")
+            # Check if the lengths match
+            if udp_length - 8 != len(udp_payload):
+                print(f"🌐 ⚠️  UDP length mismatch!")
+                print(f"   UDP header says payload: {udp_length - 8} bytes")
+                print(f"   Actual payload: {len(udp_payload)} bytes")
 
             current_time = datetime.now().isoformat()
 
             # Route based on UDP port
             if dst_port == 57373:  # Voice
-                print(f"🌐 ASYNC IP DEBUG 4: Audio packet detected")
-                print(f"   UDP payload (RTP+OPUS): {len(udp_payload)} bytes")
-                print(f"   Expected: RTP(12) + OPUS(80) = 92 bytes")
                 if len(udp_payload) != 92:
                     print(f"   ⚠️  MISSING: {92 - len(udp_payload)} bytes")
-                else:
-                    print(f"   ✅ Correct size")
             
                 self._handle_audio_packet(udp_payload, from_station_str, current_time)
              
             elif dst_port == 57374:  # Text  
-                print(f"🌐 ASYNC IP DEBUG 4: Text packet detected")
                 self._handle_text_packet(udp_payload, from_station_str, current_time)
             
             elif dst_port == 57375:  # Control
-                print(f"🌐 ASYNC IP DEBUG 4: Control packet detected")
                 self._handle_control_packet(udp_payload, from_station_str, current_time)
             else:
-                print(f"🌐 ASYNC IP DEBUG 4: Unknown port {dst_port}")
-
-            print(f"🌐 ASYNC IP DEBUG 5: Processing complete")
-            print("-" * 50)
+                print(f"🌐 Unknown port {dst_port}")
 
         except Exception as e:
             print(f"🌐 ASYNC IP DEBUG ERROR: {e}")
@@ -535,16 +474,7 @@ class EnhancedMessageReceiver:
         
         if hasattr(self, 'audio_output') and self.audio_output:
             self.audio_output.stop_playback()
-            print("🔊 Audio output stopped")
-
-
-
-
-
-
-
-
-
+            DebugConfig.debug_print("🔊 Audio output stopped")
 
 
 
@@ -559,47 +489,23 @@ class EnhancedMessageReceiver:
         """
         self.stats['audio_packets'] += 1
 
-        print(f"🎤 AUDIO RX DEBUG 1: Received audio packet")
-        print(f"   From: {from_station}")
-        print(f"   UDP payload size: {len(udp_payload)} bytes")
-        print(f"   Expected: 92 bytes (RTP + OPUS)")
-
         try:
             # Extract RTP header and Opus payload
             if len(udp_payload) >= 12:  # RTP header size
                 rtp_payload = udp_payload[12:]  # Skip RTP header
 
-                print(f"🎤 AUDIO RX DEBUG 2: RTP parsing")
-                print(f"   RTP header: {udp_payload[:12].hex()}")
-                print(f"   OPUS payload size: {len(rtp_payload)} bytes")
-                print(f"   OPUS data preview: {rtp_payload[:8].hex()}...")
-
                 # Check if decoder is available and decode Opus audio
                 if hasattr(self, 'audio_decoder') and self.audio_decoder.decoder_available:
-
-                    print(f"🎤 AUDIO RX DEBUG 3: OPUS decoder available")
-
                     audio_pcm = self.audio_decoder.decode_opus(rtp_payload)
                     if audio_pcm:
-
-                        print(f"🎤 AUDIO RX DEBUG 4: OPUS decoded successfully")
-                        print(f"   PCM size: {len(audio_pcm)} bytes")
-                        print(f"   Expected: 3840 bytes (40ms at 48kHz, 16-bit)")
-
                         # REAL-TIME PLAYBACK THROUGH HEADPHONES
                         if self.audio_output and self.audio_output.playing:
-
-                            print(f"🎤 AUDIO RX DEBUG 5: Audio output available and playing")
-                            print(f"   Has audio_output: {hasattr(self, 'audio_output') and self.audio_output is not None}")
-
                             self.audio_output.queue_audio_for_playback(audio_pcm, from_station)
-
-                            print(f"🔊 Audio queued for headphone playback")
                         else:
-                            print(f"🎤 AUDIO RX DEBUG 5: Audio output NOT available")
-                            print(f"   Has audio_output: {hasattr(self, 'audio_output') and self.audio_output is not None}")
+                            DebugConfig.debug_print(f"🎤 Audio output NOT available")
+                            DebugConfig.debug_print(f"   Has audio_output: {hasattr(self, 'audio_output') and self.audio_output is not None}")
                             if hasattr(self, 'audio_output') and self.audio_output:
-                                print(f"   Audio output playing: {self.audio_output.playing}")
+                                DebugConfig.debug_print(f"   Audio output playing: {self.audio_output.playing}")
                             else:
                                 print(f"   Audio output is None")
                             print(f"🔊 Audio output not active - voice will be silent")
@@ -614,7 +520,6 @@ class EnhancedMessageReceiver:
                                 'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
                             }
                             self.audio_queue.put_nowait(audio_data)
-                            print(f"🎤 Audio queued for web streaming")
                         except Exception as e:
                                 print(f"🎤 Queue failed: {e}")
                                 pass # web queue being full is not critical
@@ -630,87 +535,18 @@ class EnhancedMessageReceiver:
                         })
                         
                     else:
-                        print(f"🎤 AUDIO RX DEBUG 4: OPUS decode failed")
+                        print(f"🎤 OPUS decode failed")
                 else:
-                    print(f"🎤 AUDIO RX DEBUG 3: OPUS decoder NOT available")
+                    print(f"🎤 OPUS decoder NOT available")
                     print(f"   Has audio_decoder: {hasattr(self, 'audio_decoder')}")
                     if hasattr(self, 'audio_decoder'):
-                        print(f"   Decoder available: {self.audio_decoder.decoder_available}")
+                        DebugConfig.debug_print(f"   Decoder available: {self.audio_decoder.decoder_available}")
             else:
-                print(f"🎤 AUDIO RX DEBUG 2: UDP payload too small for RTP header")
+                print(f"🎤 UDP payload too small for RTP header")
         except Exception as e:
             print(f"🎤 Audio processing error: {e}")
             import traceback
             traceback.print_exc()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            
-    def _handle_audio_packet_temp_replace_with_above(self, udp_payload, from_station, timestamp):
-        """Handle received audio packet"""
-        self.stats['audio_packets'] += 1
-        
-        try:
-            # Extract RTP header and OPUS payload
-            if len(udp_payload) >= 12:  # RTP header size
-                rtp_payload = udp_payload[12:]  # Skip RTP header
-                
-                # Decode OPUS audio
-                audio_pcm = self.audio_decoder.decode_opus(rtp_payload)
-                
-                if audio_pcm:
-                    # Queue for web streaming
-                    try:
-                        self.audio_queue.put_nowait({
-                            'audio_data': audio_pcm,
-                            'from_station': from_station,
-                            'timestamp': timestamp,
-                            'sample_rate': 48000
-                        })
-                    except:
-                        pass  # Queue full, drop oldest
-                        
-                    # Notify web interface asynchronously
-                    self._notify_web_async('audio_received', {
-                        'from_station': from_station,
-                        'timestamp': timestamp,
-                        'audio_length': len(audio_pcm),
-                        'sample_rate': 48000,
-                        'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)  # 16-bit samples
-                    })
-                    
-                DebugConfig.debug_print(f"🎤 [{from_station}] Audio: {len(rtp_payload)}B OPUS → {len(audio_pcm) if audio_pcm else 0}B PCM")
-                
-        except Exception as e:
-            print(f"Error processing audio: {e}")
-            
-
-
-
 
 
 
@@ -740,19 +576,6 @@ class EnhancedMessageReceiver:
                     print(f"\n📨 [{from_station}]: {message_text}")
 
 
-#	# Diplay in CLI if chat interface available at all times
-#            if self.chat_interface:
-#                if hasattr(self.chat_interface, 'display_received_message'):
-#                    self.chat_interface.display_received_message(from_station, message_text)
-#                else:
-#                    # Fallback display
-#                    print(f"\n📨 [{from_station}]: {message_text}")
- 
-
-
-
-
-                   
             # Notify web interface asynchronously
             self._notify_web_async('message_received', {
                 'type': 'text',
@@ -776,16 +599,13 @@ class EnhancedMessageReceiver:
 
     def _handle_control_packet(self, udp_payload, from_station, timestamp):
         """Handle received control packet with web interface notification"""
-        print(f"🎛️ CONTROL HANDLER DEBUG: Called with {udp_payload} from {from_station}")  # ADD THIS LINE
         self.stats['control_packets'] += 1
         
         try:
             control_msg = udp_payload.decode('utf-8')
-            print(f"🎛️ CONTROL HANDLER DEBUG: Decoded message: '{control_msg}'")  # ← Move this line here
-            
             # Always process PTT Control Messages
             if control_msg.startswith('PTT_'):
-                print(f"🎛️ CONTROL HANDLER DEBUG: PTT message detected, sending control_received")
+                DebugConfig.debug_print(f"🎛️  PTT control message detected, sending control_received")
                 DebugConfig.debug_print(f"📋 [{from_station}] PTT Control: {control_msg}")
             
                 # Send to web interface immediately for transmission grouping
@@ -796,7 +616,6 @@ class EnhancedMessageReceiver:
                     'timestamp': timestamp,
                     'priority': 'high'
                 })
-                print(f"🎛️ CONTROL HANDLER DEBUG: Called _notify_web_async with control_received")
 
                 # Also send to web interface via the radio system if available
                 if hasattr(self, 'web_interface') and self.web_interface:
@@ -838,19 +657,6 @@ class EnhancedMessageReceiver:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     def _notify_web_async(self, event_type, data):
         """Send async notification to web interface"""
         def notify():
@@ -873,23 +679,6 @@ class EnhancedMessageReceiver:
                 DebugConfig.debug_print(f"Error in web notification: {e}")
             
         threading.Thread(target=notify, daemon=True).start()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -991,8 +780,8 @@ class AudioOutputManager:
             self.playback_thread = threading.Thread(target=self._playback_loop, daemon=True)
             self.playback_thread.start()
             
-            print(f"🔊 Audio output started: {self.sample_rate}Hz, device {self.output_device}")
-            print(f"   Output latency: {self.output_stream.get_output_latency():.3f}s")
+            DebugConfig.debug_print(f"🔊 Audio output started: {self.sample_rate}Hz, device {self.output_device}")
+            DebugConfig.debug_print(f"   Output latency: {self.output_stream.get_output_latency():.3f}s")
             return True
             
         except Exception as e:
@@ -1030,7 +819,7 @@ class AudioOutputManager:
             self.playback_queue.put_nowait(audio_packet)
             self.stats['packets_queued'] += 1
             
-            print(f"🔊 Queued audio: {len(pcm_data)}B from {from_station} "
+            DebugConfig.debug_print(f"🔊 Queued audio: {len(pcm_data)}B from {from_station} "
                   f"(queue: {self.playback_queue.qsize()})")
             
         except Exception as e:
