@@ -517,7 +517,130 @@ class SimpleFrameReassembler:
 			'bytes_buffered': 0
 		}
 	
-	def add_frame_payload(self, frame_payload: bytes) -> List[bytes]:
+
+
+
+
+
+
+
+
+
+
+	def add_frame_payload(self, frame_payload: bytes) -> list[bytes]:
+		self.stats['frames_received'] += 1
+		delimiter_pos = frame_payload.find(0, 0)
+		if delimiter_pos == -1:
+			# no delimiter anywhere, just append the whole frame_payload
+			self.buffer.extend(frame_payload)   # this is cheap for a bytearray
+			return []   # no reassembled_frames were completed by this frame_payload.
+    
+		# We've completed a packet, using up any existing contents of self.buffer.
+		reassembled_frames = [bytes(self.buffer + frame_payload[0:delimiter_pos])]
+    
+		# Now we are dealing with only the remains of frame_payload
+		start_pos = delimiter_pos + 1   # index into frame_payload
+		while start_pos < len(frame_payload):
+			delimiter_pos = frame_payload.find(0, start_pos)
+			if delimiter_pos == -1:
+				# We don't have another ending delimiter, so we're done for now.
+				# Save the remains of the frame, if any, in self.buffer
+				self.buffer[:] = frame_payload[start_pos:]
+				break  # ← BREAK instead of return
+			if delimiter_pos == start_pos:
+				# we have an extra delimiter of padding here, not a packet
+				# just skip it (without incurring a copy)
+				start_pos += 1
+			else:
+				# we have a packet that was contained within the frame_payload
+				reassembled_frames.append(frame_payload[start_pos:delimiter_pos])
+				start_pos = delimiter_pos + 1
+		else:
+			# This 'else' clause runs when the while loop exits normally
+			# (didn't break), meaning we processed all data
+			self.buffer.clear()
+    
+		# ALWAYS return here after the loop
+		self.stats['messages_completed'] += len(reassembled_frames)
+		return reassembled_frames
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	def add_frame_payload_proposed(self, frame_payload: bytes) -> list[bytes]:
+		""" From Paul
+		Reassemble incoming frame payloads into COBS-encoded packets
+		by breaking them up at the zero-byte delimiters (not included).
+
+		The frame_payload is always relatively small (122 bytes),
+		but self.buffer can grow up to 65535 bytes if we allow that.
+		So we take pains to avoid doing much with self.buffer until
+		we absolutely have to, and then keeping it simple. We already
+		know that self.buffer doesn't contain any delimiters, so we
+		only need to scan frame_payload. If we're careful, we only
+		need to scan it a total of once.
+		"""
+		self.stats['frames_received'] += 1
+
+		delimiter_pos = frame_payload.find(0, 0)
+		if delimiter_pos == -1:
+			# no delimiter anywhere, just append the whole frame_payload
+			self.buffer.extend(frame_payload)   # this is cheap for a bytearray
+			return []   # no reassembled_frames were completed by this frame_payload.
+
+		# We've completed a packet, using up any existing contents of self.buffer.
+		#reassembled_frames = [bytes(self.buffer + frame_payload[0:delimiter_pos]),] #original line
+		#DEBUG
+		print("self.buffer is ", self.buffer, "frame_payload[0:delimiter_pos] is ", frame_payload[0:delimiter_pos], "delimiter_pos is ", delimiter_pos) 
+		reassembled_frames = [bytes(self.buffer + frame_payload[0:delimiter_pos])]
+		#DEBUG
+		print("reassembled_frames ", reassembled_frames)
+
+		# Now we are dealing with only the remains of frame_payload,
+		# which is relatively short. But we'll still handle it carefully
+		# without any unnecessary copy operations, by doing some index arithmetic.
+
+		start_pos = delimiter_pos + 1   # index into frame_payload
+		while start_pos < len(frame_payload):
+			delimiter_pos = frame_payload.find(0, start_pos)
+			if delimiter_pos == -1:
+				# We don't have another ending delimiter, so we're done for now.
+				# Save the remains of the frame, if any, in self.buffer
+				self.buffer[:] = frame_payload[start_pos:]
+				self.stats['messages_completed'] += len(reassembled_frames)
+				#DEBUG
+				print("reassembled_frames", reassembled_frames)
+				return reassembled_frames
+        
+			if delimiter_pos == start_pos:
+				# we have an extra delimiter of padding here, not a packet
+				# just skip it (without incurring a copy)
+				start_pos += 1
+			else:
+				# we have a packet that was contained within the frame_payload
+				reassembled_frames.append(frame_payload[start_pos:delimiter_pos])
+				start_pos = delimiter_pos+1
+
+
+
+
+
+
+
+	def add_frame_payload_replaced(self, frame_payload: bytes) -> List[bytes]:
 		"""
 		Add a 122-byte frame payload and return complete COBS frame if ready
 		
