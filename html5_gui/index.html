@@ -173,13 +173,16 @@
 
 		/* Main Layout */
 		.main-container {
-			max-width: 1400px;
+			/* max-width: 1400px; */
+			max-width: 100%;
 			margin: 0 auto;
 			padding: 2rem;
 			display: grid;
 			grid-template-columns: 1fr 400px;
 			gap: 2rem;
 			min-height: calc(100vh - 120px);
+			/* trying to make message history take up all the height */
+			height: calc(100vh - 100px);
 		}
 
 		@media (max-width: 1200px) {
@@ -223,7 +226,9 @@
 		.chat-container {
 			display: grid;
 			grid-template-rows: auto 1fr auto;
-			height: 600px;
+			/* height: 600px; */
+			/* max-height: 1125; */ /* worked! do not exceed system status height */
+			height: calc(100vh - 100px);  /* Full viewport minus header/padding */
 			gap: 1rem;
 		}
 
@@ -287,7 +292,9 @@
 			display: flex;
 			flex-direction: column;
 			gap: 0.5rem;
-			max-height: 400px;
+			/* max-height: 400px; but 1000px really worked well */
+			max-height: none; /* trying to let container height control it */
+			min-height: 200px;
 		}
 
 		.message {
@@ -648,6 +655,7 @@
 			.main-container {
 				padding: 1rem;
 				grid-template-columns: 1fr;
+				height: calc(100vh - 100px);  /* Or whatever works */
 			}
 			
 			.button-group {
@@ -1807,31 +1815,34 @@
 						</div>
 					</div>
 					
-					<!-- Create New Configuration -->
-					<div class="operation-group">
-						<label class="operation-label">Create New Configuration</label>
-						<div class="operation-controls">
-							<div class="input-group">
-								<input type="text" 
-									   id="create-config-filename" 
-									   placeholder="opulent_voice.yaml"
-									   class="config-filename-input"
-									   aria-label="New configuration filename">
-								<select id="create-config-template" class="template-select" aria-label="Template type">
-									<option value="full">Full Template (with comments)</option>
-									<option value="minimal">Minimal Template</option>
-									<option value="current">Current Form Settings</option>
-								</select>
-								<button class="btn operation-btn" onclick="createConfigFileEnhanced()">
-									<span aria-hidden="true">📄</span>
-									Create
-								</button>
-							</div>
-							<div class="operation-help">
-								Creates a new configuration file. Choose template type or save current form settings.
-							</div>
-						</div>
-					</div>
+
+
+<!-- Create Template Configuration -->
+<div class="operation-group">
+    <label class="operation-label">Create Template Configuration</label>
+    <div class="operation-controls">
+        <div class="input-group">
+            <input type="text" 
+                   id="create-config-filename" 
+                   placeholder="opulent-voice.yaml"
+                   class="config-filename-input"
+                   aria-label="Template configuration filename">
+            <button class="btn operation-btn" onclick="createConfigFileEnhanced()">
+                <span aria-hidden="true">📄</span>
+                Create Template
+            </button>
+        </div>
+        <div class="operation-help">
+            Creates a sample configuration with comments and examples
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
 				</div>
 				
 				<!-- Configuration Actions Section -->
@@ -2114,12 +2125,12 @@
 				</div>
 				
 				<div class="stat-item">
-					<span class="stat-label">Messages Sent</span>
+					<span class="stat-label">Text Messages Sent</span>
 					<span id="messages-sent" class="stat-value">0</span>
 				</div>
 				
 				<div class="stat-item">
-					<span class="stat-label">Messages Received</span>
+					<span class="stat-label">Text Messages Received</span>
 					<span id="messages-received" class="stat-value">0</span>
 				</div>
 				
@@ -3876,6 +3887,57 @@ function resetOutgoingTransmissionTimeout(stationId) {
 		}
 
 		// Configuration management functions - check
+
+
+
+
+
+// IMPROVED: Add Enter key support to configuration filename inputs
+function setupConfigurationEnterKeySupport() {
+    // Load Configuration - Enter key support
+    const loadInput = document.getElementById('load-config-filename');
+    loadInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            loadConfigFile();
+        }
+    });
+
+    // Save Configuration - Enter key support
+    const saveInput = document.getElementById('save-config-filename');
+    saveInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveConfigFile();
+        }
+    });
+
+    // Create Template Configuration - Enter key support
+    const createInput = document.getElementById('create-config-filename');
+    createInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            createConfigFileEnhanced(); // Keep existing function name
+        }
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 		function populateEnhancedConfigFromData(config) {
 
 			console.log("🔍 DEBUG: populateEnhancedConfigFromData called");
@@ -3968,20 +4030,31 @@ function resetOutgoingTransmissionTimeout(stationId) {
 			};
 		}
 
-		// Configuration file operations
+
+
+
 		function createConfigFileEnhanced() {
-			const filename = document.getElementById('create-config-filename').value.trim() || 'opulent_voice.yaml';
-			const templateType = document.getElementById('create-config-template').value;
-			
-			const data = {
-				filename: filename,
-				template_type: templateType
-			};
-			
-			showOperationProgress('Creating configuration file...');
-			addLogEntry(`Creating new configuration file: ${filename} (${templateType} template)`, 'info');
-			sendWebSocketMessage('create_config', data);
+		    const filename = document.getElementById('create-config-filename').value.trim() || 'opulent_voice.yaml';
+    	
+		    // REMOVED: Template type selection (always use 'full' now)
+		    // const templateType = document.getElementById('create-config-template').value;
+		    
+		    const data = {
+		        filename: filename,
+		        template_type: 'full'  // Always create full templates with comments
+		    };
+	    
+		    showOperationProgress('Creating template configuration file...');
+		    addLogEntry(`Creating template configuration file: ${filename}`, 'info');
+		    sendWebSocketMessage('create_config', data);
 		}
+
+
+
+
+
+
+
 
 		function loadConfigFile() {
 			const filename = document.getElementById('load-config-filename').value.trim();
@@ -4313,9 +4386,15 @@ function resetOutgoingTransmissionTimeout(stationId) {
 			// Start uptime counter
 			setInterval(updateUptime, 1000);
 
+			// IMPROVED: Setup configuration Enter key support
+			setupConfigurationEnterKeySupport();
+
 			// Initialize connection
 			addLogEntry('Starting Opulent Voice Web Interface', 'info');
 			connectWebSocket();
+
+
+
 		});
 
 		// Handle page visibility for WebSocket reconnection
