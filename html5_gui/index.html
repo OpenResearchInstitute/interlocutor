@@ -1977,48 +1977,17 @@
 					</div>
 				</div>
 
-				<!-- Audio Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🎵</span>
-						Audio Settings
-					</div>
-					
-					<div class="form-group">
-						<label for="sample-rate">Sample Rate (Hz)</label>
-						<select id="sample-rate" aria-describedby="sample-rate-help">
-							<option value="48000">48000 Hz (Recommended)</option>
-							<option value="44100">44100 Hz</option>
-							<option value="96000">96000 Hz</option>
-						</select>
-						<div id="sample-rate-help" class="help-text">
-							Audio sampling frequency
-						</div>
-					</div>
-					
-					<div class="form-group">
-						<label for="frame-duration">Frame Duration (ms)</label>
-						<select id="frame-duration" aria-describedby="frame-duration-help">
-							<option value="40">40 ms (Recommended)</option>
-							<option value="20">20 ms</option>
-							<option value="60">60 ms</option>
-						</select>
-						<div id="frame-duration-help" class="help-text">
-							Audio frame timing
-						</div>
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="prefer-usb" checked>
-						<label for="prefer-usb">Prefer USB Audio Devices</label>
-					</div>
-				</div>
 
-				<!-- Protocol Configuration -->
+
+
+
+
+
+				<!-- Target Device Type Configuration -->
 				<div class="config-section">
 					<div class="section-header">
 						<span aria-hidden="true">🔧</span>
-						Protocol Settings
+						Target Device Type Settings
 					</div>
 					
 					<div class="form-group">
@@ -3968,14 +3937,8 @@ function setupConfigurationEnterKeySupport() {
 				if (config.network.listen_port) document.getElementById('listen-port').value = config.network.listen_port;
 			}
 			
-			// Audio settings
-			if (config.audio) {
-				if (config.audio.sample_rate) document.getElementById('sample-rate').value = config.audio.sample_rate;
-				if (config.audio.frame_duration_ms) document.getElementById('frame-duration').value = config.audio.frame_duration_ms;
-				if (config.audio.prefer_usb_device !== undefined) document.getElementById('prefer-usb').checked = config.audio.prefer_usb_device;
-			}
 			
-			// Protocol settings
+			// Target Device Type settings
 			if (config.protocol) {
 				if (config.protocol.target_type) document.getElementById('target-type').value = config.protocol.target_type;
 				if (config.protocol.keepalive_interval) document.getElementById('keepalive-interval').value = config.protocol.keepalive_interval;
@@ -4005,12 +3968,6 @@ function setupConfigurationEnterKeySupport() {
 					target_ip: document.getElementById('target-ip').value.trim(),
 					target_port: parseInt(document.getElementById('target-port').value) || 57372,
 					listen_port: parseInt(document.getElementById('listen-port').value) || 57372
-				},
-				audio: {
-					sample_rate: parseInt(document.getElementById('sample-rate').value) || 48000,
-					frame_duration_ms: parseInt(document.getElementById('frame-duration').value) || 40,
-					prefer_usb_device: document.getElementById('prefer-usb').checked,
-					device_keywords: ["Samson", "C01U", "USB"]  // Default keywords
 				},
 				protocol: {
 					target_type: document.getElementById('target-type').value || 'computer',
