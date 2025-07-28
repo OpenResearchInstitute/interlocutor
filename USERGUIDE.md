@@ -97,3 +97,60 @@ function
 
 
 ```
+
+
+
+
+
+
+
+
+
+
+### Reconnection behavior:
+Current Reconnection Behavior
+
+Initial reconnection attempts:
+
+First retry: 1 second delay
+Subsequent retries: Delay increases by 1.5x each time (exponential backoff)
+Maximum delay: 30 seconds
+Maximum attempts: 10 attempts
+Total time before giving up: About 2-3 minutes
+
+Specific Timing
+```
+let reconnectDelay = 1000; // Start with 1 second
+let maxReconnectAttempts = 10;
+
+// After each failed attempt:
+reconnectDelay = Math.min(reconnectDelay * 1.5, 30000); // Max 30 seconds
+```
+Retry sequence:
+
+1 second
+1.5 seconds
+2.25 seconds
+3.4 seconds
+5.1 seconds
+7.6 seconds
+11.4 seconds
+17.1 seconds
+25.6 seconds
+30 seconds (max reached)
+
+After 10 failed attempts: Shows "Connection failed - maximum retry attempts reached" and displays a manual retry button.
+Manual Recovery Options
+
+Manual Retry Button: Appears when auto-retry gives up
+Page Visibility: If you switch browser tabs and come back, it will attempt to reconnect
+Manual Refresh: Browser refresh will restart the connection process
+
+Connection Timeout
+Each individual connection attempt has a 5-second timeout before being considered failed.
+So in total, if the radio system goes down, the web interface will:
+
+Try for about 2-3 minutes to reconnect automatically
+Then require manual intervention (retry button or page refresh)
+Each connection attempt times out after 5 seconds
+
