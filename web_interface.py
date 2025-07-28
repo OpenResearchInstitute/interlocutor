@@ -1527,11 +1527,7 @@ class EnhancedRadioWebInterface:
 						'control_port': getattr(self.config.network, 'control_port', 57375),
 					},
 					'audio': {
-						'sample_rate': self.config.audio.sample_rate,
-						'channels': self.config.audio.channels,
-						'frame_duration_ms': self.config.audio.frame_duration_ms,
 						'input_device': self.config.audio.input_device,
-						'prefer_usb_device': self.config.audio.prefer_usb_device,
 						'device_keywords': self.config.audio.device_keywords,
 					},
 					'gpio': {
@@ -1629,20 +1625,14 @@ class EnhancedRadioWebInterface:
 					self.config.network.control_port = int(network['control_port'])
 				updated_sections.append('network')
 		
+		
+
 			if 'audio' in data:
 				audio = data['audio']
-				if 'sample_rate' in audio:
-					self.config.audio.sample_rate = int(audio['sample_rate'])
-				if 'frame_duration_ms' in audio:
-					self.config.audio.frame_duration_ms = int(audio['frame_duration_ms'])
 				if 'input_device' in audio:
 					self.config.audio.input_device = audio['input_device']
-				if 'prefer_usb_device' in audio:
-					self.config.audio.prefer_usb_device = bool(audio['prefer_usb_device'])
-				if 'device_keywords' in audio:
-					self.config.audio.device_keywords = audio['device_keywords']
 				updated_sections.append('audio')
-		
+
 			if 'gpio' in data:
 				gpio = data['gpio']
 				if 'ptt_pin' in gpio:
@@ -2180,13 +2170,6 @@ class EnhancedRadioWebInterface:
 				temp_config.network.target_port = int(network['target_port'])
 			if 'listen_port' in network:
 				temp_config.network.listen_port = int(network['listen_port'])
-		
-		if 'audio' in form_config:
-			audio = form_config['audio']
-			if 'sample_rate' in audio:
-				temp_config.audio.sample_rate = int(audio['sample_rate'])
-			if 'frame_duration_ms' in audio:
-				temp_config.audio.frame_duration_ms = int(audio['frame_duration_ms'])
 		
 		if 'gpio' in form_config:
 			gpio = form_config['gpio']

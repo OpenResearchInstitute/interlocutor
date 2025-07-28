@@ -64,23 +64,25 @@ class AudioDeviceManager:
         
         # Test mode detection
         self.test_mode = os.environ.get('OPULENT_VOICE_TEST_MODE') == '1'
-        
-        # Audio parameters from radio config or defaults
+
+        # UPDATED: Audio parameters - ALWAYS use protocol requirements
+        # Ignore any user config values for sample_rate and frame_duration_ms
+        self.audio_params = {
+            'sample_rate': 48000,  # PROTOCOL REQUIREMENT - not configurable
+            'channels': 1,
+            'frames_per_buffer': 1920,  # 40ms at 48kHz - PROTOCOL REQUIREMENT
+            'frame_duration_ms': 40  # PROTOCOL REQUIREMENT - not configurable
+        }
+    
+        # Log that we're enforcing protocol requirements
         if radio_config and hasattr(radio_config, 'audio'):
-            self.audio_params = {
-                'sample_rate': radio_config.audio.sample_rate,
-                'channels': radio_config.audio.channels,
-                'frames_per_buffer': int(radio_config.audio.sample_rate * radio_config.audio.frame_duration_ms / 1000),
-                'frame_duration_ms': radio_config.audio.frame_duration_ms
-            }
-        else:
-            # Fallback defaults
-            self.audio_params = {
-                'sample_rate': 48000,
-                'channels': 1,
-                'frames_per_buffer': 1920,  # 40ms at 48kHz
-                'frame_duration_ms': 40
-            }
+            if (radio_config.audio.sample_rate != 48000 or 
+                radio_config.audio.frame_duration_ms != 40):
+                self.logger.warning("Overriding user audio config with protocol requirements")
+    
+        self.logger.debug(f"AudioDeviceManager: Protocol requirements enforced (48kHz, 40ms)")
+
+
         
         self.logger.debug(f"AudioDeviceManager initialized in {mode.value} mode")
     

@@ -863,11 +863,38 @@ class GPIOZeroPTTHandler:
 			
 			# get audio parameters from device manager
 			params = device_manager.audio_params
-			
-			# Update our instance variables to match selected params
-			self.sample_rate = params['sample_rate']
-			self.samples_per_frame = params['frames_per_buffer']
+
+			# VERIFICATION: Ensure protocol requirements are met
+			if params['sample_rate'] != 48000:
+				DebugConfig.debug_print(f"⚠️ WARNING: Sample rate {params['sample_rate']} != 48000 (protocol requirement)")
+				params['sample_rate'] = 48000
+
+			if params['frame_duration_ms'] != 40:
+				DebugConfig.debug_print(f"⚠️ WARNING: Frame duration {params['frame_duration_ms']} != 40ms (protocol requirement)")
+				params['frame_duration_ms'] = 40
+				params['frames_per_buffer'] = 1920  # Recalculate
+
+			# CRITICAL: Enforce protocol requirements regardless of config
+			# These are protocol requirements and cannot be changed by users
+			protocol_sample_rate = 48000  # Protocol requirement
+			protocol_frame_duration_ms = 40  # Protocol requirement
+			protocol_frames_per_buffer = int(protocol_sample_rate * protocol_frame_duration_ms / 1000)
+
+			# Override any config values with protocol requirements
+			params['sample_rate'] = protocol_sample_rate
+			params['frame_duration_ms'] = protocol_frame_duration_ms
+			params['frames_per_buffer'] = protocol_frames_per_buffer
+
+			# Update our instance variables to match protocol requirements
+			self.sample_rate = protocol_sample_rate
+			self.samples_per_frame = protocol_frames_per_buffer
 			self.bytes_per_frame = self.samples_per_frame * 2
+
+
+#			# Update our instance variables to match selected params
+#			self.sample_rate = params['sample_rate']
+#			self.samples_per_frame = params['frames_per_buffer']
+#			self.bytes_per_frame = self.samples_per_frame * 2
 			
 			DebugConfig.debug_print(f"🎵 Audio config: {params['sample_rate']}Hz, {params['frame_duration_ms']}ms frames")
 			DebugConfig.debug_print(f"   Samples per frame: {params['frames_per_buffer']}")
@@ -1648,14 +1675,16 @@ if __name__ == "__main__":
 		if '--list-audio' in sys.argv:
 			from audio_device_manager import create_audio_manager_for_cli
 			device_manager = create_audio_manager_for_cli()
-			device_manager.list_audio_devices()
+			device_manager.list_devices_cli_format()
+			#device_manager.list_audio_devices()
 			device_manager.cleanup()
 			sys.exit(0)
 		
 		if '--test-audio' in sys.argv:
 			from audio_device_manager import create_audio_manager_for_cli
 			device_manager = create_audio_manager_for_cli()
-			device_manager.test_audio_devices()
+			success = device_manager.test_audio_cli_format()
+			#device_manager.test_audio_devices()
 			device_manager.cleanup()
 			sys.exit(0)
 		

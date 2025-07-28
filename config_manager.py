@@ -219,17 +219,17 @@ class NetworkConfig:
 @dataclass
 class AudioConfig:
     """Audio system configuration"""
-    sample_rate: int = 48000
-    channels: int = 1
-    frame_duration_ms: int = 40
     
     # Device selection
     input_device: Optional[str] = None  # Auto-detect if None
-    prefer_usb_device: bool = True
-    device_keywords: list = field(default_factory=lambda: ["Samson", "C01U", "USB"])
     
     # Protocol constants (not user-configurable)
     bitrate: int = field(default=16000, init=False)  # OPUS bitrate - protocol requirement
+    sample_rate: int = 48000
+    frame_duration_ms: int = 40
+    device_keywords: list = field(default_factory=lambda: ["Samson", "C01U", "USB"])
+    channels: int = 1
+
 
 @dataclass
 class GPIOConfig:
@@ -419,9 +419,14 @@ class ConfigurationManager:
             if 'network' in yaml_data:
                 config.network = self._dict_to_dataclass(NetworkConfig, yaml_data['network'])
             
+            # MODIFIED: Audio config now uses defaults only - no user overrides
             if 'audio' in yaml_data:
-                config.audio = self._dict_to_dataclass(AudioConfig, yaml_data['audio'])
-            
+                # Only load input_device if specified, ignore other audio settings
+                audio_data = yaml_data['audio']
+                if 'input_device' in audio_data:
+                    config.audio.input_device = audio_data['input_device']
+                    # All other audio settings use developer defaults
+
             if 'gpio' in yaml_data:
                 config.gpio = self._dict_to_dataclass(GPIOConfig, yaml_data['gpio'])
             
@@ -644,19 +649,8 @@ network:
 
 # Audio system configuration
 audio:
-  sample_rate: 48000              # Audio sample rate (Hz) - protocol requirement
-  channels: 1                     # Number of audio channels
-  frame_duration_ms: 40           # Audio frame duration (milliseconds) - protocol requirement
-  
-  # Audio device selection
+  # Audio device selection (optional)
   input_device: null              # Specific device name, or null for auto-detect
-  prefer_usb_device: true         # Prefer USB audio devices
-  device_keywords:                # Keywords to search for in device names
-    - "Samson"
-    - "C01U" 
-    - "USB"
-    
-  # Note: OPUS bitrate is fixed at 16000 bps (protocol requirement)
 
 # GPIO pin configuration (Raspberry Pi)
 gpio:
@@ -707,7 +701,7 @@ ui:
   always_on_top: false            # Keep window always on top
 
 # Configuration metadata
-config_version: "1.0"
+config_version: "1.1"
 description: "Opulent Voice Protocol Configuration"
 """
 
@@ -730,13 +724,6 @@ description: "Opulent Voice Protocol Configuration"
         
         if not (1 <= self.config.network.listen_port <= 65535):
             errors.append(f"Invalid listen port: {self.config.network.listen_port}")
-        
-        # Validate audio settings
-        if self.config.audio.sample_rate not in [8000, 16000, 24000, 48000]:
-            errors.append(f"Unsupported sample rate: {self.config.audio.sample_rate}")
-        
-        if self.config.audio.frame_duration_ms not in [20, 40, 60]:
-            errors.append(f"Unsupported frame duration: {self.config.audio.frame_duration_ms}ms")
         
         # Validate GPIO pins
         if not (2 <= self.config.gpio.ptt_pin <= 27):
