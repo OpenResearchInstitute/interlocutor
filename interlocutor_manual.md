@@ -1,9 +1,9 @@
 # Interlocutor Installation and Operator Manual
-## Raspberry Pi Human Radio Interface for Opulent Voice
+## Human Radio Interface for Opulent Voice
 
 ### Overview
 
-**Interlocutor** is the human-radio interface component of the Open Research Institute's Opulent Voice digital communication system. Think of it as the "radio console" that transforms your Raspberry Pi into a sophisticated digital voice and data terminal. While traditional amateur radio digital modes often sacrifice audio quality for bandwidth efficiency, Interlocutor enables crystal-clear voice communications with seamless integration of keyboard chat, file transfer, and system control messages.
+**Interlocutor** is the human-radio interface component of the Open Research Institute's Opulent Voice digital communication system. Think of it as the "radio console" that transforms your computing device (such as  Raspberry Pi or a laptop) into a sophisticated digital voice and data terminal. While traditional amateur radio digital modes often sacrifice audio quality for bandwidth efficiency, Interlocutor enables very high-quality voice communications with seamless integration of keyboard chat, file transfer, and system control messages.
 
 **What Interlocutor Does:**
 - Provides high-quality digital voice communication using OPUS codec
@@ -17,6 +17,7 @@
 Interlocutor acts as the bridge between human operators and radio equipment. It processes voice, text, and data into properly formatted frames that can be sent to any Opulent Voice-compatible modem via Ethernet, enabling remote operation and modular system design.
 
 ---
+# Raspberry Pi Installation
 
 ## Hardware Requirements
 
@@ -29,8 +30,8 @@ Interlocutor acts as the bridge between human operators and radio equipment. It 
 ### Recommended Setup
 - **USB headset with microphone** (dedicated for radio use)
 - **HDMI output** (for browser audio, avoiding device conflicts)
-- **GPIO PTT button** (for push-to-talk control)
-- **LED indicator** (for transmission status)
+- **GPIO PTT button** (momentary switch for push-to-talk control)
+- **LED indicator** (for clear visual feedback on transmission status)
 
 ### Audio Device Strategy
 Think of audio device management like managing multiple receivers in a traditional radio shack. The key principle: **one application per audio device**.
@@ -38,12 +39,14 @@ Think of audio device management like managing multiple receivers in a tradition
 **Best Configuration (No Conflicts):**
 - Radio (Interlocutor): USB headset/microphone
 - Browser/System: HDMI output to monitor/TV speakers
-- Result: Both work simultaneously
+- Result: Both can work simultaneously, depending on browser and operating system
 
 **Alternative Hardware Solutions:**
 - Two USB audio devices (one for radio, one for computer)
 - USB hub with multiple audio interfaces
 - 3.5mm splitter to share single headset between devices
+
+There is audio device listing and audio device selection support in Interlocutor. Both the microphone and speaker are tested during the selection process. Audio device selection is saved to a local file called `audio_config.yaml`
 
 ---
 
@@ -108,16 +111,17 @@ sudo apt install python3-pyaudio build-essential portaudio19-dev python3-dev
 git clone https://github.com/OpenResearchInstitute/interlocutor
 cd interlocutor
 
-# Install and activate Python 3.11.2 in a virtual environment
+# Install and activate Python 3.11.2 (or the version of your choice) in a virtual environment
 pyenv update
 pyenv install 3.11.2
-pyenv virtualenv 3.11.2 orbital
-pyenv activate orbital
+pyenv virtualenv 3.11.2 your_environment_name
+pyenv activate your_environment_name
 
 # Install Python packages
 pip3 install -r requirements.txt
-pip3 install lgpio
-pip3 install opuslib_next
+
+There may be other Python packages required for your system. requirements.txt will be as updated as possible, but watch for any missing modules and install them. 
+
 ```
 
 ---
@@ -174,6 +178,7 @@ python3 interlocutor.py YOUR_CALLSIGN --web-interface
 # With specific config file
 python3 interlocutor.py YOUR_CALLSIGN -c myconfig.yaml --web-interface
 ```
+The purpose of the Configuration System is to create, validate, and save one or more configuration files so that an operator can start the radio in a fully configured state. 
 
 **Access URLs:**
 - Main interface: http://localhost:8000
@@ -187,21 +192,11 @@ python3 interlocutor.py YOUR_CALLSIGN -c myconfig.yaml --web-interface
 
 **Network Settings:**
 - IP addresses and port configuration
-- Protocol settings and keepalive intervals
-- Target equipment addresses
-
-**Audio Settings:**
-- Sample rates and device selection
-- Input/output level adjustments
-- Real-time testing capabilities
+- Protocol settings
 
 **GPIO Settings:**
 - Raspberry Pi pin assignments
 - PTT button and LED configuration
-
-**Protocol Settings:**
-- Frame types and priorities
-- Authentication parameters
 
 **Debug & Logging:**
 - Verbose modes and diagnostic options
@@ -212,8 +207,7 @@ python3 interlocutor.py YOUR_CALLSIGN -c myconfig.yaml --web-interface
 **Smart File Handling:**
 - Saves back to original config file when specified with `-c`
 - Auto-discovery follows CLI search order when no config specified
-- Create/Load/Save/Export configurations through web interface
-- Import existing config files via drag-and-drop
+- Create/Load/Save/Test configurations through web interface
 
 ---
 
@@ -243,15 +237,19 @@ python3 interlocutor.py YOUR_CALLSIGN --web-interface
 
 **Web Interface Features:**
 - Glassmorphism UI with responsive design
-- Real-time configuration updates
-- Live status indicators and progress feedback
-- Audio waveform animations
+- Detailed configuration management in Configuration tab
+- Live status indicators
+- Real-time voice transmission with PTT control
+- Keyboard chat interface
+- Message priority management
+- Debug output and system status
+- Sent and received audio can be replayed from the message history window
 - Notification system for important events
 
 ### Dual-Mode Operation
 
 Both interfaces can run simultaneously, providing flexibility for different operational scenarios:
-- Web interface for configuration and monitoring
+- Web interface for configuration, audio replay, and monitoring
 - CLI for keyboard-to-keyboard chat operations
 - Instant updates between interfaces via WebSocket communication
 
@@ -265,7 +263,7 @@ Interlocutor implements the Opulent Voice protocol with sophisticated frame mana
 
 **Frame Types and Priorities:**
 1. **VOICE** (Priority 1): OPUS-encoded audio, immediate transmission
-2. **CONTROL** (Priority 2): PTT state changes, high priority queue
+2. **CONTROL** (Priority 2): PTT state changes, high priority queue, A5 messages
 3. **TEXT** (Priority 3): Keyboard chat, normal priority queue
 4. **DATA** (Priority 4): File transfers, low priority queue
 
@@ -279,14 +277,14 @@ Interlocutor implements the Opulent Voice protocol with sophisticated frame mana
 
 All frames follow the Opulent Voice protocol format:
 - **Header**: 14 bytes (sync word + station ID + type + sequence + length + reserved)
-- **Payload**: Variable length data specific to frame type
+- **Payload**: Variable length data loaded up in 40 ms frames
 - **Encoding**: COBS (Consistent Overhead Byte Stuffing) framing
-- **Transport**: UDP over IP with RTP headers for audio
+- **Transport**: UDP over IP with RTP headers for audio, UDP over IP for control, text, and data
 
 ### Network Integration
 
 ```bash
-# Basic operation (connects to default target)
+# Basic operation (connects to default target with default values)
 python3 interlocutor.py YOUR_CALLSIGN
 
 # Specify target IP and port
@@ -304,21 +302,21 @@ python3 interlocutor.py YOUR_CALLSIGN -c mystation.yaml
 
 **Push-to-Talk (PTT) Operation:**
 - **GPIO Button**: Physical button connected to Raspberry Pi GPIO
-- **Keyboard PTT**: Space bar or configured key in CLI mode
-- **Web PTT**: Click/touch controls in web interface
+- **Web PTT**: Additional click/touch controls in web interface
 
 **Audio Processing Pipeline:**
 1. Microphone input → PyAudio capture
 2. Audio validation and level checking
-3. OPUS encoding (40ms frames, configurable bitrate)
+3. OPUS encoding (40ms frames, 16,000 bps bitrate)
 4. RTP header addition
-5. Opulent Voice protocol framing
-6. Network transmission via UDP
+5. UDP header addition
+6. IP header addition
+7. COBS encoding
+8. Opulent Voice header addition
+9. Network transmission
 
 **Quality Settings:**
-- Default: 32kbps OPUS encoding
-- Protocol v1.0: 16kbps (legacy compatibility)
-- Protocol v2.0: 32kbps (current standard)
+- Default: 16kbps OPUS encoding (path to 32kbps in future version)
 - Frame size: 40ms (optimized for real-time performance)
 
 ### Chat Integration
@@ -340,7 +338,7 @@ python3 interlocutor.py YOUR_CALLSIGN -c mystation.yaml
 
 ### Automatic Reconnection System
 
-Interlocutor implements intelligent reconnection logic for network resilience:
+Interlocutor implements intelligent reconnection logic for the web interface.
 
 **Reconnection Timing:**
 1. First retry: 1 second delay
@@ -417,57 +415,23 @@ Attempt 10: 30.0 seconds (max reached)
 
 ---
 
-## Advanced Features
-
-### Real-time Monitoring
-
-**Audio Statistics:**
-- Packet transmission/reception counts
-- Audio frame duration tracking
-- Encoding/decoding performance metrics
-- Network latency measurements
-
-**System Health:**
-- CPU usage monitoring
-- Memory utilization tracking
-- GPIO status indicators
-- Network connection health
-
-### Integration Capabilities
-
-**Remote Operation:**
-- Ethernet-based radio control
-- Web interface for remote configuration
-- Status monitoring over network
-- Modular system architecture
-
-**Extensibility:**
-- Plugin architecture for additional protocols
-- GPIO expansion for custom hardware
-- API endpoints for external integration
-- Configuration templates for different scenarios
-
----
-
 ## Getting Help and Contributing
 
 ### Documentation Resources
 - Project repository: https://github.com/OpenResearchInstitute/interlocutor
-- Open Research Institute: https://www.openresearch.institute/
-- Opulent Voice protocol documentation
-- Community forums and discussions
+- Open Research Institute: https://www.openresearch.institute/getting-started
+- Community forums and discussions on our Slack (see getting-started above)
+- Opulent Voice Protocol documentation: 
 
 ### Support Channels
 - GitHub Issues for bug reports
-- ORI community forums for general discussion
-- Technical working groups for protocol development
-- Amateur radio forums for operational questions
+- ORI community forums (ORI Slack) for general discussion
 
 ### Contributing
 - Code contributions welcome via GitHub pull requests
-- Documentation improvements encouraged
+- Documentation improvements welcome and encouraged
 - Testing and feedback valuable for development
-- Hardware testing on different platforms needed
+- Hardware testing on different platforms welcome and encouraged
 
 ---
 
