@@ -1,19 +1,11 @@
 # interlocutor
-## Raspberry Pi Human Radio Interface for Opulent Voice
+## Human Radio Interface for Opulent Voice
 
 ### Getting Started
 
-1. Install dependencies
+Please see our Operator's Manual at https://github.com/OpenResearchInstitute/interlocutor/blob/main/interlocutor_manual.md
 
-pip3 install -r requirements.txt
-
-2. Or install manually
-
-pip3 install opuslib pyaudio gpiozero PyYAML numpy
-
-3. On Raspberry Pi, pyaudio might need:
-
-sudo apt install python3-pyaudio
+---
 
 ### 17 July 2025 Documentation
 
