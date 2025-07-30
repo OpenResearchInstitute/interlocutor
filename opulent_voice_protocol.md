@@ -69,7 +69,7 @@ The protocol can be implemented in various ways - as separate modules, integrate
 
 ## 2. Frame Structure
 
-### 2.1 Protocol Frame Format
+### 2.1 Opulent Voice Protocol Frame Format
 
 The Opulent Voice Protocol uses fixed-size and fixed-timing frames for all data types:
 
@@ -85,8 +85,8 @@ The Opulent Voice Protocol uses fixed-size and fixed-timing frames for all data 
 **Frame Requirements:**
 - **Header Size**: 12 bytes (aligned for Golay error correction).
 - **Timing**: Frames must be transmitted at regular intervals.
-- **Priority**: Voice frames have absolute transmission priority
-- **Encapsulation**: Standard Internet protocols (IP/UDP/RTP) are used within frames.
+- **Priority**: Voice frames have transmission priority over control frames, which have priority over text frames, which have priority over data frames.
+- **Encapsulation**: Standard Internet protocols (COBS/IP/UDP/RTP) are used within the Opulent Voice payload.
 
 **OPV Header Structure:**
 
@@ -136,15 +136,17 @@ The protocol defines four message types with strict priority ordering:
 
 The reference implementation uses enum values `VOICE = (1, "VOICE")`, `CONTROL = (2, "CONTROL")`, etc. Voice transmission bypasses all queues and is processed at the beginning of the next frame via the 40ms audio callback. Text messages typed during voice transmission are buffered and transmitted when PTT is released.
 
-## 6. Station Identification
-
-### 6.1 Callsign Encoding
+### 2.3 Callsign Encoding
 
 **Protocol Requirements:**
 - **Character Set:** Supports station identifications that include all amateur radio callsigns.
-- **Efficiency:** Provides a compact representation for protocol headers.
+- **Efficiency:** Provides a compact representation.
 - **Flexibility:** Allows common tactical and non-amateur station identification formats.
 - **International:** Supports all national callsign formats.
+- **Unique Identity:** Each transmission must uniquely identify the originating station.
+- **Regulatory Compliance:** OPV meets amateur radio identification requirements as long as the station's callsign is unambiguously included in the station identifier.
+- **Authentication Ready:** The protocol supports cryptographic verification when needed. 
+- **Multiple Stations:** Allows multiple stations per license through secondary station identification (SSID).
 
 **Base-40 Encoding Specification:**
 
@@ -163,14 +165,6 @@ Character mapping for efficient callsign encoding:
 1. Normalize callsign to uppercase
 2. Convert each character to base-40 value
 3. Pack into 48-bit field: `value = Σ(char[i] × 40^(position))`
-
-### 6.2 Station Identification Requirements
-
-**Protocol Requirements:**
-- **Unique Identity:** Each transmission must identify originating station.
-- **Regulatory Compliance:** OPV meets amateur radio identification requirements as long as the station's callsign is unambiguously included in the station identifier.
-- **Authentication Ready:** The protocol supports cryptographic verification when needed. 
-- **Multiple Stations:** Allows multiple stations per license through secondary station identification (SSID).
 
 #### Implementation Example: Interlocutor
 
@@ -297,7 +291,7 @@ Raw binary data is passed through unchanged and encapsulated in UDP/IP. Large fi
 
 ### 4.1 COBS Framing Requirement
 
-The Opulent Voice Protocol mandates Consistent Overhead Byte Stuffing (COBS) for frame boundary detection. All payload data must be COBS-encoded before transmission. Use 0x00 bytes as frame delimiters. Minimal overhead (typically less than 1%) for frame boundary detection. COBS is self-synchronizing. Receivers can recover frame boundaries after errors. COBS is compatible with byte-oriented transmission interfaces. 0x00 bytes can only be frame delimiters in the encoded stream, making frame boundary detection trivial.
+The Opulent Voice Protocol mandates Consistent Overhead Byte Stuffing (COBS) for frame boundary detection. All payload data must be COBS-encoded before transmission. Use 0x00 bytes as frame delimiters. COBS costs minimal overhead (typically less than 1%) for frame boundary detection. COBS is self-synchronizing. Receivers can recover frame boundaries after errors. COBS is compatible with byte-oriented transmission interfaces. 0x00 bytes can only be frame delimiters in the encoded stream, making frame boundary detection trivial.
 
 **COBS Algorithm:**
 
@@ -346,7 +340,7 @@ The Opulent Voice Protocol integrates with standard Internet protocols for paylo
 ### 4.2 Quality of Service
 
 **Traffic Classification:**
-Different message types should receive appropriate network priority:
+Different message types receive appropriate network priority:
 
 | Message Type | Priority Class | Typical ToS/DSCP |
 |--------------|----------------|------------------|
@@ -359,7 +353,7 @@ Different message types should receive appropriate network priority:
 
 **Protocol Requirements:**
 - **Addressing:** Support for point-to-point and and conference scenarios
-- **Port Management:** Configurable destination ports for different data types. 
+- **Port Management:** Destination ports are used to indicate the data types. There is not a data type field in the protocol header. 
 - **Network Integration:** Compatible with existing Internet infrastructure and services. 
 
 #### Implementation Example: Interlocutor
@@ -443,9 +437,9 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 
 ---
 
-## 8. Authentication and Authorization
+## 7. Authentication and Authorization
 
-### 8.1 Authentication Framework
+### 7.1 Authentication Framework
 
 **Protocol Requirements:**
 - **Station Verification:** Cryptographic verification of amateur radio license
@@ -464,7 +458,7 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 4. Authentication result communicated to all participants
 ```
 
-### 8.2 Authorization Framework
+### 7.2 Authorization Framework
 
 **Protocol Requirements:**
 - **Access Levels:** Support for different privilege levels
@@ -478,7 +472,7 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 - **Tiered Access:** Different capabilities (text-only, voice, full bandwidth)
 - **Emergency Access:** Unrestricted access for emergency communications
 
-### 8.3 Security Considerations
+### 7.3 Security Considerations
 
 **Threat Model:**
 - **Primary Threat:** Unauthorized use overwhelming system capacity
@@ -491,9 +485,9 @@ Supports ARRL Logbook of the World (LoTW) certificate authentication. Station ca
 
 ---
 
-## 5. Physical Layer Requirements
+## 8. Physical Layer Requirements
 
-### 5.1 Forward Error Correction
+### 8.1 Forward Error Correction
 
 **Protocol Requirements:**
 - **Header Protection:** Error correction suitable for frame headers
@@ -506,7 +500,7 @@ Supports ARRL Logbook of the World (LoTW) certificate authentication. Station ca
 - Payload: 1/2 rate convolutional coding
 - Interleaving: Spread errors across frame boundaries
 
-### 5.2 Modulation
+### 8.2 Modulation
 
 **Protocol Requirements:**
 - **Spectral Efficiency:** Efficient use of amateur radio spectrum
@@ -517,7 +511,7 @@ Supports ARRL Logbook of the World (LoTW) certificate authentication. Station ca
 **Required Modulation:**
 - Minimum Shift Keying (MSK) for phase continuity and spectral efficiency
 
-### 5.3 Frame Synchronization
+### 8.3 Frame Synchronization
 
 **Protocol Requirements:**
 - **Preamble:** "Lighthouse Signal" pattern for receiver acquisition
@@ -536,14 +530,14 @@ ORI's Locutus modem implements MSK modulation targeting PLUTO SDR hardware. (TBD
 
 ---
 
-## 7. Performance and Quality
+## 9. Performance and Quality
 
-### 7.1 Audio Quality Requirements
+### 9.1 Audio Quality Requirements
 
 **Protocol Targets:**
 Keeping open for KB5MU contributions
 
-### 7.2 Network Performance
+### 9.2 Network Performance
 
 **Bandwidth Requirements:**
 - **Voice:** 16 kbps + protocol overhead (approximately 20 kbps total)
@@ -558,7 +552,7 @@ Keeping open for KB5MU contributions
 - **Control:** <500 ms for system responsiveness
 - **Data:** No specific latency requirements
 
-### 7.3 Error Resilience
+### 9.3 Error Resilience
 
 **Protocol Requirements:**
 - **Forward Error Correction:** Sufficient coding for target bit error rate performance.
@@ -571,9 +565,9 @@ Achieves target audio quality using 16 kbps OPUS encoding with 40ms frames. Netw
 
 ---
 
-## 9. Reference Implementation
+## 10. Reference Implementation
 
-### 9.1 ORI Implementation Architecture
+### 10.1 ORI Implementation Architecture
 
 The Open Research Institute provides a complete reference implementation split across two main components:
 
@@ -593,7 +587,7 @@ https://github.com/OpenResearchInstitute/interlocutor
 
 https://github.com/OpenResearchInstitute/pluto_msk
 
-### 9.2 Interlocutor Implementation Details
+### 10.2 Interlocutor Implementation Details
 
 **Key Software Components:**
 - `OpulentVoiceProtocolWithIP`: Core frame creation and processing
@@ -615,7 +609,7 @@ https://github.com/OpenResearchInstitute/pluto_msk
 - Other message types processed when voice queue empty
 - PTT-aware buffering for seamless operation
 
-### 9.3 Integration and Testing
+### 10.3 Integration and Testing
 
 **Interoperability Validation:**
 - Frame format compliance testing
@@ -635,9 +629,9 @@ https://github.com/OpenResearchInstitute/pluto_msk
 - Performance optimization for different use cases
 - Enhanced authentication mechanisms
 
-## 10. Future Protocol Evolution
+## 11. Future Protocol Evolution
 
-### 10.1 Planned Enhancements
+### 11.1 Planned Enhancements
 
 **Audio Quality Improvements:**
 - Higher bitrate options (32 kbps) for additional fidelity
@@ -650,7 +644,7 @@ https://github.com/OpenResearchInstitute/pluto_msk
 - Advanced error correction algorithms
 - Mesh networking capabilities
 
-### 10.2 Application Domains
+### 11.2 Application Domains
 
 **Satellite Communications:**
 - Native uplink protocol for amateur satellites
@@ -669,9 +663,9 @@ https://github.com/OpenResearchInstitute/pluto_msk
 
 ---
 
-## 11. Regulatory Compliance
+## 12. Regulatory Compliance
 
-### 11.1 Amateur Radio Regulations
+### 12.1 Amateur Radio Regulations
 
 **Technical Compliance:**
 - Open protocol specification
@@ -684,7 +678,7 @@ https://github.com/OpenResearchInstitute/pluto_msk
 - IARU band plan compatibility
 - National regulatory variation support
 
-### 11.2 Spectrum Efficiency
+### 12.2 Spectrum Efficiency
 
 **Bandwidth Optimization:**
 - Efficient digital modulation (MSK)
