@@ -3,16 +3,14 @@
 Radio Protocol Classes for Interlocutor
 """
 
-import struct
-import time
+import logging
 import random
 import socket
-import logging
-from typing import List, Tuple, Union, Dict
+import struct
+import threading
+import time
 from enum import Enum
-
-
-
+from typing import Dict, List, Tuple, Union
 
 
 # debug configuration
@@ -2053,12 +2051,49 @@ class FramePriority(Enum):
 
 # Network transmission class
 class NetworkTransmitter:
-	"""UDP Network Transmitter for Opulent Voice"""
+	"""UDP or TCP Encapsulated Network Transmitter for Opulent Voice frames
 
-	def __init__(self, target_ip="192.168.1.100", target_port=57372):
+	Encapsulation mode is intended primarily for a one-to-one connection between
+	Interlocutor and an Opulent Voice modem belonging to the same station. In
+	this configuration, Interlocutor can be considered the primary device. The
+	modem is secondary and under the control of Interlocutor.
+
+	We also want to support peer-to-peer connections between two Interlocutor
+	instances. In this case, we want each Interlocutor to behave as much as
+	possible like a primary, while still interoperating with the other.
+
+	We have two encapsulation modes so far: UDP and TCP. UDP is simpler and
+	works fine when the network between Interlocutor and the modem is simple
+	and reliable, so that encapsulated frames arriving out of order or being
+	lost altogether is infrequent. UDP also has the benefit of being easily
+	extended to multicast networks. TCP, on the other hand, provides robust
+	protection against frame loss and reordering. It requires Interlocutor
+	to manage connections, which adds some complexity and overhead.
+
+	This class manages the transmit side, encapsulating Opulent Voice frames
+	created by Interlocutor and sending them to the modem or another device
+	acting like a modem. It only make sense to send frames to a single
+	device. This class sets up a single socket on the target IP and port,
+	and sends frames to that address. In the case of TCP mode encapsulation,
+	it establishes a connection to the target IP and port, and sends frames
+	delimited using COBS encoding. The connection is established as soon as
+	Interlocutor is started and configured, and this class attempts to keep
+	the connection up until instructed otherwise. If the UI wants to send
+	frames to a different target, it should close the existing connection
+	and create a new one with the new target IP and port.
+	"""
+
+
+	ENCAP_MODE_NONE = 0		# no transmissions
+	ENCAP_MODE_TCP = 1		# TCP encapsulation of Opulent Voice frames
+	ENCAP_MODE_UDP = 2		# UDP encapsulation of Opulent Voice frames
+	
+	def __init__(self, encap_mode=ENCAP_MODE_TCP, target_ip="192.168.1.100", target_port=57372):
 		self.target_ip = target_ip
 		self.target_port = target_port
+		self.encap_mode = self.ENCAP_MODE_TCP
 		self.socket = None
+		self.running = False
 		self.stats = {
 			'packets_sent': 0,
 			'bytes_sent': 0,
@@ -2067,7 +2102,21 @@ class NetworkTransmitter:
 		self.setup_socket()
 
 	def setup_socket(self):
-		"""Create UDP socket"""
+		"""Setup the socket based on encapsulation mode"""
+
+		if self.encap_mode == self.ENCAP_MODE_TCP:
+			self.setup_socket_tcp()
+		elif self.encap_mode == self.ENCAP_MODE_UDP:
+			self.setup_socket_udp()
+		else:
+			print("✗ Invalid encapsulation mode. Use ENCAP_MODE_TCP or ENCAP_MODE_UDP.")
+			self.socket = None
+		
+		if self.socket:
+			self.running = True
+
+	def setup_socket_udp(self):
+		"""Create UDP socket to receive encapsulated Opulent Voice frames"""
 		try:
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			# Allow socket reuse
@@ -2076,8 +2125,62 @@ class NetworkTransmitter:
 		except Exception as e:
 			print(f"✗ Socket creation error: {e}")
 
+	def setup_socket_tcp(self):
+			"""Create and maintain a TCP socket to send encapsulated Opulent Voice frames"""
+			if self.socket:
+				print("✗ TCP socket already exists. Close it before creating a new one.")
+				return
+
+			self.connection_monitor_thread = threading.Thread(target=self._connection_monitor, daemon=True)
+			self.connection_monitor_thread.start()
+
+			try:
+				self.socket = socket.create_server((self.target_ip, self.target_port))
+				self.socket.listen(1)  # Listen for incoming connections
+				print(f"✓ TCP socket created and listening on {self.target_ip}:{self.target_port}")
+			except Exception as e:
+				print(f"✗ TCP socket creation error: {e}")
+				self.socket = None
+
+	def _connection_monitor(self):
+		"""Keep the transmit TCP connection alive as long as target is defined.
+		   Runs in a separate thread.
+		"""
+		while True:
+			if self.target_ip is None or self.target_port is None:
+				if self.socket:
+					self.socket.close()
+					self.socket = None
+					print("Closed TCP socket; no current target.")
+				time.sleep(1)
+				return
+			
+			if not self.socket:
+				try:
+					self.socket = socket.create_connection((self.target_ip, self.target_port))
+					print(f"Connected to {self.target_ip}:{self.target_port}")
+				except Exception as e:
+					print(f"✗ Connection error: {e}")
+					self.socket = None
+					time.sleep(1)
+					continue
+
+		if self.socket:
+			self.socket.close()
+			self.socket = None
+
 	def send_frame(self, frame_data):
-		"""Send Opulent Voice frame via UDP"""
+		"""Send Opulent Voice frame based on encapsulation mode"""
+		if self.encap_mode == self.ENCAP_MODE_TCP:
+			return self.send_frame_encap_tcp(frame_data)
+		elif self.encap_mode == self.ENCAP_MODE_UDP:
+			return self.send_frame_encap_udp(frame_data)
+		else:
+			print("✗ Invalid encapsulation mode. Use ENCAP_MODE_TCP or ENCAP_MODE_UDP.")
+			return False
+
+	def send_frame_encap_udp(self, frame_data):
+		"""Send Opulent Voice frame encapsulated in UDP"""
 		if not self.socket:
 			return False
 
@@ -2086,6 +2189,26 @@ class NetworkTransmitter:
 			self.stats['packets_sent'] += 1
 			self.stats['bytes_sent'] += bytes_sent
 			DebugConfig.debug_print(f"📤 Sent frame: {bytes_sent}B to {self.target_ip}:{self.target_port}")
+			return True
+
+		except Exception as e:
+			self.stats['errors'] += 1
+			DebugConfig.system_print(f"✗ Network send error: {e}")
+			return False
+		
+	def send_frame_encap_tcp(self, frame_data):
+		"""Send Opulent Voice frame encapsulated in TCP"""
+		if not self.socket:
+			DebugConfig.system_print("✗ No TCP socket available. Cannot send frame.")
+			return False
+
+		encoded_frame = COBSEncoder.encode(frame_data)
+
+		try:
+			self.socket.sendall(encoded_frame)
+			self.stats['packets_sent'] += 1
+			self.stats['bytes_sent'] += len(encoded_frame)
+			DebugConfig.debug_print(f"📤 Sent frame: {len(encoded_frame)}B to TCP target.")
 			return True
 
 		except Exception as e:
