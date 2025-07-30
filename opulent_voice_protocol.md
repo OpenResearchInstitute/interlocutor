@@ -141,19 +141,23 @@ The reference implementation uses enum values `VOICE = (1, "VOICE")`, `CONTROL =
 ### 6.1 Callsign Encoding
 
 **Protocol Requirements:**
-- **Character Set:** Support station identifications that include amateur radio callsigns (A-Z, 0-9, /, -)
+- **Character Set:** Supports station identifications that include all amateur radio callsigns.
 - **Efficiency:** Provides a compact representation for protocol headers.
-- **Validation:** Prevents invalid callsign formats but allows tactical and non-amateur station identification.
+- **Flexibility:** Allows common tactical and non-amateur station identification formats.
 - **International:** Supports all national callsign formats.
 
 **Base-40 Encoding Specification:**
 
 Character mapping for efficient callsign encoding:
 
-| Char | Value | Char | Value | Char | Value | Char | Value |
-|------|-------|------|-------|------|-------|------|-------|
-| 0-9 | 0-9 | A-Z | 10-35 | / | 36 | - | 37 |
-| (space) | 38 | (unused) | 39 | | | | |
+| Character | Value |
+|------|-------|
+| not used | 0 |
+| A-Z | 1-26 |
+| 0-9 | 27-36 |
+| - | 37 |
+| / | 38 |
+| . | 39 |
 
 **Encoding Process:**
 1. Normalize callsign to uppercase
@@ -164,15 +168,27 @@ Character mapping for efficient callsign encoding:
 
 **Protocol Requirements:**
 - **Unique Identity:** Each transmission must identify originating station.
-- **Regulatory Compliance:** OPV meets amateur radio identification requirements.
-- **Authentication Ready:** The protocol support cryptographic verification when needed. 
+- **Regulatory Compliance:** OPV meets amateur radio identification requirements as long as the station's callsign is unambiguously included in the station identifier.
+- **Authentication Ready:** The protocol supports cryptographic verification when needed. 
 - **Multiple Stations:** Allows multiple stations per license through secondary station identification (SSID).
 
 #### Implementation Example: Interlocutor
 
-Uses 6-byte station identifier field in OPV header with Base-40 encoding. Supports callsigns up to 10 characters including suffixes and prefixes. Validates character set during encoding. Example: `StationIdentifier` class handles encoding/decoding with error checking and provides `to_bytes()` and `from_bytes()` methods. Station identification format is validated and clearly communicated before saving the configuration file in the Configuration tab of the web interface and in the command line interface.
+Uses 6-byte station identifier field in OPV header with Base-40 encoding. Supports all combinations of uppercase letters, digits, and three special characters (hyphen, slash, and period) up to 9 characters, and many combinations of 10 characters. Validates character set during encoding. Example: `StationIdentifier` class handles encoding/decoding with error checking and provides `to_bytes()` and `from_bytes()` methods. Station identification format is validated and clearly communicated before saving the configuration file in the Configuration tab of the web interface and in the command line interface.
 
----
+#### Test Cases
+
+| Identifier | Encoding | Comment |
+|------------|----------|---------|
+| W1AW | 0x0000001680b7 | |
+| KB5MU-11 | 0x0447b6864a5b | KB5MU with SSID of 11 |
+| W5NYV.NCS | 0x71c06f55a697 | W5NYV, perhaps as Net Control Station |
+| VE7ABC/W1 | 0xaa764d576f5e | VE7ABC operating in U.S. call area 1 |
+| W3/G1ABC | 0x007463900847 | G1ABC operating in U.S. call area 3 |
+| K0K | 0x000000004903 | Special event callsign K0K |
+| A | 0x000000000001 | Lowest encoded value, not a valid callsign |
+| OFD4BS.-BA | 0xffffffffffff | Highest encoded value |
+------
 
 ## 3. Payload Specifications
 
