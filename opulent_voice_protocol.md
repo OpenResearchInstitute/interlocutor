@@ -12,7 +12,7 @@
 
 The Opulent Voice Protocol (OPV) is an open-source, high-fidelity digital voice and data communication protocol designed for amateur radio applications. Unlike existing low-bitrate digital voice modes, OPV prioritizes audio quality while providing seamless integration of voice, text chat, file transfer, and system control messages within a unified protocol framework.
 
-OPV uses modern digital signal processing techniques including OPUS audio compression, robust forward error correction, and priority-based message queuing to deliver professional-quality communications over amateur radio spectrum.
+OPV uses modern digital signal processing techniques including Opus (https://opus-codec.org/) audio compression, robust forward error correction, and priority-based message queuing to deliver professional-quality communications over amateur radio spectrum.
 
 This document explains why the protocol was written, what is required, and gives examples from ORI's reference design to show how it can be implemented. 
 
@@ -23,7 +23,7 @@ This document explains why the protocol was written, what is required, and gives
 ### 1.1 Protocol Goals
 
 **Primary Objectives:**
-- Deliver high-fidelity voice quality surpassing existing amateur digital voice modes. OPV has a minimum of 16 kbps OPUS vs 3.2 kbps CODEC2 vs 3.4 kbps AMBE. 
+- Deliver high-fidelity voice quality surpassing existing amateur digital voice modes. OPV has a minimum of 16 kbps Opus vs 3.2 kbps Codec 2 vs 3.4 kbps AMBE. See https://en.wikipedia.org/wiki/Codec_2 for a description of Codec 2 and https://en.wikipedia.org/wiki/Multi-Band_Excitation for a description of AMBE. 
 - Seamlessly integrate multiple data types (voice, text, files, control) in a single protocol. No more switching to a clunky second packet mode for data. 
 - Provide robust error correction and interference resilience using modern digital communications techniques. 
 - Enable remote operation.
@@ -31,8 +31,8 @@ This document explains why the protocol was written, what is required, and gives
 
 **Design Philosophy:**
 - **Voice Always Wins**: Voice transmission has absolute priority over all other data types.
-- **Modern Codec Quality**: Leverage OPUS codec for superior audio fidelity (16 kbps baseline).
-- **Unified Protocol**: Single protocol handles all current and future communication types without mode switching through priority queues and UDP port number assignments. 
+- **Modern Codec Quality**: Leverage Opus codec for superior audio fidelity (16 kbps baseline).
+- **Unified Protocol**: Single protocol handles all current and future communication types without mode switching through priority queues and User Datagram Protocol (UDP) port number assignments. 
 - **Open Source**: Fully documented, patent-free implementation available to all. 
 - **40ms Frame Timing**: Reference implementation is synchronized to 40ms audio callback timing from hardware.
 
@@ -57,7 +57,7 @@ The Opulent Voice Protocol defines a complete digital voice and data communicati
 ```
 
 **Protocol Responsibilities:**
-- **COBS Framing**: Consistent Overhead Byte Stuffing for boundary detection of the data types sent. Opus voice packets are consistent in size and occupy exactly one OPV frame. However, text, control, and data payloads are variable length. Some can be quite long. COBS framing keeps track of the boundaries of all data types. It does not matter whether the data takes less than an OPV frame, or multiple OPV frames. COBS keeps track of this so that no other networking or radio transmission will lose the edges of the data being transmitted. 
+- **COBS Framing**: Consistent Overhead Byte Stuffing (COBS) is used for data boundary detection. Opus voice packets are consistent in size and occupy exactly one OPV frame. However, text, control, and data payloads are variable length. Some can be quite long. COBS framing keeps track of the boundaries of all data types. It does not matter whether the data takes less than an OPV frame, exactly one OPV frame, or multiple OPV frames. COBS keeps track of boundaries so that the edges of our sent data are not lost during networking or transmission functions.  
 - **Priority Management**: Voice-first queuing and transmission ensures that the operator hears voice without delay.
 - **Encapsulation**: Integration with standard Internet protocols provides immense opportunity and flexibility for integration into existing radio and networking products and services. 
 - **Authentication**: Station identification and access control comply with regulatory and policy situations ranging from uncontrolled access to highly restricted access. Authentication can be done on a per-frame basis, when triggered or requested, or not at all. 
@@ -83,7 +83,7 @@ The Opulent Voice Protocol uses fixed-size and fixed-timing frames for all data 
 ```
 
 **Frame Requirements:**
-- **Header Size**: 12 bytes (aligned for Golay error correction).
+- **Header Size**: 12 bytes.
 - **Timing**: Frames must be transmitted at regular intervals.
 - **Priority**: Voice frames have transmission priority over control frames, which have priority over text frames, which have priority over data frames.
 - **Encapsulation**: Standard Internet protocols (COBS/IP/UDP/RTP) are used within the Opulent Voice payload.
@@ -145,7 +145,7 @@ The reference implementation uses enum values `VOICE = (1, "VOICE")`, `CONTROL =
 - **International:** Supports all national callsign formats.
 - **Unique Identity:** Each transmission must uniquely identify the originating station.
 - **Regulatory Compliance:** OPV meets amateur radio identification requirements as long as the station's callsign is unambiguously included in the station identifier.
-- **Authentication Ready:** The protocol supports cryptographic verification when needed. 
+- **Authentication Ready:** The protocol supports cryptographic verification if needed. 
 - **Multiple Stations:** Allows multiple stations per license through secondary station identification (SSID).
 
 **Base-40 Encoding Specification:**
@@ -191,7 +191,7 @@ Uses 6-byte station identifier field in OPV header with Base-40 encoding. Suppor
 Voice payloads carry OPUS-encoded audio data with streaming protocol integration provided by Real Time Protocol (RTP).
 
 **Protocol Requirements:**
-- **Codec:** OPUS compression
+- **Codec:** Opus compression
 - **Bitrate:** 16 kbps minimum (higher bitrates permitted)
 - **Frame Duration:** 40 ms per frame
 - **Sample Rate:** 48 kHz
@@ -205,14 +205,14 @@ Voice payloads carry OPUS-encoded audio data with streaming protocol integration
 │           RTP Headers                     │
 │     (Sequence, Timing, Streaming)         │
 ├───────────────────────────────────────────┤
-│           OPUS Data                       │
+│           Opus Data                       │
 │        (40ms encoded audio)               │
 └───────────────────────────────────────────┘
 ```
 
 #### Implementation Example: Interlocutor
 
-Uses RTP headers for streaming management with OPUS payload. Structure: RTP Header (12 bytes) + OPUS data (80 bytes) = 92 bytes total. RTP provides sequence numbering, timestamps at 48 kHz sample rate, and the SSRC field takes the station identification value. The complete voice payload is then encapsulated in UDP/IP headers before COBS encoding into the OPV frame.
+Uses RTP headers for streaming management with Opus payload. Structure: RTP Header (12 bytes) + Opus data (80 bytes) = 92 bytes total. RTP provides sequence numbering, timestamps at 48 kHz sample rate, and the SSRC field takes the station identification value. The complete voice payload is then encapsulated in UDP/IP headers before COBS encoding into the OPV frame.
 
 ### 3.2 Text Payloads
 
