@@ -229,6 +229,15 @@ python3 interlocutor.py QUARTER --web-interface
 
 Replace `QUARTER` with your desired station identification.
 
+### Example Usage
+
+```bash
+python3 interlocutor.py QUARTER --web-interface --target-type modem -i 172.236.237.16
+```
+Here we launch our human radio interface with station ID of QUARTER, with a web interface at 127.0.0.1:8000, with the target type set to modem and the target IP address of 172.236.237.16, which is the demonstration Opulent Voice repeater at opulent.openresearch.institute. 
+
+Use --help to see a list of all arguments in Interlocutor. 
+
 ### First Run Setup
 
 On first run, you'll be prompted to:
