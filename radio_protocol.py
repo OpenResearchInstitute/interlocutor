@@ -2088,11 +2088,13 @@ class NetworkTransmitter:
 	ENCAP_MODE_TCP = 1		# TCP encapsulation of Opulent Voice frames
 	ENCAP_MODE_UDP = 2		# UDP encapsulation of Opulent Voice frames
 	
-	def __init__(self, encap_mode=ENCAP_MODE_TCP, target_ip="192.168.1.100", target_port=57372):
+	def __init__(self, encap_mode=ENCAP_MODE_UDP, target_ip="192.168.1.100", target_port=57372):
 		self.target_ip = target_ip
 		self.target_port = target_port
-		self.encap_mode = self.ENCAP_MODE_TCP
-		self.socket = None
+		self.encap_mode = encap_mode
+		self.socket = None	# socket used for transmitting frames
+		self.rxsocket = None	# socket used for receiving frames in TCP mode
+		self.connection_monitor_thread = None  # Thread to monitor TCP connection
 		self.running = False
 		self.stats = {
 			'packets_sent': 0,

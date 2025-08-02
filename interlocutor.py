@@ -801,7 +801,7 @@ class GPIOZeroPTTHandler:
 
 		# Network setup using config
 		self.protocol = OpulentVoiceProtocolWithIP(station_identifier, dest_ip=config.network.target_ip)
-		self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_TCP, config.network.target_ip, config.network.target_port)
+		self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_UDP, config.network.target_ip, config.network.target_port)
 
 		# Audio-driven frame manager with config
 		self.audio_frame_manager = AudioDrivenFrameManager(
