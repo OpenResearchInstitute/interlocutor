@@ -744,7 +744,8 @@ class AudioOutputManager:
         self.stats = {
             'packets_queued': 0,
             'packets_played': 0,
-            'total_samples_played': 0
+            'total_samples_played': 0,
+            'buffer_overruns': 0,
         }
         
         print("🔊 Simplified AudioOutputManager ready")
