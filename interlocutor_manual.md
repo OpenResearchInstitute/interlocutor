@@ -126,6 +126,198 @@ There may be other Python packages required for your system. requirements.txt wi
 
 ---
 
+
+# macOS Installation
+
+This guide walks through setting up the Interlocutor radio communication software on macOS systems.
+
+## Prerequisites
+
+Before starting, ensure you have the following installed:
+
+- **Python 3.13+** (recommended via Homebrew)
+- **Homebrew** package manager
+- **Xcode Command Line Tools** (for compilation)
+
+```bash
+# Install Homebrew if you haven't already
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install Python 3.13 (or appropriate)
+brew install python@3.13
+
+# Install Xcode Command Line Tools
+xcode-select --install
+```
+
+## System Dependencies
+
+Install the required system-level audio libraries:
+
+```bash
+# Install PortAudio for PyAudio support
+brew install portaudio
+
+# Install Opus audio codec (if needed)
+brew install opus
+```
+
+## Installation Steps
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/OpenResearchInstitute/interlocutor
+cd interlocutor
+```
+
+### 2. Create Virtual Environment
+
+Create an isolated Python environment to avoid conflicts. Use this method or the virtual environment of your choice. 
+
+```bash
+python3 -m venv orbital
+source orbital/bin/activate
+```
+
+> **Note**: The virtual environment name "orbital" is used here to match the project's space theme, but you can use any name you prefer.
+
+### 3. Install Python Dependencies
+
+Install the required packages step by step to handle build dependencies:
+
+```bash
+# Core dependencies that usually install cleanly
+pip install pyyaml numpy sounddevice fastapi uvicorn
+
+# Audio processing libraries
+pip install opuslib_next
+
+# GPIO library (will use mock mode on macOS)
+pip install gpiozero
+
+# Try to install PyAudio (may require portaudio)
+pip install pyaudio
+```
+
+### 4. Configure GPIO Mock Mode
+
+Since macOS doesn't have GPIO hardware, set the mock mode environment variable. Otherwise you'll be working a shift in the pin factory. 
+
+```bash
+export GPIOZERO_PIN_FACTORY=mock
+```
+
+To make this permanent, add it to your shell profile:
+
+```bash
+echo 'export GPIOZERO_PIN_FACTORY=mock' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## Running Interlocutor
+
+### Basic Usage
+
+```bash
+# Activate virtual environment
+source orbital/bin/activate
+
+# Run with web interface
+python3 interlocutor.py QUARTER --web-interface
+```
+
+Replace `QUARTER` with your desired station identification.
+
+### First Run Setup
+
+On first run, you'll be prompted to:
+
+1. **Select audio input device** - Choose your microphone
+2. **Test audio input** - Speak to verify microphone works
+3. **Select audio output device** - Choose your speakers/headphones
+4. **Test audio output** - Listen for test tone
+
+The web interface will be available at `http://localhost:8000`
+
+## Troubleshooting
+
+### PyAudio Installation Issues
+
+If PyAudio fails to build with "portaudio.h not found":
+
+```bash
+# Ensure PortAudio is installed
+brew install portaudio
+
+# Try installing PyAudio again
+pip install pyaudio
+```
+
+### SWIG/lgpio Errors
+
+These can be safely ignored on macOS since they're Linux-specific libraries:
+
+```bash
+# These errors are expected and non-fatal on macOS:
+# - "swig command failed"
+# - "No module named 'lgpio'"
+# - "No module named 'RPi'"
+```
+
+### Audio Device Selection
+
+If you need to change audio devices later, delete any saved configuration and restart Interlocutor.
+
+```bash
+# Remove saved config (if it exists)
+rm -f ~/.audio_config.yaml
+
+# Restart with fresh device selection
+python3 interlocutor.py QUARTER --web-interface
+```
+
+Or run interlocutor.py with --setup-audio command line argument. See the Audio Device Configuration section below for more information on audio configuration. 
+
+
+## Network Configuration
+
+For actual radio communication, you'll need to configure network targets. The default configuration attempts to connect to `192.168.2.152:57372`. Modify the configuration through the web interface or command-line arguments as needed.
+
+## Optional: Development Setup
+
+For development work, install additional dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Note: Some dependencies in `requirements.txt` may fail on macOS (like `lgpio`) but the core functionality will work. Some systems may require manual installation of the packages listed in requirements.txt.
+
+## Success Indicators
+
+When properly installed, you should see:
+
+```
+✅ Static files mounted from html5_gui
+opuslib ready
+pyaudio ready
+gpiozero ready and standing by
+📡 Station: QUARTER
+🌐 Starting Enhanced Opulent Voice Web Interface on http://0.0.0.0:8000
+```
+
+The web interface provides a complete control panel for configuration and communication.
+
+## Support
+
+For additional help:
+- Check the main project documentation
+- Review the `interlocutor_manual.md` file
+- Open issues on the GitHub repository
+
+---
+
 ## Audio Device Configuration
 
 ### Understanding Audio Device Management
