@@ -2105,6 +2105,7 @@ class NetworkTransmitter:
 
 	def setup_socket(self):
 		"""Setup the socket based on encapsulation mode"""
+		self.running = True
 
 		if self.encap_mode == self.ENCAP_MODE_TCP:
 			self.setup_socket_tcp()
@@ -2113,12 +2114,10 @@ class NetworkTransmitter:
 		else:
 			print("✗ Invalid encapsulation mode. Use ENCAP_MODE_TCP or ENCAP_MODE_UDP.")
 			self.socket = None
+			self.running = False
 		
-		if self.socket:
-			self.running = True
-
 	def setup_socket_udp(self):
-		"""Create UDP socket to receive encapsulated Opulent Voice frames"""
+		"""Create UDP socket to send and receive encapsulated Opulent Voice frames"""
 		try:
 			self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 			# Allow socket reuse
@@ -2128,27 +2127,36 @@ class NetworkTransmitter:
 			print(f"✗ Socket creation error: {e}")
 
 	def setup_socket_tcp(self):
-			"""Create and maintain a TCP socket to send encapsulated Opulent Voice frames"""
+			"""Create and maintain two TCP sockets, one to send encapsulated Opulent Voice frames
+			   and one to accept incoming connections for receiving frames."""
 			if self.socket:
 				print("✗ TCP socket already exists. Close it before creating a new one.")
 				return
 
+			# Establish a thread to create and monitor the TCP connection for sending frames
 			self.connection_monitor_thread = threading.Thread(target=self._connection_monitor, daemon=True)
 			self.connection_monitor_thread.start()
 
+			# Create a server socket to accept incoming connections for receiving frames
 			try:
-				self.socket = socket.create_server((self.target_ip, self.target_port))
-				self.socket.listen(1)  # Listen for incoming connections
-				print(f"✓ TCP socket created and listening on {self.target_ip}:{self.target_port}")
+				self.rxsocket = socket.create_server((self.target_ip, self.target_port))
+				self.rxsocket.listen(1)  # Listen for incoming connections
+				print(f"✓ TCP RX socket created and listening on {self.target_ip}:{self.target_port}")
 			except Exception as e:
-				print(f"✗ TCP socket creation error: {e}")
-				self.socket = None
+				print(f"✗ TCP RX socket creation error: {e}")
+				self.rxsocket = None
 
 	def _connection_monitor(self):
 		"""Keep the transmit TCP connection alive as long as target is defined.
 		   Runs in a separate thread.
 		"""
+
+		print(f"Starting TCP connection monitor for {self.target_ip}:{self.target_port}")
 		while True:
+			if self.running is False:
+				print("Connection monitor stopped.")
+				return
+			
 			if self.target_ip is None or self.target_port is None:
 				if self.socket:
 					self.socket.close()
@@ -2168,6 +2176,7 @@ class NetworkTransmitter:
 					continue
 
 		if self.socket:
+			print(f"Connection monitor closing TCP socket to {self.target_ip}:{self.target_port}")
 			self.socket.close()
 			self.socket = None
 
@@ -2195,7 +2204,7 @@ class NetworkTransmitter:
 
 		except Exception as e:
 			self.stats['errors'] += 1
-			DebugConfig.system_print(f"✗ Network send error: {e}")
+			DebugConfig.system_print(f"✗ Network UDP send error: {e}")
 			return False
 		
 	def send_frame_encap_tcp(self, frame_data):
@@ -2207,6 +2216,7 @@ class NetworkTransmitter:
 		encoded_frame = COBSEncoder.encode(frame_data)
 
 		try:
+			print(f"📤 Sending TCP frame of size {len(encoded_frame)}B to {self.target_ip}:{self.target_port}")
 			self.socket.sendall(encoded_frame)
 			self.stats['packets_sent'] += 1
 			self.stats['bytes_sent'] += len(encoded_frame)
@@ -2215,7 +2225,7 @@ class NetworkTransmitter:
 
 		except Exception as e:
 			self.stats['errors'] += 1
-			DebugConfig.system_print(f"✗ Network send error: {e}")
+			DebugConfig.system_print(f"✗ Network TCP send error: {e}")
 			return False
 
 	def get_stats(self):
@@ -2223,7 +2233,13 @@ class NetworkTransmitter:
 		return self.stats.copy()
 
 	def close(self):
-		"""Close socket"""
+		"""Close the NetworkTransmitter"""
+
+		# Stop the connection monitor thread if running
+		self.running = False
+		if hasattr(self, 'connection_monitor_thread') and self.connection_monitor_thread:
+			self.connection_monitor_thread.join()
+
 		if self.socket:
 			self.socket.close()
 			self.socket = None
