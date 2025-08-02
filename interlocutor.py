@@ -801,8 +801,16 @@ class GPIOZeroPTTHandler:
 
 		# Network setup using config
 		self.protocol = OpulentVoiceProtocolWithIP(station_identifier, dest_ip=config.network.target_ip)
-		self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_UDP, config.network.target_ip, config.network.target_port)
-
+		if self.config.protocol.encapsulation_mode == 'tcp':
+			self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_TCP, config.network.target_ip, config.network.target_port)
+			DebugConfig.debug_print(f"✓ Network transmitter ready: TCP to {config.network.target_ip}:{config.network.target_port}")
+		elif self.config.protocol.encapsulation_mode == 'udp':
+			self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_UDP, config.network.target_ip, config.network.target_port)
+			DebugConfig.debug_print(f"✓ Network transmitter ready: UDP to {config.network.target_ip}:{config.network.target_port}")
+		else:
+			DebugConfig.system_print(f"✗ Invalid network encapsulation mode: {self.config.protocol.encapsulation_mode}")
+			raise ValueError("Invalid network encapsulation mode")
+		
 		# Audio-driven frame manager with config
 		self.audio_frame_manager = AudioDrivenFrameManager(
 			station_identifier,

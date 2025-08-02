@@ -253,6 +253,9 @@ class ProtocolConfig:
     # Target type affects behavior
     target_type: str = "computer"       # "computer" or "modem"
 
+    # Encapsulation mode depends on networking environment
+    encapsulation_mode: str = "udp"      # "udp" or "tcp"
+
 @dataclass
 class DebugConfig:
     """Debug and logging configuration"""
@@ -499,6 +502,14 @@ class ConfigurationManager:
             self.config.gpio.ptt_pin = args.ptt_pin
         if hasattr(args, 'led_pin') and args.led_pin is not None:
             self.config.gpio.led_pin = args.led_pin
+
+        # Protocol settings
+        if hasattr(args, 'target_type') and args.target_type:
+            self.config.protocol.target_type = args.target_type
+        if hasattr(args, 'keepalive_interval') and args.keepalive_interval is not None:
+            self.config.protocol.keepalive_interval = args.keepalive_interval
+        if hasattr(args, 'encapsulation_mode') and args.encapsulation_mode:
+            self.config.protocol.encapsulation_mode = args.encapsulation_mode
     
         # Debug settings
         if hasattr(args, 'verbose') and args.verbose:
@@ -673,7 +684,10 @@ protocol:
   target_type: "computer"         # "computer" (LAN/Internet) or "modem" (SDR/Radio)
                                   # computer: keepalives maintain stream
                                   # modem: no keepalives, modem handles hang-time
-                                  
+
+  # Encapsulation mode - affects how frames are sent
+  encapsulation_mode: "udp"       # "udp" (default) or "tcp"
+
   # Notes:
   # - Voice always preempts all other traffic (protocol requirement)
   # - UDP delivery is fire-and-forget (no retries possible)
@@ -738,6 +752,10 @@ description: "Opulent Voice Protocol Configuration"
         # Validate target type
         if self.config.protocol.target_type not in ["computer", "modem"]:
             errors.append(f"Invalid target_type: {self.config.protocol.target_type}. Must be 'computer' or 'modem'")
+        
+        # Validate encapsulation mode
+        if self.config.protocol.encapsulation_mode not in ["udp", "tcp"]:
+            errors.append(f"Invalid encapsulation_mode: {self.config.protocol.encapsulation_mode}. Must be 'udp' or 'tcp'")
         
         return len(errors) == 0, errors
     
@@ -1121,6 +1139,11 @@ Configuration:
         '--keepalive-interval',
         type=float,
         help='Keepalive interval in seconds (computer targets only)'
+    )
+    protocol_group.add_argument(
+        '--encapsulation-mode',
+        choices=['udp', 'tcp'],
+        help='Encapsulation mode: udp (default) or tcp'
     )
     
     # UI/Mode settings
