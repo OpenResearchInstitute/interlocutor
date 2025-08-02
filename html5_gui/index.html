@@ -4391,6 +4391,29 @@ function setupConfigurationEnterKeySupport() {
 		`;
 		document.head.insertAdjacentHTML('beforeend', additionalStyles);
 
+
+
+	// Auto-uppercase callsign input (minimal change)
+	function setupSimpleCallsignValidation() {
+		const callsignInput = document.getElementById('callsign');
+		if (!callsignInput) return;
+	
+	// Auto-uppercase on input
+	callsignInput.addEventListener('input', function(e) {
+		const cursorPosition = e.target.selectionStart;
+		e.target.value = e.target.value.toUpperCase();
+		e.target.setSelectionRange(cursorPosition, cursorPosition);
+	});
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+	setupSimpleCallsignValidation();
+});
+
+
+
+
 	</script>
 </body>
 </html>

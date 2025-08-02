@@ -2071,14 +2071,38 @@ class EnhancedRadioWebInterface:
 		errors = []
 		field_errors = {}
 		
-		# Validate callsign
+
+
+		# Simple BASE40 callsign validation
 		callsign = form_config.get('callsign', '').strip()
 		if not callsign or callsign == "NOCALL":
 			errors.append("Callsign is required")
 			field_errors['callsign'] = "Callsign is required"
-		elif not re.match(r'^[A-Z0-9\-\/.]+$', callsign.upper()):
-			errors.append("Callsign contains invalid characters")
-			field_errors['callsign'] = "Only A-Z, 0-9, -, /, . allowed"
+		else:
+			try:
+				# Use the actual BASE40 validation from radio_protocol
+				from radio_protocol import StationIdentifier
+        
+				# Convert to uppercase and validate with BASE40 encoder
+				callsign_upper = callsign.upper()
+				station_id = StationIdentifier(callsign_upper)
+        
+				# If we get here, callsign is valid - update form with uppercase version
+				form_config['callsign'] = callsign_upper
+        
+			except ValueError as e:
+				# BASE40 validation failed
+				errors.append(f"Invalid callsign: {str(e)}")
+				field_errors['callsign'] = f"Invalid callsign: {str(e)}"
+			except ImportError:
+				# Fallback if radio_protocol not available
+				if not re.match(r'^[A-Z0-9\-\/.]+$', callsign.upper()):
+					errors.append("Callsign contains invalid characters")
+					field_errors['callsign'] = "Only A-Z, 0-9, -, /, . allowed"
+				else:
+					form_config['callsign'] = callsign.upper()
+
+
 		
 		# Validate network settings
 		network = form_config.get('network', {})
