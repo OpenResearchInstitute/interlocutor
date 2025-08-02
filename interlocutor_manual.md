@@ -189,6 +189,7 @@ Install the required packages step by step to handle build dependencies:
 ```bash
 # Core dependencies that usually install cleanly
 pip install pyyaml numpy sounddevice fastapi uvicorn
+pip install 'uvicorn[standard]'
 
 # Audio processing libraries
 pip install opuslib_next
