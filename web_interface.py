@@ -134,7 +134,7 @@ class EnhancedRadioWebInterface:
 	def end_transmission(self, station_id: str, end_time: str):
 		"""End transmission and move to completed storage"""
 		if station_id not in self.active_transmissions:
-			DebugPrint.debug_print(f"⚠️ TRANSMISSION END: No active transmission for {station_id}")
+			DebugConfig.debug_print(f"⚠️ TRANSMISSION END: No active transmission for {station_id}")
 			return
 		
 		transmission = self.active_transmissions[station_id]
