@@ -182,7 +182,6 @@ class EnhancedMessageReceiver:
         
         # Audio reception components
         self.audio_decoder = AudioDecoder()
-        self.audio_queue = Queue(maxsize=100)  # Buffer for web streaming
         self.audio_output = None
         
         # Statistics
@@ -509,20 +508,6 @@ class EnhancedMessageReceiver:
                             else:
                                 print(f"   Audio output is None")
                             print(f"🔊 Audio output not active - voice will be silent")
-
-                        # Queue audio for web streaming
-                        try:
-                            audio_data = {
-                                'audio_data': audio_pcm,
-                                'from_station': from_station,
-                                'timestamp': timestamp,
-                                'sample_rate': 48000,
-                                'duration_ms': int((len(audio_pcm) / 2) / 48000 * 1000)
-                            }
-                            self.audio_queue.put_nowait(audio_data)
-                        except Exception as e:
-                                print(f"🎤 Queue failed: {e}")
-                                pass # web queue being full is not critical
                             
                         # Web interface notification
                         self._notify_web_async('audio_received', {
@@ -680,20 +665,6 @@ class EnhancedMessageReceiver:
             
         threading.Thread(target=notify, daemon=True).start()
 
-
-
-
-
-
-    def get_audio_stream_data(self):
-        """Get queued audio data for web streaming"""
-        audio_packets = []
-        try:
-            while not self.audio_queue.empty():
-                audio_packets.append(self.audio_queue.get_nowait())
-        except Empty:
-            pass
-        return audio_packets
         
     def get_stats(self):
         """Get enhanced receiver statistics"""
