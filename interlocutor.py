@@ -933,7 +933,8 @@ class GPIOZeroPTTHandler:
 			# Create enhanced receiver (UNCHANGED)
 			self.enhanced_receiver = EnhancedMessageReceiver(
 				listen_port=self.config.network.listen_port,
-				chat_interface=self.chat_interface
+				chat_interface=self.chat_interface,
+				block_list=[self.station_id.to_bytes()],  # Block own frames only for now
 			)
 		
 			# CORRECTED: Setup audio output with the independently selected OUTPUT device
@@ -973,7 +974,8 @@ class GPIOZeroPTTHandler:
 			# Create enhanced receiver (same as web interface mode)
 			self.enhanced_receiver = EnhancedMessageReceiver(
 				listen_port=self.config.network.listen_port,
-				chat_interface=self.chat_interface
+				chat_interface=self.chat_interface,
+				block_list=[self.station_id.to_bytes()],  # Block own frames only for now
 			)
 		
 			# Setup audio output if we have device info (same as web interface mode)

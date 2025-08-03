@@ -163,9 +163,10 @@ class WebSocketBridge:
 class EnhancedMessageReceiver:
     """Enhanced MessageReceiver with web interface integration"""
     
-    def __init__(self, listen_port=57372, chat_interface=None):
+    def __init__(self, listen_port=57372, chat_interface=None, block_list=[]):
         self.listen_port = listen_port
         self.chat_interface = chat_interface
+        self.block_list = block_list    # list of station identifiers (in bytes form) to ignore
         self.socket = None
         self.running = False
         self.receive_thread = None
@@ -315,6 +316,10 @@ class EnhancedMessageReceiver:
             station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
 
             if token != OpulentVoiceProtocolWithIP.TOKEN:
+                return
+            
+            if station_bytes in self.block_list:
+                DebugConfig.debug_print(f"🚫 blocked frame from: {station_bytes.hex()}")
                 return
 
             # Step 2: Try to reassemble COBS frames
