@@ -6,6 +6,35 @@
 Please see our Operator's Manual at https://github.com/OpenResearchInstitute/interlocutor/blob/main/interlocutor_manual.md
 
 ---
+### 13 August 2025 Documentation
+
+Atkinson Hyperlegible is now working!
+
+Font files downloaded and placed in a new directory html5_gui/fonts/
+
+FastAPI "route" adds a font serving endpoint. 
+
+Created typography.css with proper font declarations. Had to debug it a few times.
+
+Added font preloads and CSS links to index.html
+
+Fixed filenames and updated CSS to match AtkinsonHyperlegibleNext-*.woff2
+
+Visual Font Controls A+ A A- buttons with percentage indicator
+
+Keyboard Shortcuts Ctrl/Cmd + Plus/Minus (like browser zoom but font-only)
+
+Smart Scaling which means everything scales proportionally using rem units
+
+Accessibility through screen reader announcements, ARIA labels
+
+Persistence because it remembers user's preferred size
+
+Visual Feedback through notifications when size changes
+
+Range Limits are Min 12px, Max 28px with 15% steps
+
+Works with our configuration management system
 
 ### 17 July 2025 Documentation
 
