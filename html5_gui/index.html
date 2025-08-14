@@ -4,6 +4,16 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Opulent Voice Radio Interface</title>
+
+	<!-- Font preloading -->
+	<link rel="preload" href="/static/fonts/AtkinsonHyperlegibleNext-Regular.woff2" as="font" type="font/woff2" crossorigin>
+	<link rel="preload" href="/static/fonts/AtkinsonHyperlegibleNext-Bold.woff2" as="font" type="font/woff2" crossorigin>
+    
+	<!-- Typography CSS - Load First -->
+	<link rel="stylesheet" href="/static/css/typography.css">
+
+	<!-- Typography JavaScript -->
+	<script src="/static/js/typography.js"></script>
 	
 	<!-- Accessibility and SEO -->
 	<meta name="description" content="Amateur Radio Digital Voice and Chat Interface">
@@ -65,7 +75,7 @@
 		}
 
 		body {
-			font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+			/* font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; */
 			background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 50%, var(--primary-color) 100%);
 			min-height: 100vh;
 			color: var(--text-primary);
@@ -560,7 +570,7 @@
 			padding: 1rem;
 			height: 200px;
 			overflow-y: auto;
-			font-family: 'Courier New', monospace;
+			/* font-family: 'Courier New', monospace; */
 			font-size: 0.9rem;
 			line-height: 1.4;
 		}
@@ -702,7 +712,7 @@
 		}
 
 		.status-value {
-			font-family: 'Courier New', monospace;
+			/* font-family: 'Courier New', monospace; */
 			background: rgba(255, 255, 255, 0.1);
 			padding: 0.5rem;
 			border-radius: 4px;
@@ -1152,7 +1162,7 @@
 			padding: 0.25rem 0.5rem;
 			border-radius: 12px;
 			font-size: 0.8rem;
-			font-family: 'Courier New', monospace;
+			/* font-family: 'Courier New', monospace; */
 		}
 
 		.audio-controls {
@@ -1457,7 +1467,7 @@
 		    padding: 0.3rem 0.8rem;
 		    border-radius: 15px;
 		    font-size: 0.8rem;
-		    font-family: 'Courier New', monospace;
+		    /* font-family: 'Courier New', monospace; */
 		    font-weight: 600;
 		    border: 1px solid rgba(66, 165, 245, 0.3);
 		    box-shadow: 0 2px 8px rgba(66, 165, 245, 0.2);
@@ -1630,8 +1640,6 @@
 		text-align: left;
 	}
 }
-
-
 
 
 

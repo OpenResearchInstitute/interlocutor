@@ -99,6 +99,10 @@ class AccessibilityConfig:
     keyboard_shortcuts: bool = True
     announce_new_messages: bool = True
     focus_management: bool = True
+    font_family: str = "Atkinson Hyperlegible"
+    font_size: str = "medium"  # small, medium, large, x-large, xx-large
+    line_height: float = 1.6
+    character_spacing: str = "normal"  # normal, wide
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for YAML serialization"""
@@ -108,7 +112,11 @@ class AccessibilityConfig:
             'screen_reader_optimized': self.screen_reader_optimized,
             'keyboard_shortcuts': self.keyboard_shortcuts,
             'announce_new_messages': self.announce_new_messages,
-            'focus_management': self.focus_management
+            'focus_management': self.focus_management,
+            'font_family': self.font_family,
+            'font_size': self.font_size,
+            'line_height': self.line_height,
+            'character_spacing': self.character_spacing
         }
     
     @classmethod
@@ -120,7 +128,11 @@ class AccessibilityConfig:
             screen_reader_optimized=data.get('screen_reader_optimized', False),
             keyboard_shortcuts=data.get('keyboard_shortcuts', True),
             announce_new_messages=data.get('announce_new_messages', True),
-            focus_management=data.get('focus_management', True)
+            focus_management=data.get('focus_management', True),
+            font_family=data.get('font_family', 'Atkinson Hyperlegible'),
+            font_size=data.get('font_size', 'medium'),
+            line_height=data.get('line_height', 1.6),
+            character_spacing=data.get('character_spacing', 'normal')
         )
 
 
@@ -700,10 +712,51 @@ ui:
   window_height: 600              # Default window height
   always_on_top: false            # Keep window always on top
 
+# GUI-specific configuration
+gui:
+  # Audio replay settings
+  audio_replay:
+    enabled: true                 # Enable audio message replay
+    max_stored_messages: 100      # Maximum stored audio messages
+    storage_duration_hours: 24    # How long to keep audio (hours)
+    auto_cleanup: true            # Automatically clean old messages
+
+  # Transcription settings  
+  transcription:
+    enabled: true                 # Enable audio transcription
+    method: "auto"                # auto, client-only, server-only, disabled
+    language: "en-US"             # Language for transcription
+    confidence_threshold: 0.7     # Minimum confidence for display
+
+  # Accessibility and typography settings
+  accessibility:
+    high_contrast: false          # Enable high contrast mode
+    reduced_motion: false         # Reduce animations and motion
+    screen_reader_optimized: false # Optimize for screen readers
+    keyboard_shortcuts: true      # Enable keyboard shortcuts
+    announce_new_messages: true   # Announce new messages
+    focus_management: true        # Manage focus for accessibility
+    
+    # Typography settings (Atkinson Hyperlegible font)
+    font_family: "Atkinson Hyperlegible"  # Primary font family
+    font_size: "medium"           # small, medium, large, x-large, xx-large
+    line_height: 1.6              # Line spacing multiplier
+    character_spacing: "normal"   # normal, wide
+
 # Configuration metadata
-config_version: "1.1"
+config_version: "1.2"
 description: "Opulent Voice Protocol Configuration"
 """
+
+
+
+
+
+
+
+
+
+
 
     def validate_config(self) -> tuple[bool, list[str]]:
         """

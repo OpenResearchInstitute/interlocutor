@@ -16,9 +16,11 @@ import time
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import re
+import mimetypes
 
 from config_manager import OpulentVoiceConfig
 from radio_protocol import DebugConfig
@@ -2549,6 +2551,48 @@ async def get_message_history():
 		raise HTTPException(status_code=503, detail="Radio system not initialized")
 	
 	return {"messages": web_interface.message_history}
+
+
+
+# Add this route near the other @app.get() routes for the Atkinson Fonts
+@app.get("/static/fonts/{filename}")
+async def serve_font(filename: str):
+	"""Serve font files with proper MIME types and caching"""
+	try:
+		# Construct the file path
+		font_path = Path("static/fonts") / filename
+        
+		if not font_path.exists():
+			raise HTTPException(status_code=404, detail="Font not found")
+        
+		# Determine MIME type
+		if filename.endswith('.woff2'):
+			media_type = 'font/woff2'
+		elif filename.endswith('.woff'):
+			media_type = 'font/woff'
+		elif filename.endswith('.ttf'):
+			media_type = 'font/ttf'
+		else:
+			media_type = 'application/octet-stream'
+        
+		# Return the file with proper headers
+		response = FileResponse(
+			path=font_path,
+			media_type=media_type,
+			headers={
+				'Cache-Control': 'public, max-age=31536000',  # 1 year cache
+				'Access-Control-Allow-Origin': '*'
+			}
+		)
+        
+		return response
+
+	except Exception as e:
+		print(f"Error serving font {filename}: {e}")
+		raise HTTPException(status_code=404, detail="Font not found")
+
+
+
 
 # Mount static files for GUI assets
 try:

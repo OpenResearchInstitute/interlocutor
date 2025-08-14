@@ -1,0 +1,339 @@
+/* Enhanced Typography CSS for Opulent Voice with Font Size Controls */
+
+/* Font Face Declarations */
+@font-face {
+    font-family: 'Atkinson Hyperlegible';
+    src: url('/static/fonts/AtkinsonHyperlegibleNext-Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Atkinson Hyperlegible';
+    src: url('/static/fonts/AtkinsonHyperlegibleNext-Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* CSS Custom Properties for Dynamic Font Sizing */
+:root {
+    /* Base font size - controlled by JavaScript font manager */
+    --base-font-size: 16px;
+    
+    /* Primary font stack with fallbacks */
+    --font-primary: 'Atkinson Hyperlegible', 'Arial', 'Helvetica', sans-serif;
+    --font-monospace: 'Atkinson Hyperlegible', 'Courier New', 'Monaco', monospace;
+    
+    /* Relative font sizes using rem (scales with base font size) */
+    --font-size-xs: 0.75rem;    /* 12px at default */
+    --font-size-sm: 0.875rem;   /* 14px at default */
+    --font-size-base: 1rem;     /* 16px at default */
+    --font-size-lg: 1.125rem;   /* 18px at default */
+    --font-size-xl: 1.25rem;    /* 20px at default */
+    --font-size-2xl: 1.5rem;    /* 24px at default */
+    --font-size-3xl: 1.875rem;  /* 30px at default */
+    
+    /* Line heights optimized for Atkinson Hyperlegible */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
+    
+    /* Letter spacing for enhanced readability */
+    --letter-spacing-tight: -0.025em;
+    --letter-spacing-normal: 0;
+    --letter-spacing-wide: 0.05em;
+    
+    /* Colors for different contrast modes */
+    --text-color-normal: #ffffff;
+    --text-color-secondary: #cccccc;
+    --bg-color-normal: rgba(0, 0, 0, 0.8);
+    
+    /* High contrast colors */
+    --text-color-high-contrast: #ffffff;
+    --bg-color-high-contrast: #000000;
+    --border-color-high-contrast: #ffffff;
+}
+
+/* Global Typography Reset */
+*, *::before, *::after {
+    font-family: var(--font-primary);
+}
+
+html {
+    font-family: var(--font-primary);
+    font-size: var(--base-font-size); /* This is controlled by JavaScript */
+    line-height: var(--line-height-normal);
+}
+
+body {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+    font-weight: 400;
+    color: var(--text-color-normal);
+}
+
+/* Typography Scale - All using rem for scalability */
+h1, .text-3xl {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-3xl);
+    font-weight: 700;
+    line-height: var(--line-height-tight);
+    letter-spacing: var(--letter-spacing-tight);
+}
+
+h2, .text-2xl {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    line-height: var(--line-height-tight);
+}
+
+h3, .text-xl {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    line-height: var(--line-height-normal);
+}
+
+h4, .text-lg {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    line-height: var(--line-height-normal);
+}
+
+h5, h6, .text-base {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+    line-height: var(--line-height-normal);
+}
+
+.text-sm {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-normal);
+}
+
+.text-xs {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+}
+
+/* Ham Radio Specific Typography */
+.callsign {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    font-size: var(--font-size-lg);
+    letter-spacing: var(--letter-spacing-wide);
+    text-transform: uppercase;
+}
+
+.frequency-display {
+    font-family: var(--font-monospace);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--letter-spacing-normal);
+}
+
+.technical-data {
+    font-family: var(--font-monospace);
+    font-size: var(--font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+/* UI Component Typography */
+.ui-button {
+    font-family: var(--font-primary);
+    font-weight: 600;
+    letter-spacing: var(--letter-spacing-normal);
+    font-size: var(--font-size-base);
+}
+
+.ui-label {
+    font-family: var(--font-primary);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+}
+
+.status-text {
+    font-family: var(--font-primary);
+    font-weight: 500;
+    font-size: var(--font-size-sm);
+}
+
+/* Form Elements */
+input, select, textarea, button {
+    font-family: var(--font-primary) !important;
+    font-size: var(--font-size-base);
+}
+
+/* Transcription Specific Typography */
+.transcription-text {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+    font-weight: 400;
+    background-color: var(--bg-color-normal);
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin: 0.25rem 0;
+}
+
+.speaker-label {
+    font-family: var(--font-primary);
+    font-weight: 700;
+    font-size: var(--font-size-sm);
+    letter-spacing: var(--letter-spacing-wide);
+}
+
+/* Message Bubbles and Chat */
+.message-bubble {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+}
+
+.chat-message {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-normal);
+}
+
+.timestamp {
+    font-family: var(--font-primary);
+    font-size: var(--font-size-xs);
+    color: var(--text-color-secondary);
+}
+
+/* High Contrast Mode */
+.high-contrast {
+    --text-color-normal: var(--text-color-high-contrast);
+    --bg-color-normal: var(--bg-color-high-contrast);
+}
+
+.high-contrast .callsign,
+.high-contrast .frequency-display,
+.high-contrast .technical-data {
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    border: 1px solid var(--border-color-high-contrast);
+}
+
+.high-contrast .transcription-text {
+    background-color: var(--bg-color-high-contrast);
+    color: var(--text-color-high-contrast);
+    border: 2px solid var(--border-color-high-contrast);
+}
+
+.high-contrast .speaker-label {
+    color: #ffff00; /* High contrast yellow */
+    text-shadow: 1px 1px 2px #000000;
+}
+
+/* Font Size Utility Classes */
+.font-size-xs { font-size: var(--font-size-xs); }
+.font-size-sm { font-size: var(--font-size-sm); }
+.font-size-base { font-size: var(--font-size-base); }
+.font-size-lg { font-size: var(--font-size-lg); }
+.font-size-xl { font-size: var(--font-size-xl); }
+.font-size-2xl { font-size: var(--font-size-2xl); }
+.font-size-3xl { font-size: var(--font-size-3xl); }
+
+/* Character Spacing Utility Classes */
+.char-spacing-normal { letter-spacing: var(--letter-spacing-normal); }
+.char-spacing-wide { letter-spacing: var(--letter-spacing-wide); }
+
+/* Print Styles */
+@media print {
+    * {
+        font-family: var(--font-primary) !important;
+    }
+    
+    .transcription-text {
+        font-size: 12pt;
+        line-height: 1.4;
+    }
+    
+    .callsign {
+        font-size: 14pt;
+        font-weight: bold;
+    }
+}
+
+/* Mobile Responsive Typography */
+@media (max-width: 768px) {
+    :root {
+        /* Slightly smaller base size on mobile, but still scalable */
+        --font-size-base: 0.95rem;
+    }
+    
+    .callsign {
+        font-size: var(--font-size-base);
+        letter-spacing: var(--letter-spacing-normal);
+    }
+    
+    .transcription-text {
+        font-size: var(--font-size-sm);
+        padding: 0.4rem;
+    }
+}
+
+/* Focus Management for Accessibility */
+*:focus {
+    outline: 2px solid #00ff88;
+    outline-offset: 2px;
+}
+
+/* Screen Reader Optimizations */
+.sr-only {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* Animation Preferences */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Font Loading States */
+.fonts-loading {
+    visibility: hidden;
+}
+
+.fonts-loaded {
+    visibility: visible;
+}
+
+/* Ensure critical text remains visible during font swap */
+.font-display-optional {
+    font-display: optional;
+}
+
+/* Confidence Indicators for Transcription */
+.confidence-high { 
+    color: #00ff88; 
+    font-weight: 500;
+}
+
+.confidence-medium { 
+    color: #ffaa00; 
+    font-weight: 500;
+}
+
+.confidence-low { 
+    color: #ff4444; 
+    font-weight: 500;
+    font-style: italic;
+}
