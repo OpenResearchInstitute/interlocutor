@@ -6,6 +6,23 @@
 Please see our Operator's Manual at https://github.com/OpenResearchInstitute/interlocutor/blob/main/interlocutor_manual.md
 
 ---
+### 15 August 2025 Documentation
+
+File Responsibilities after the Big Breakup. One monolithic index.html is not the modern way to do things. 
+
+**CSS Files**
+
+- main.css: Core styles, variables, layout, components
+- responsive.css: All media queries and mobile optimizations
+
+**JavaScript Files**
+
+- app.js: Main application initialization and utility functions
+- websocket.js: All WebSocket communication and message handling
+- audio.js: Audio processing, transmission management, and playback
+- config.js: Configuration management and form handling
+
+
 ### 13 August 2025 Documentation
 
 Atkinson Hyperlegible is now working!
