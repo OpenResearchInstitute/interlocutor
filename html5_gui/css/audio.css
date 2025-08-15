@@ -1,0 +1,510 @@
+/* Audio Message and Transmission Styles */
+
+/* Base Audio Message Styles */
+.message.audio-message {
+	background: linear-gradient(135deg, rgba(66, 165, 245, 0.1), rgba(66, 165, 245, 0.2));
+	border: 2px solid rgba(66, 165, 245, 0.3);
+	border-radius: 16px;
+	padding: 1rem;
+	margin: 0.5rem 0;
+}
+
+/* Incoming Audio Messages */
+.message.incoming.audio-message {
+	background: linear-gradient(135deg, rgba(66, 165, 245, 0.1), rgba(66, 165, 245, 0.2));
+	border: 2px solid rgba(66, 165, 245, 0.3);
+	border-left: 4px solid var(--accent-color);
+	align-self: flex-start;
+	animation: messageSlideIn 0.4s ease;
+}
+
+/* Outgoing Audio Messages */
+.message.outgoing.audio-message {
+	background: linear-gradient(135deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.2));
+	border: 2px solid rgba(76, 175, 80, 0.3);
+	border-right: 4px solid var(--success-color);
+	align-self: flex-end;
+	margin-left: auto;
+	animation: messageSlideInRight 0.4s ease;
+}
+
+/* Animation for outgoing messages */
+@keyframes messageSlideInRight {
+	from {
+		opacity: 0;
+		transform: translateX(20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Animation for incoming messages */
+@keyframes messageSlideIn {
+	from {
+		opacity: 0;
+		transform: translateX(-20px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+/* Audio Content Container */
+.audio-content {
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem;
+}
+
+/* Audio Header */
+.audio-header {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex-wrap: wrap;
+	margin-bottom: 0.5rem;
+}
+
+.audio-icon {
+	font-size: 1.4rem;
+	filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.message-type-indicator {
+	background: linear-gradient(45deg, #1976d2, #42a5f5);
+	padding: 0.2rem 0.6rem;
+	border-radius: 12px;
+	font-size: 0.7rem;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+	color: white;
+}
+
+.audio-from {
+	color: var(--accent-color);
+	font-weight: 700;
+	font-size: 1rem;
+	text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.audio-duration {
+	background: linear-gradient(45deg, rgba(66, 165, 245, 0.2), rgba(66, 165, 245, 0.3));
+	padding: 0.3rem 0.8rem;
+	border-radius: 15px;
+	font-size: 0.8rem;
+	font-weight: 600;
+	border: 1px solid rgba(66, 165, 245, 0.3);
+	box-shadow: 0 2px 8px rgba(66, 165, 245, 0.2);
+}
+
+.audio-packets {
+	background: rgba(255, 255, 255, 0.15);
+	padding: 0.2rem 0.5rem;
+	border-radius: 8px;
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+	margin-left: 0.5rem;
+}
+
+/* Audio Controls */
+.audio-controls {
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	margin-top: 0.5rem;
+}
+
+.audio-play-btn {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	border: none;
+	border-radius: 10px;
+	color: white;
+	padding: 0.6rem 1.2rem;
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 140px;
+	justify-content: center;
+	box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.audio-play-btn:hover:not(:disabled) {
+	transform: translateY(-2px);
+	box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+	background: linear-gradient(45deg, #4caf50, #66bb6a);
+}
+
+.audio-play-btn:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+	transform: none;
+	box-shadow: 0 2px 8px rgba(76, 175, 80, 0.2);
+	background: linear-gradient(45deg, #9e9e9e, #757575);
+}
+
+/* Enhanced waveform for outgoing messages */
+.message.outgoing.audio-message .waveform-bars .bar {
+	background: linear-gradient(to top, var(--success-color), rgba(76, 175, 80, 0.3));
+}
+
+.message.outgoing.audio-message .waveform-bars .bar:nth-child(odd) {
+	background: linear-gradient(to top, #4caf50, rgba(76, 175, 80, 0.5));
+}
+
+.message.outgoing.audio-message .audio-play-btn {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.message.outgoing.audio-message .audio-play-btn:hover:not(:disabled) {
+	background: linear-gradient(45deg, #4caf50, #66bb6a);
+	box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.message.outgoing.audio-message .message-meta {
+	text-align: right;
+}
+
+.message.outgoing.audio-message .transmission-meta {
+	color: var(--success-color);
+	font-weight: 600;
+}
+
+/* Audio Waveform */
+.audio-waveform {
+	flex: 1;
+	height: 30px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 15px;
+	position: relative;
+	overflow: hidden;
+}
+
+.audio-waveform::before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 5px;
+	right: 5px;
+	height: 2px;
+	background: linear-gradient(90deg, 
+		transparent 0%, 
+		var(--accent-color) 20%, 
+		var(--accent-color) 80%, 
+		transparent 100%);
+	transform: translateY(-50%);
+	animation: audio-wave 2s infinite;
+}
+
+@keyframes audio-wave {
+	0%, 100% { opacity: 0.3; transform: translateY(-50%) scaleX(0.8); }
+	50% { opacity: 1; transform: translateY(-50%) scaleX(1.2); }
+}
+
+/* Enhanced waveform visualization */
+.waveform-bars {
+	display: flex;
+	align-items: end;
+	gap: 2px;
+	height: 30px;
+	padding: 0 10px;
+}
+
+.waveform-bars .bar {
+	width: 3px;
+	background: linear-gradient(to top, var(--accent-color), rgba(66, 165, 245, 0.3));
+	border-radius: 2px 2px 0 0;
+	height: 20%;
+	transition: height 0.3s ease;
+	opacity: 0.7;
+}
+
+.waveform-bars .bar:nth-child(odd) {
+	background: linear-gradient(to top, #42a5f5, rgba(66, 165, 245, 0.5));
+}
+
+.waveform-bars .bar:hover {
+	opacity: 1;
+	transform: scaleY(1.1);
+}
+
+/* Audio Controls Panel */
+.audio-controls-panel {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 12px;
+	padding: 1rem;
+	margin-bottom: 1rem;
+	border: 1px solid var(--border-glass);
+}
+
+.control-group {
+	display: flex;
+	align-items: center;
+	margin-bottom: 0.5rem;
+	padding: 0.25rem 0;
+}
+
+.control-group:last-child {
+	margin-bottom: 0;
+}
+
+.control-group label {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	cursor: pointer;
+	color: var(--text-secondary);
+	font-size: 0.9rem;
+	user-select: none;
+}
+
+.control-group input[type="checkbox"] {
+	accent-color: var(--accent-color);
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+.control-group input[type="checkbox"]:checked + label {
+	color: var(--text-primary);
+}
+
+/* Audio Permission Request */
+.audio-permission-request {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	background: var(--bg-glass);
+	backdrop-filter: blur(20px);
+	border: 2px solid var(--border-glass);
+	border-radius: 20px;
+	padding: 2rem;
+	z-index: 1000;
+	box-shadow: var(--shadow-main);
+	text-align: center;
+	max-width: 400px;
+	animation: slideInScale 0.3s ease;
+}
+
+@keyframes slideInScale {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.8);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+}
+
+.permission-content h3 {
+	margin-bottom: 1rem;
+	color: var(--text-primary);
+	font-size: 1.3rem;
+}
+
+.permission-content p {
+	margin-bottom: 1.5rem;
+	color: var(--text-secondary);
+	line-height: 1.5;
+}
+
+.permission-content .btn {
+	margin: 0 0.5rem;
+}
+
+/* Reception Statistics */
+.reception-stats {
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+	padding: 1rem;
+	margin-top: 1rem;
+}
+
+.reception-stats h4 {
+	margin-bottom: 0.5rem;
+	color: var(--text-primary);
+	font-size: 1rem;
+}
+
+.reception-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+	gap: 0.5rem;
+}
+
+.reception-stat-item {
+	text-align: center;
+	padding: 0.5rem;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 6px;
+}
+
+.reception-stat-label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.25rem;
+}
+
+.reception-stat-value {
+	font-size: 1.2rem;
+	font-weight: 600;
+	color: var(--accent-color);
+}
+
+/* Real-time Updates */
+.message-new {
+	animation: messageHighlight 2s ease;
+}
+
+@keyframes messageHighlight {
+	0% { background: rgba(66, 165, 245, 0.3); }
+	100% { background: transparent; }
+}
+
+.audio-message-new .audio-icon {
+	animation: pulseNew 1s ease 3;
+}
+
+@keyframes pulseNew {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.3); }
+}
+
+/* Loading States */
+.audio-loading {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	color: var(--text-secondary);
+	font-style: italic;
+}
+
+.audio-loading::before {
+	content: '🔄';
+	animation: spin 1s linear infinite;
+}
+
+/* Transmission status indicators */
+.transmission-status {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+	padding: 0.75rem;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+	border-left: 4px solid var(--accent-color);
+}
+
+.transmission-status.active {
+	border-left-color: var(--warning-color);
+	background: rgba(255, 152, 0, 0.1);
+}
+
+.transmission-status.completed {
+	border-left-color: var(--success-color);
+	background: rgba(76, 175, 80, 0.1);
+}
+
+/* Transmission metadata styling */
+.transmission-meta {
+	font-size: 0.75rem;
+	color: var(--text-secondary);
+	font-style: italic;
+	margin-left: 0.5rem;
+}
+
+/* Transmission animation */
+@keyframes transmissionComplete {
+	0% { 
+		background: rgba(76, 175, 80, 0.1);
+		transform: scale(1);
+	}
+	50% { 
+		background: rgba(76, 175, 80, 0.2);
+		transform: scale(1.02);
+	}
+	100% { 
+		background: transparent;
+		transform: scale(1);
+	}
+}
+
+.audio-message.transmission-complete {
+	animation: transmissionComplete 1s ease;
+}
+
+/* Status panel enhancements for transmissions */
+.transmission-stats {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.5rem;
+	margin-top: 1rem;
+	padding: 1rem;
+	background: rgba(255, 255, 255, 0.05);
+	border-radius: 8px;
+}
+
+.transmission-stat {
+	text-align: center;
+	padding: 0.5rem;
+	background: rgba(255, 255, 255, 0.03);
+	border-radius: 6px;
+}
+
+.transmission-stat-label {
+	display: block;
+	font-size: 0.8rem;
+	color: var(--text-secondary);
+	margin-bottom: 0.25rem;
+}
+
+.transmission-stat-value {
+	font-size: 1.1rem;
+	font-weight: 600;
+	color: var(--accent-color);
+}
+
+/* Connection status receiving indicator */
+.connection-status.receiving {
+	background: linear-gradient(45deg, var(--success-color), #43a047);
+	animation: receivingPulse 1s ease infinite;
+}
+
+@keyframes receivingPulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
+}
+
+/* Audio icon pulse animation */
+.audio-icon {
+	animation: pulse-audio 2s infinite;
+}
+
+@keyframes pulse-audio {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.7; transform: scale(1.1); }
+}
+
+/* Notification dot for new audio */
+.stat-item.has-new-audio .stat-value::after {
+	content: '';
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	background: var(--error-color);
+	border-radius: 50%;
+	margin-left: 0.5rem;
+	animation: pulse 1s infinite;
+}
