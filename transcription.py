@@ -326,56 +326,99 @@ class TranscriptionQueue:
 
 class WhisperTranscriber:
     """Main transcription class that integrates with Opulent Voice system"""
-    
+
     def __init__(self, config=None):
         self.config = config
-        self.enabled = self._get_transcription_enabled()
-        self.model_size = self._get_model_size()
-        self.confidence_threshold = self._get_confidence_threshold()
-        
-        self.model_manager = ModelManager(self.model_size)
+        # REMOVE CACHED VALUES - check config live instead
+        # Don't store self.model_size, self.enabled, etc.
+    
+        # Initialize with current config, but allow live changes
+        current_model_size = self._get_model_size()  # Get live from config
+        self.model_manager = ModelManager(current_model_size)
         self.transcription_queue = TranscriptionQueue()
         self.result_cache = {}  # Cache recent results by transmission_id
         self.max_cache_size = 100
-        
+    
         self.logger = logging.getLogger(__name__)
-        
+    
         # Statistics
         self.stats = {
             'total_segments': 0,
             'successful_transcriptions': 0,
             'failed_transcriptions': 0,
             'cache_hits': 0
-        }
+        }    
         
     def initialize(self) -> bool:
         """Initialize the transcription system"""
-        if not self.enabled:
+        if not self._get_transcription_enabled():
             self.logger.info("Transcription disabled in configuration")
-            return False
+            return True
             
         # Load Whisper model
         if not self.model_manager.load_model():
             self.logger.warning("Whisper model failed to load - transcription disabled")
-            self.enabled = False
             return False
             
         # Start processing queue
         self.transcription_queue.start_processing(self.model_manager)
-        
-        self.logger.info(f"✅ Transcription system initialized (model: {self.model_size})")
+
+        current_model_size = self._get_model_size()        
+        self.logger.info(f"✅ Transcription system initialized (model: {current_model_size})")
         return True
+
+
+    def update_config(self, new_config):
+        """Update configuration and handle model changes if needed"""
+        old_config = self.config
+        self.config = new_config
+    
+        # Check if model size changed
+        old_model_size = self._get_model_size_from_config(old_config) if old_config else "base"
+        new_model_size = self._get_model_size()
+    
+        if old_model_size != new_model_size:
+            self.logger.info(f"Model size changed from {old_model_size} to {new_model_size}")
+            # For model changes, we'd need to reload - but for now, log it
+            self.logger.info("Model size changes require restart")
+    
+        # Log the current state
+        enabled = self._get_transcription_enabled()
+        threshold = self._get_confidence_threshold()
+        self.logger.info(f"🔧 Transcription config updated: enabled={enabled}, threshold={threshold}")
+
+    # Helper method for the update_config function:
+
+    def _get_model_size_from_config(self, config) -> str:
+        """Get model size from specific config object"""
+        if not config:
+            return "base"
+        
+        try:
+            return getattr(config.gui.transcription, 'model_size', 'base')
+        except AttributeError:
+            return "base"
+
+
         
     def shutdown(self):
         """Shutdown the transcription system"""
         self.transcription_queue.stop_processing()
         self.logger.info("Transcription system shutdown")
-        
+
+
     def process_audio_segment(self, audio_data: bytes, station_id: str, 
                             direction: str, transmission_id: Optional[str] = None) -> bool:
         """Process an audio segment for transcription"""
-        if not self.enabled:
+        if not self._get_transcription_enabled():
             return False
+
+        # ENSURE SYSTEM IS INITIALIZED when enabled
+        if not self.transcription_queue.running:
+            print("🔧 Transcription enabled but not running - initializing...")
+            if not self.initialize():
+                print("❌ Failed to initialize transcription system")
+                return False
             
         segment = AudioSegment(
             audio_data=audio_data,
@@ -391,6 +434,7 @@ class WhisperTranscriber:
             
         return success
         
+
     def add_result_callback(self, callback: Callable[[TranscriptionResult], None]):
         """Add callback to receive transcription results"""
         self.transcription_queue.add_result_callback(callback)
@@ -425,19 +469,15 @@ class WhisperTranscriber:
         except AttributeError:
             return False
             
+
     def _get_model_size(self) -> str:
         """Get Whisper model size from config"""
         if not self.config:
             return "base"
-            
+        
         try:
-            # Map config method to model size
-            method = getattr(self.config.gui.transcription, 'method', 'auto')
-            if method == 'disabled':
-                return "base"  # Won't be used anyway
-            else:
-                # Could extend this to allow model size configuration
-                return "base"  # Good balance of speed and accuracy
+            # Get model_size directly from config
+            return getattr(self.config.gui.transcription, 'model_size', 'base')
         except AttributeError:
             return "base"
             
@@ -454,9 +494,9 @@ class WhisperTranscriber:
     def get_stats(self) -> Dict[str, Any]:
         """Get comprehensive transcription statistics"""
         stats = {
-            'enabled': self.enabled,
-            'model_size': self.model_size,
-            'confidence_threshold': self.confidence_threshold,
+            'enabled': self._get_transcription_enabled(),
+            'model_size': self._get_model_size(),
+            'confidence_threshold': self._get_confidence_threshold(),
             'whisper_available': WHISPER_AVAILABLE,
             'model_loaded': self.model_manager.model_loaded,
             'cache_size': len(self.result_cache),

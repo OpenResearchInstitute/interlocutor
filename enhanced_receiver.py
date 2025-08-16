@@ -657,17 +657,25 @@ class EnhancedMessageReceiver:
 
 
 
-
     def _initialize_transcription(self):
         '''Initialize transcription after config is available'''
         if not hasattr(self, 'config') or not self.config:
+            print("⚠️ No config available for transcription initialization")
             return
-        
+    
         if TRANSCRIPTION_AVAILABLE:
-            self.transcriber = create_transcriber(self.config)
-            if self.transcriber:
-                self.transcriber.add_result_callback(self._handle_transcription_result)
-                print("✅ Transcription system initialized with config")
+            # Always create transcriber, even if disabled (so we can enable it later)
+            if not hasattr(self, 'transcriber') or not self.transcriber:
+                self.transcriber = create_transcriber(self.config)
+                if self.transcriber:
+                    self.transcriber.add_result_callback(self._handle_transcription_result)
+                    print("✅ Transcription system created (may be disabled)")
+            else:
+                # Update existing transcriber with new config
+                self.transcriber.update_config(self.config)
+                print("✅ Transcription system updated with new config")
+        else:
+            print("⚠️ Transcription not available - install whisper")
 
 
 

@@ -1101,6 +1101,53 @@ class GPIOZeroPTTHandler:
 
 
 
+	def update_transcriber_config(self):
+		"""Update transcriber with new configuration"""
+		try:
+			if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver:
+				if hasattr(self.enhanced_receiver, 'transcriber') and self.enhanced_receiver.transcriber:
+					# Update the existing transcriber with new config
+					self.enhanced_receiver.transcriber.update_config(self.config)
+                
+					# Get current settings for logging
+					enabled = self.enhanced_receiver.transcriber._get_transcription_enabled()
+					threshold = self.enhanced_receiver.transcriber._get_confidence_threshold()
+                
+					print(f"🔧 Transcriber config updated: enabled={enabled}, threshold={threshold}")
+					DebugConfig.debug_print(f"🔧 Transcriber live config update successful")
+					return True
+				else:
+					# No transcriber exists - try to create it if transcription is now enabled
+					print("🔧 No transcriber exists - attempting to create one")
+					self.enhanced_receiver._initialize_transcription()
+                
+					if hasattr(self.enhanced_receiver, 'transcriber') and self.enhanced_receiver.transcriber:
+						enabled = self.enhanced_receiver.transcriber._get_transcription_enabled()
+						print(f"🔧 New transcriber created: enabled={enabled}")
+						return True
+					else:
+						print("⚠️ Failed to create new transcriber")
+						return False
+			else:
+				print("⚠️ Enhanced receiver not available for transcriber update")
+				DebugConfig.debug_print("🔧 Enhanced receiver not found")
+				return False
+            
+		except Exception as e:
+			print(f"⌐ Error updating transcriber config: {e}")
+			DebugConfig.debug_print(f"🔧 Transcriber config update failed: {e}")
+			return False
+
+
+
+
+
+
+
+
+
+
+
 	def ptt_pressed(self):
 		"""PTT button pressed - send control message IMMEDIATELY before voice"""
 

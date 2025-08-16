@@ -1224,16 +1224,18 @@ class EnhancedRadioWebInterface:
 	#Configuration handler methods
 	#-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-# Replace the configuration handler methods in web_interface.py with these restored versions:
+
+
+
 
 	async def handle_get_current_config(self, websocket: WebSocket):
-		"""Send current configuration to the web interface - FULLY RESTORED"""
+		"""Send current configuration to the web interface - FULLY RESTORED with GUI support"""
 		try:
 			if self.config:
 				# ADD DEBUG HERE
-				print(f"🔍 DEBUG: config_manager exists: {self.config_manager is not None}")
+				print(f"🔧 DEBUG: config_manager exists: {self.config_manager is not None}")
 				if self.config_manager:
-					print(f"🔍 DEBUG: config_file_path: {getattr(self.config_manager, 'config_file_path', 'NOT_SET')}")
+					print(f"🔧 DEBUG: config_file_path: {getattr(self.config_manager, 'config_file_path', 'NOT_SET')}")
 
 				# Convert config to dictionary format for the web interface
 				config_dict = {
@@ -1274,6 +1276,34 @@ class EnhancedRadioWebInterface:
 						'web_interface_port': getattr(self.config.ui, 'web_interface_port', 8000),
 						'web_interface_host': getattr(self.config.ui, 'web_interface_host', '0.0.0.0'),
 					},
+					# FIXED: Add GUI section to web interface
+					'gui': {
+						'transcription': {
+							'enabled': getattr(self.config.gui.transcription, 'enabled', False),
+							'method': getattr(self.config.gui.transcription, 'method', 'auto'),
+							'language': getattr(self.config.gui.transcription, 'language', 'auto'),
+							'confidence_threshold': getattr(self.config.gui.transcription, 'confidence_threshold', 0.7),
+							'model_size': getattr(self.config.gui.transcription, 'model_size', 'base'),
+						},
+						'audio_replay': {
+							'enabled': getattr(self.config.gui.audio_replay, 'enabled', True),
+							'max_stored_messages': getattr(self.config.gui.audio_replay, 'max_stored_messages', 100),
+							'storage_duration_hours': getattr(self.config.gui.audio_replay, 'storage_duration_hours', 24),
+							'auto_cleanup': getattr(self.config.gui.audio_replay, 'auto_cleanup', True),
+						},
+						'accessibility': {
+							'high_contrast': getattr(self.config.gui.accessibility, 'high_contrast', False),
+							'reduced_motion': getattr(self.config.gui.accessibility, 'reduced_motion', False),
+							'screen_reader_optimized': getattr(self.config.gui.accessibility, 'screen_reader_optimized', False),
+							'keyboard_shortcuts': getattr(self.config.gui.accessibility, 'keyboard_shortcuts', True),
+							'announce_new_messages': getattr(self.config.gui.accessibility, 'announce_new_messages', True),
+							'focus_management': getattr(self.config.gui.accessibility, 'focus_management', True),
+							'font_family': getattr(self.config.gui.accessibility, 'font_family', 'Atkinson Hyperlegible'),
+							'font_size': getattr(self.config.gui.accessibility, 'font_size', 'medium'),
+							'line_height': getattr(self.config.gui.accessibility, 'line_height', 1.6),
+							'character_spacing': getattr(self.config.gui.accessibility, 'character_spacing', 'normal'),
+						}
+					},
 					# Add metadata about the current config file
 					'_metadata': {
 						'config_file_path': str(self.config_manager.config_file_path) if self.config_manager and hasattr(self.config_manager, 'config_file_path') else None,
@@ -1300,7 +1330,7 @@ class EnhancedRadioWebInterface:
 			})
 
 	async def handle_update_config(self, data: Dict):
-		"""Handle configuration updates from the web interface - ENHANCED"""
+		"""Handle configuration updates from the web interface - ENHANCED with GUI support"""
 		try:
 			updated_sections = []
 			
@@ -1345,8 +1375,6 @@ class EnhancedRadioWebInterface:
 					self.config.network.control_port = int(network['control_port'])
 				updated_sections.append('network')
 		
-		
-
 			if 'audio' in data:
 				audio = data['audio']
 				if 'input_device' in audio:
@@ -1400,6 +1428,76 @@ class EnhancedRadioWebInterface:
 				if 'web_interface_host' in ui:
 					self.config.ui.web_interface_host = ui['web_interface_host']
 				updated_sections.append('ui')
+
+			# FIXED: Add GUI section handling - this was the missing piece!
+			if 'gui' in data:
+				gui = data['gui']
+				self.logger.info(f"🔧 Processing GUI config update: {gui}")
+				
+				if 'transcription' in gui:
+					transcription = gui['transcription']
+					if 'enabled' in transcription:
+						self.config.gui.transcription.enabled = bool(transcription['enabled'])
+						self.logger.info(f"🔧 Set transcription.enabled = {self.config.gui.transcription.enabled}")
+					if 'method' in transcription:
+						self.config.gui.transcription.method = transcription['method']
+					if 'language' in transcription:
+						self.config.gui.transcription.language = transcription['language']
+					if 'confidence_threshold' in transcription:
+						self.config.gui.transcription.confidence_threshold = float(transcription['confidence_threshold'])
+					if 'model_size' in transcription:
+						self.config.gui.transcription.model_size = transcription['model_size']
+				
+				if 'audio_replay' in gui:
+					audio_replay = gui['audio_replay']
+					if 'enabled' in audio_replay:
+						self.config.gui.audio_replay.enabled = bool(audio_replay['enabled'])
+					if 'max_stored_messages' in audio_replay:
+						self.config.gui.audio_replay.max_stored_messages = int(audio_replay['max_stored_messages'])
+					if 'storage_duration_hours' in audio_replay:
+						self.config.gui.audio_replay.storage_duration_hours = int(audio_replay['storage_duration_hours'])
+					if 'auto_cleanup' in audio_replay:
+						self.config.gui.audio_replay.auto_cleanup = bool(audio_replay['auto_cleanup'])
+				
+				if 'accessibility' in gui:
+					accessibility = gui['accessibility']
+					if 'high_contrast' in accessibility:
+						self.config.gui.accessibility.high_contrast = bool(accessibility['high_contrast'])
+					if 'reduced_motion' in accessibility:
+						self.config.gui.accessibility.reduced_motion = bool(accessibility['reduced_motion'])
+					if 'screen_reader_optimized' in accessibility:
+						self.config.gui.accessibility.screen_reader_optimized = bool(accessibility['screen_reader_optimized'])
+					if 'keyboard_shortcuts' in accessibility:
+						self.config.gui.accessibility.keyboard_shortcuts = bool(accessibility['keyboard_shortcuts'])
+					if 'announce_new_messages' in accessibility:
+						self.config.gui.accessibility.announce_new_messages = bool(accessibility['announce_new_messages'])
+					if 'focus_management' in accessibility:
+						self.config.gui.accessibility.focus_management = bool(accessibility['focus_management'])
+					if 'font_family' in accessibility:
+						self.config.gui.accessibility.font_family = accessibility['font_family']
+					if 'font_size' in accessibility:
+						self.config.gui.accessibility.font_size = accessibility['font_size']
+					if 'line_height' in accessibility:
+						self.config.gui.accessibility.line_height = float(accessibility['line_height'])
+					if 'character_spacing' in accessibility:
+						self.config.gui.accessibility.character_spacing = accessibility['character_spacing']
+				
+				updated_sections.append('gui')
+
+				# NEW: Update transcriber with live config changes
+				if self.radio_system and hasattr(self.radio_system, 'update_transcriber_config'):
+					try:
+						success = self.radio_system.update_transcriber_config()
+						if success:
+							self.logger.info("🔧 Transcriber updated with new GUI config")
+						else:
+							self.logger.warning("🔧 Transcriber update failed - restart may be required")
+					except Exception as e:
+						self.logger.error(f"🔧 Error updating transcriber: {e}")
+				else:
+					self.logger.info("🔧 Transcriber config update not available - restart may be required")
+
+
 		
 			# Apply debug changes immediately to the global DebugConfig
 			if 'debug' in data:
@@ -1450,6 +1548,13 @@ class EnhancedRadioWebInterface:
 				"type": "error",
 				"message": f"Error updating configuration: {str(e)}"
 			})
+
+
+
+
+
+
+
 
 	async def handle_save_config(self, data: Dict):
 		"""Save configuration to file using CLI-compatible logic - FULLY RESTORED"""

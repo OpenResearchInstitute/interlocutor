@@ -361,9 +361,13 @@
         Transcription Settings
     </div>
     
+    <!-- Essential Controls Only -->
     <div class="checkbox-group">
-        <input type="checkbox" id="transcription-enabled" checked>
+        <input type="checkbox" id="transcription-enabled">
         <label for="transcription-enabled">Enable Audio Transcription</label>
+        <div class="help-text">
+            Convert received voice messages to text automatically
+        </div>
     </div>
     
     <div class="form-group">
@@ -376,48 +380,41 @@
                value="0.7"
                aria-describedby="confidence-help">
         <div id="confidence-help" class="help-text">
-            Minimum confidence level to display transcriptions (70%)
+            Minimum confidence level to display transcriptions
         </div>
         <div class="range-value">
             <span id="confidence-value">70%</span>
         </div>
     </div>
     
-    <div class="form-group">
-        <label for="transcription-language">Language</label>
-        <select id="transcription-language" aria-describedby="language-help">
-            <option value="auto">Auto-detect</option>
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="fr">French</option>
-            <option value="de">German</option>
-            <option value="it">Italian</option>
-            <option value="pt">Portuguese</option>
-            <option value="ru">Russian</option>
-            <option value="ja">Japanese</option>
-            <option value="ko">Korean</option>
-            <option value="zh">Chinese</option>
-        </select>
-        <div id="language-help" class="help-text">
-            Primary language for transcription
+    <!-- Advanced Settings (Read-only display) -->
+    <div class="advanced-settings">
+        <h4>Advanced Settings</h4>
+        <div class="setting-display">
+            <span class="setting-label">Language:</span>
+            <span class="setting-value">Auto-detect</span>
         </div>
-    </div>
-    
-    <div class="form-group">
-        <label for="model-size">Model Size</label>
-        <select id="model-size" aria-describedby="model-help">
-            <option value="tiny">Tiny (Fastest, lower accuracy)</option>
-            <option value="base" selected>Base (Balanced)</option>
-            <option value="small">Small (Better accuracy)</option>
-            <option value="medium">Medium (High accuracy, slower)</option>
-            <option value="large">Large (Best accuracy, slowest)</option>
-        </select>
-        <div id="model-help" class="help-text">
-            Larger models are more accurate but slower
+        <div class="setting-display">
+            <span class="setting-label">Model Size:</span>
+            <span class="setting-value">Base (290MB, balanced speed/accuracy)</span>
+        </div>
+        <div class="help-text">
+            💡 <strong>For advanced users:</strong> Edit the YAML config file to change language or model size:
+        </div>
+        <div class="code-example">
+            <code>
+gui:<br>
+&nbsp;&nbsp;transcription:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;language: "en"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# or "es", "fr", "auto"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;model_size: "large"&nbsp;&nbsp;&nbsp;&nbsp;# tiny, base, small, medium, large
+            </code>
+        </div>
+        <div class="help-text">
+            ⚠️ <strong>Model sizes:</strong> tiny (39MB), base (290MB), small (461MB), medium (1.5GB), large (2.9GB)<br>
+            First use will download the model automatically.
         </div>
     </div>
 </div>
-
 
 
 

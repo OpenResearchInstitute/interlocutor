@@ -63,30 +63,36 @@ function populateEnhancedConfigFromData(config) {
 		}
 	}
 
-
-
 	// Transcription settings
+	// GUI settings - MINIMAL: Only essential transcription controls
 	if (config.gui && config.gui.transcription) {
 		const transcription = config.gui.transcription;
-        
+    
+		console.log("📋 DEBUG: Loading transcription config:", transcription);
+            
+		// Essential controls only
 		if ('enabled' in transcription) {
-			document.getElementById('transcription-enabled').checked = transcription.enabled;
+			const enabledElement = document.getElementById('transcription-enabled');
+			if (enabledElement) {
+				enabledElement.checked = transcription.enabled;
+				console.log("📋 DEBUG: Set transcription-enabled to:", transcription.enabled);
+			}
 		}
-        
+    
 		if ('confidence_threshold' in transcription) {
-			const threshold = transcription.confidence_threshold;
-			document.getElementById('transcription-confidence').value = threshold;
-			document.getElementById('confidence-value').textContent = Math.round(threshold * 100) + '%';
+			const threshold = transcription.confidence_threshold;  // ✅ USE THE ACTUAL VALUE
+			const confidenceElement = document.getElementById('transcription-confidence');
+			if (confidenceElement) {
+				confidenceElement.value = threshold;  // ✅ SET TO CONFIG VALUE, NOT HARDCODED
+			}
+			const confidenceValueElement = document.getElementById('confidence-value');
+			if (confidenceValueElement) {
+				confidenceValueElement.textContent = Math.round(threshold * 100) + '%';  // ✅ FIX VARIABLE NAME
+			}
 		}
-        
-		if ('language' in transcription) {
-			document.getElementById('transcription-language').value = transcription.language;
-		}
-        
-		if ('model_size' in transcription) {
-			document.getElementById('model-size').value = transcription.model_size;
-		}
-	}
+	}  
+
+
 
 	
 	// GPIO settings
@@ -143,6 +149,8 @@ function gatherEnhancedConfigData() {
 	const verboseElement = document.getElementById('verbose-mode');
 	const quietElement = document.getElementById('quiet-mode');
 	const logLevelElement = document.getElementById('log-level-config');
+	const transcriptionEnabledElement = document.getElementById('transcription-enabled');
+	const transcriptionConfidenceElement = document.getElementById('transcription-confidence');
 
 	return {
 		callsign: callsignElement ? callsignElement.value.trim() : '',
@@ -166,12 +174,16 @@ function gatherEnhancedConfigData() {
 			quiet: quietElement ? quietElement.checked : false,
 			log_level: logLevelElement ? (logLevelElement.value || 'INFO') : 'INFO'
 		},
-		transcription: {
-			enabled: document.getElementById('transcription-enabled').checked,
-			confidence_threshold: parseFloat(document.getElementById('transcription-confidence').value),
-			language: document.getElementById('transcription-language').value,
-			model_size: document.getElementById('model-size').value,
-			method: document.getElementById('transcription-enabled').checked ? 'auto' : 'disabled'
+		// MINIMAL GUI section - only essential transcription controls
+		gui: {
+			transcription: {
+				enabled: transcriptionEnabledElement ? transcriptionEnabledElement.checked : false,
+				confidence_threshold: transcriptionConfidenceElement ? parseFloat(transcriptionConfidenceElement.value) : 0.7,
+				// Use sensible defaults for non-configurable settings
+				language: 'auto',  // Always auto-detect
+				model_size: 'base', // Always use base model
+				method: transcriptionEnabledElement && transcriptionEnabledElement.checked ? 'auto' : 'disabled'
+			}
 		}
 	};
 }
@@ -275,7 +287,10 @@ function resetToDefaults() {
 
 		const checkboxes = [
 			{ id: 'verbose-mode', checked: false },
-			{ id: 'quiet-mode', checked: false }
+			{ id: 'quiet-mode', checked: false },
+			{ id: 'verbose-mode', checked: false },
+			{ id: 'quiet-mode', checked: false },
+			{ id: 'transcription-enabled', checked: false }
 		];
 
 		checkboxes.forEach(cb => {
