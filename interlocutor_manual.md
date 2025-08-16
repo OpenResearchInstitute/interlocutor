@@ -367,6 +367,133 @@ python3 interlocutor.py YOUR_CALLSIGN --test-audio
 
 ---
 
+## Audio Transcription Setup (Optional)
+
+Opulent Voice includes automatic speech-to-text transcription using OpenAI Whisper. This feature:
+- Runs completely locally (no internet required)
+- Works offline for privacy
+- Processes complete transmissions for better accuracy
+- Supports multiple languages
+
+**Note:** Transcription is optional. The system works fully without it.
+
+### Installation
+
+**Step 1: Install system dependencies**
+
+FFmpeg is required for audio processing:
+
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install ffmpeg
+
+# macOS with Homebrew
+brew install ffmpeg
+
+# macOS with MacPorts
+sudo port install ffmpeg
+```
+
+**Step 2: Install Python dependencies**
+
+From your virtual environment:
+
+```bash
+# Install transcription dependencies
+pip install openai-whisper
+
+# Pre-download the recommended model (saves time on first use)
+python -c "import whisper; whisper.load_model('base')"
+```
+
+**System Requirements:**
+- Additional ~500MB disk space for models
+- Adequate CPU for real-time processing
+- Works on CPU (GPU optional for faster processing)
+### Configuration
+
+Transcription settings are included in the default configuration. If you need to create or update your config:
+
+```
+# Create config with transcription settings included
+python3 interlocutor.py --create-config opulent_voice.yaml
+```
+
+The transcription section will look like:
+```yaml
+gui:
+  transcription:
+    enabled: true                 # Enable transcription
+    method: "auto"                # Processing method  
+    language: "en-US"             # Target language
+    confidence_threshold: 0.7     # Min confidence (0.0-1.0)
+    model_size: "base"            # Model size
+```
+
+**To modify:** Edit these values in your existing config file as needed.
+**Recommended:** Start with `model_size: "base"` for best balance of speed and accuracy.
+
+### Model Sizes
+
+| Model | Size | Speed | Accuracy | Use Case |
+|-------|------|-------|----------|----------|
+| tiny  | ~39 MB | Fastest | Lower | Testing, low-power devices |
+| base  | ~74 MB | Fast | Good | **Recommended default** |
+| small | ~244 MB | Medium | Better | Higher accuracy needed |
+| medium | ~769 MB | Slow | High | Professional use |
+| large | ~1550 MB | Slowest | Best | Maximum accuracy |
+
+### Testing
+
+Test transcription with a simple transmission:
+
+```bash
+# Start with web interface
+python3 interlocutor.py YOURCALL --web-interface
+
+# Or CLI mode  
+python3 interlocutor.py YOURCALL
+```
+
+Transcriptions appear:
+- **Web interface:** Below audio message bubbles
+- **CLI mode:** In terminal with confidence scores
+
+**First run:** May take 30-60 seconds to load the model initially.
+
+### Common Issues
+
+**"FP16 is not supported" warning:**
+```
+✅ Normal on CPU systems - performance is still good
+```
+
+**No transcription text:**
+```bash
+# Check if transcription is enabled
+grep -A5 "transcription:" opulent_voice.yaml
+
+# Very short transmissions (< 1 second) may not transcribe
+# Try longer test transmissions
+```
+
+**Slow performance:**
+```yaml
+# Use smaller model in config
+gui:
+  transcription:
+    model_size: "tiny"  # Fastest option
+```
+
+**Disable transcription:**
+```yaml
+gui:
+  transcription:
+    enabled: false
+```
+
+---
+
 ## Configuration Management
 
 ### Web-Based Configuration System
