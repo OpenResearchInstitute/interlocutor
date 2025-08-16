@@ -8,6 +8,8 @@ GPIO PTT Audio, Terminal Chat, Control Messages, and Config Files
 - Debug/verbose mode for development
 - UDP ports indicate data types
 - Operator and Audio Device Configuration files in YAML
+- Atkinson Hyperlegible font
+- Audio transcription
 
 Text Input → ChatManagerAudioDriven → AudioDrivenFrameManager.queue_text_message() → Simple Queue()
 Voice Input → audio_callback → AudioDrivenFrameManager.process_voice_and_transmit() → Direct transmission
@@ -832,6 +834,12 @@ class GPIOZeroPTTHandler:
 		self.setup_gpio_callbacks()
 		self.setup_audio()
 
+		# Add transcription support for outgoing audio
+		self.transcriber = None
+		if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver:
+			# Use the same transcriber as the receiver
+			self.transcriber = self.enhanced_receiver.transcriber
+
 	def setup_gpio_callbacks(self):
 		"""Setup PTT button callbacks"""
 		self.ptt_button.when_pressed = self.ptt_pressed
@@ -928,7 +936,7 @@ class GPIOZeroPTTHandler:
 	def setup_enhanced_receiver_with_audio(self):
 		"""Setup enhanced receiver with audio output using independently selected output device"""
 		try:
-			from enhanced_receiver import EnhancedMessageReceiver
+			from enhanced_receiver import 	EnhancedMessageReceiver
 		
 			# Create enhanced receiver (UNCHANGED)
 			self.enhanced_receiver = EnhancedMessageReceiver(
@@ -1236,22 +1244,24 @@ class GPIOZeroPTTHandler:
 
 
 
-
 	def _capture_outgoing_audio_for_web(self, opus_packet, current_time):
 		"""
 		Capture outgoing audio for web interface replay (does not affect live audio)
 		"""
+		# Try to get audio data first
+		audio_pcm = None
+		
 		try:
 			# Only capture if web interface is connected
-			if not (hasattr(self, 'enhanced_receiver') and 
+			if not (hasattr(self, 'enhanced_receiver') and
 					hasattr(self.enhanced_receiver, 'web_bridge') and
 					self.enhanced_receiver.web_bridge.web_interface):
 				return
-			
+	
 			# Decode OPUS to PCM for web interface storage
 			if hasattr(self.enhanced_receiver, 'audio_decoder'):
 				audio_pcm = self.enhanced_receiver.audio_decoder.decode_opus(opus_packet)
-				
+									
 				if audio_pcm:
 					# Create audio data packet (same format as incoming)
 					audio_data = {
@@ -1262,7 +1272,7 @@ class GPIOZeroPTTHandler:
 						'duration_ms': self.frame_duration_ms,
 						'direction': 'outgoing'
 					}
-					
+	
 					# Send to web interface asynchronously (doesn't block audio)
 					def notify_web():
 						try:
@@ -1274,18 +1284,20 @@ class GPIOZeroPTTHandler:
 							loop.close()
 						except Exception as e:
 							DebugConfig.debug_print(f"Web outgoing audio notification error: {e}")
-					
+	
 					# Run in separate thread to avoid blocking audio callback
 					threading.Thread(target=notify_web, daemon=True).start()
 					DebugConfig.debug_print(f"📤 Captured outgoing audio: {len(opus_packet)}B OPUS → {len(audio_pcm)}B PCM")
 				else:
 					DebugConfig.debug_print(f"⚠️ OPUS decode failed for outgoing audio")
-			else:
+			else:   
 				DebugConfig.debug_print(f"⚠️ No audio decoder available for outgoing capture")
-				
+	
 		except Exception as e:
 			# Never let web interface issues affect live audio
-			DebugConfig.debug_print(f"Outgoing audio capture error (non-fatal): {e}")
+			DebugConfig.debug_print(f"Web interface capture error (non-fatal): {e}")
+
+
 
 
 
@@ -1717,7 +1729,7 @@ if __name__ == "__main__":
 			# Web Interface Mode
 			print("🌐 Starting in web interface mode ...")
 
-			# Initialize radio system
+			# Initialize radio system with config for transcription
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
@@ -1729,6 +1741,13 @@ if __name__ == "__main__":
 			# Setup enhanced reception (this creates and starts the receiver)
 			# enhanced_receiver = setup_enhanced_reception(radio, web_interface_instance)
 			enhanced_receiver = radio.setup_enhanced_receiver_with_audio()
+
+
+			# IMPORTANT: Pass config to enhanced receiver for transcription
+			if enhanced_receiver and hasattr(enhanced_receiver, '__init__'):
+				# Update the enhanced receiver to include config
+				enhanced_receiver.config = config
+				enhanced_receiver._initialize_transcription()
 
 
 			# CRITICAL DEBUG: Verify the receiver is accessible
@@ -1827,14 +1846,21 @@ if __name__ == "__main__":
 			# FULL CLI RADIO MODE
 			print("📻 Starting full radio system with enhanced reception...")
 	
-			# Initialize full radio system
+			# Initialize full radio system with config
 			radio = GPIOZeroPTTHandler(
 				station_identifier=station_id,
 				config=config
 			)
 
-			# ENHANCED: Setup enhanced reception for CLI mode
+			# ENHANCED: Setup enhanced reception for CLI mode with config
 			enhanced_receiver = radio.setup_enhanced_receiver_for_cli()
+
+
+			# Initialize transcription for CLI
+			if enhanced_receiver:
+				enhanced_receiver.config = config
+				enhanced_receiver._initialize_transcription()
+
 			receiver = enhanced_receiver
 	
 			# Connect receiver to chat interface

@@ -508,3 +508,93 @@
 	margin-left: 0.5rem;
 	animation: pulse 1s infinite;
 }
+
+
+
+
+
+# ===================================================================
+# 6. CSS styles for transcription display
+# ===================================================================
+
+/* Transcription display styles */
+.transcription-text {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--accent-color);
+}
+
+.transcription-content {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.transcription-content.high-confidence {
+    color: var(--text-primary);
+}
+
+.transcription-content.low-confidence {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.transcription-icon {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.transcription-message {
+    flex: 1;
+    font-weight: 500;
+}
+
+.transcription-confidence {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    font-weight: normal;
+}
+
+/* Outgoing message transcription styling */
+.message.outgoing .transcription-text {
+    border-left-color: var(--success-color);
+    background: rgba(76, 175, 80, 0.1);
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .transcription-text {
+        border-left-width: 4px;
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .transcription-text {
+        transition: none;
+    }
+}
+
+/* Loading state for transcriptions in progress */
+.transcription-loading {
+    color: var(--text-secondary);
+    font-style: italic;
+    opacity: 0.6;
+}
+
+.transcription-loading::after {
+    content: "...";
+    animation: dots 1.5s infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: "..."; }
+    40% { content: "...."; }
+    60% { content: "....."; }
+    80%, 100% { content: "..."; }
+}

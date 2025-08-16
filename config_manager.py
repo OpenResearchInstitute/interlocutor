@@ -48,43 +48,31 @@ class AudioReplayConfig:
 
 @dataclass
 class TranscriptionConfig:
-    """Transcription configuration (Phase 3)"""
+    """Transcription configuration"""
     enabled: bool = True
     method: str = "auto"  # auto, client-only, server-only, disabled
     language: str = "en-US"
     confidence_threshold: float = 0.7
-    server_endpoint: str = "http://localhost:8001/transcribe"
-    
-    def __post_init__(self):
-        """Validate configuration values"""
-        valid_methods = ["auto", "client-only", "server-only", "disabled"]
-        if self.method not in valid_methods:
-            raise ValueError(f"Invalid transcription method: {self.method}. Must be one of {valid_methods}")
-        
-        if not (0.0 <= self.confidence_threshold <= 1.0):
-            raise ValueError(f"Confidence threshold must be between 0.0 and 1.0, got {self.confidence_threshold}")
+    model_size: str = "base"  # tiny, base, small, medium, large
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert to dictionary for YAML serialization"""
         return {
             'enabled': self.enabled,
             'method': self.method,
             'language': self.language,
             'confidence_threshold': self.confidence_threshold,
-            'server_endpoint': self.server_endpoint
+            'model_size': self.model_size
         }
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'TranscriptionConfig':
-        """Create from dictionary (YAML loading)"""
         return cls(
             enabled=data.get('enabled', True),
             method=data.get('method', 'auto'),
             language=data.get('language', 'en-US'),
             confidence_threshold=data.get('confidence_threshold', 0.7),
-            server_endpoint=data.get('server_endpoint', 'http://localhost:8001/transcribe')
+            model_size=data.get('model_size', 'base')
         )
-
 
 
 

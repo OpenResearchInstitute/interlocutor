@@ -62,6 +62,32 @@ function populateEnhancedConfigFromData(config) {
 			if (keepaliveElement) keepaliveElement.value = config.protocol.keepalive_interval;
 		}
 	}
+
+
+
+	// Transcription settings
+	if (config.gui && config.gui.transcription) {
+		const transcription = config.gui.transcription;
+        
+		if ('enabled' in transcription) {
+			document.getElementById('transcription-enabled').checked = transcription.enabled;
+		}
+        
+		if ('confidence_threshold' in transcription) {
+			const threshold = transcription.confidence_threshold;
+			document.getElementById('transcription-confidence').value = threshold;
+			document.getElementById('confidence-value').textContent = Math.round(threshold * 100) + '%';
+		}
+        
+		if ('language' in transcription) {
+			document.getElementById('transcription-language').value = transcription.language;
+		}
+        
+		if ('model_size' in transcription) {
+			document.getElementById('model-size').value = transcription.model_size;
+		}
+	}
+
 	
 	// GPIO settings
 	if (config.gpio) {
@@ -93,6 +119,16 @@ function populateEnhancedConfigFromData(config) {
 	
 	updateConfigStatus('Configuration loaded successfully');
 }
+
+
+// AI!!! not sure this goes here or some other js file
+// Update confidence threshold display
+document.getElementById('transcription-confidence').addEventListener('input', function() {
+	const value = Math.round(this.value * 100);
+	document.getElementById('confidence-value').textContent = value + '%';
+});
+
+
 
 // Enhanced config data gathering
 function gatherEnhancedConfigData() {
@@ -129,6 +165,13 @@ function gatherEnhancedConfigData() {
 			verbose: verboseElement ? verboseElement.checked : false,
 			quiet: quietElement ? quietElement.checked : false,
 			log_level: logLevelElement ? (logLevelElement.value || 'INFO') : 'INFO'
+		},
+		transcription: {
+			enabled: document.getElementById('transcription-enabled').checked,
+			confidence_threshold: parseFloat(document.getElementById('transcription-confidence').value),
+			language: document.getElementById('transcription-language').value,
+			model_size: document.getElementById('model-size').value,
+			method: document.getElementById('transcription-enabled').checked ? 'auto' : 'disabled'
 		}
 	};
 }

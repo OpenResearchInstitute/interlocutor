@@ -260,6 +260,10 @@ function handleWebSocketMessage(message) {
 			handleOutgoingAudioPacket(message.data);
 			break;
 
+		case 'transcription_received':
+			handleTranscriptionReceived(message.data);
+			break;
+
 		default:
 			// Try enhanced config handler for any unhandled messages
 			handleEnhancedConfigMessage(message);
@@ -359,3 +363,8 @@ function handleAudioPlaybackData(audioData) {
 	// For now, we'll show a visual indication that audio is "playing"
 	addLogEntry(`Audio playback started: ${audioData.duration_ms}ms`, 'info');
 }
+
+
+
+// Make connectWebSocket globally accessible
+window.connectWebSocket = connectWebSocket;

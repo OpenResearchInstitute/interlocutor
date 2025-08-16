@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-FIXED Enhanced MessageReceiver with Web Interface Integration
-Addresses missing imports and connection issues
+Enhanced MessageReceiver with Web Interface Integration
 """
 
 import asyncio
@@ -9,7 +8,7 @@ import threading
 import time
 import struct
 import json
-import socket  # 🔧 FIXED: Missing socket import
+import socket
 import pyaudio
 from queue import Queue, Empty
 from typing import Optional, Dict, List, Callable
@@ -22,6 +21,14 @@ from radio_protocol import (
     StationIdentifier,
     DebugConfig
 )
+
+
+try:
+    from transcription import create_transcriber, TranscriptionResult
+    TRANSCRIPTION_AVAILABLE = True
+except ImportError:
+    TRANSCRIPTION_AVAILABLE = False
+    print("⚠️  Transcription module not available")
 
 
 
@@ -184,7 +191,7 @@ class EnhancedMessageReceiver:
         # Audio reception components
         self.audio_decoder = AudioDecoder()
         self.audio_output = None
-        
+
         # Statistics
         self.stats = {
             'total_packets': 0,
@@ -252,55 +259,6 @@ class EnhancedMessageReceiver:
 
 
 
-
-
-
-
-
-
-
-                    
-    def _process_received_data_async_temp_replace_with_below(self, data, addr):
-        """Process received data with async web notifications"""
-        try:
-            # Step 1: Parse Opulent Voice header
-            if len(data) < 12:
-                return
-                
-            ov_header = data[:12]
-            fragment_payload = data[12:]
-            
-            # Parse OV header
-            station_bytes, token, reserved = struct.unpack('>6s 3s 3s', ov_header)
-            
-            if token != OpulentVoiceProtocolWithIP.TOKEN:
-                return
-                
-            # Step 2: Try to reassemble COBS frames
-            cobs_frames = self.reassembler.add_frame_payload(fragment_payload)
-            
-            # Step 3: Process each complete COBS frame
-            for frame in cobs_frames:
-                try:
-                    ip_frame, _ = self.cobs_manager.decode_frame(frame) 
-                    self._process_complete_ip_frame_async(ip_frame, station_bytes, addr)
-                except Exception as e:
-                    self.stats['decode_errors'] += 1
-                    DebugConfig.debug_print(f"✗ COBS decode error: {e}")
-                    
-        except Exception as e:
-            print(f"Error processing received data: {e}")
-
-
-
-
-
-
-
-
-
-
-    # 3. In EnhancedMessageReceiver class, replace _process_received_data_async method:
     def _process_received_data_async(self, data, addr):
         """Process received data - FIXED FOR AUDIO RECEPTION and 134 byte frames"""
         try:
@@ -341,19 +299,6 @@ class EnhancedMessageReceiver:
             print(f"📥 RX DEBUG ERROR: {e}")
             import traceback
             traceback.print_exc()
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -669,6 +614,66 @@ class EnhancedMessageReceiver:
                 DebugConfig.debug_print(f"Error in web notification: {e}")
             
         threading.Thread(target=notify, daemon=True).start()
+
+
+
+
+
+    def _handle_transcription_result(self, result: TranscriptionResult):
+        """Handle completed transcription results"""
+        try:
+            # Send transcription to web interface if available
+            if self.web_bridge and self.web_bridge.web_interface:
+                def notify_web():
+                    try:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                        loop.run_until_complete(
+                            self.web_bridge.web_interface.on_transcription_received({
+                                'transcription': result.text,
+                                'confidence': result.confidence,
+                                'language': result.language,
+                                'station_id': result.station_id,
+                                'timestamp': result.timestamp,
+                                'direction': result.direction,
+                                'transmission_id': result.transmission_id
+                            })
+                        )
+                        loop.close()
+                    except Exception as e:
+                        print(f"Error notifying web interface of transcription: {e}")
+            
+                threading.Thread(target=notify_web, daemon=True).start()
+        
+            # CLI mode: print transcription if no web interface
+            elif not self.web_bridge.web_interface:
+                if result.confidence >= 0.5:  # Only show confident transcriptions
+                    direction_indicator = "📤" if result.direction == "outgoing" else "📥"
+                    print(f"\n🗨️  {direction_indicator} [{result.station_id}]: \"{result.text}\" (confidence: {result.confidence:.1%})")
+                
+        except Exception as e:
+            print(f"Error handling transcription result: {e}")
+
+
+
+
+
+    def _initialize_transcription(self):
+        '''Initialize transcription after config is available'''
+        if not hasattr(self, 'config') or not self.config:
+            return
+        
+        if TRANSCRIPTION_AVAILABLE:
+            self.transcriber = create_transcriber(self.config)
+            if self.transcriber:
+                self.transcriber.add_result_callback(self._handle_transcription_result)
+                print("✅ Transcription system initialized with config")
+
+
+
+
+
+
 
         
     def get_stats(self):

@@ -647,3 +647,47 @@ function handleTransmissionAudioData(audioData) {
 		}
 	}
 }
+
+
+
+
+function handleTranscriptionReceived(transcriptionData) {
+    //Handle received transcription data
+    try {
+        const transmissionId = transcriptionData.transmission_id;
+        if (!transmissionId) return;
+        
+        // Find the corresponding audio message bubble
+        const audioElement = document.querySelector(`[data-transmission-id="${transmissionId}"]`);
+        if (!audioElement) {
+            console.log(`No audio element found for transmission ${transmissionId}`);
+            return;
+        }
+        
+        // Add transcription to the audio bubble
+        let transcriptionDiv = audioElement.querySelector('.transcription-text');
+        if (!transcriptionDiv) {
+            transcriptionDiv = document.createElement('div');
+            transcriptionDiv.className = 'transcription-text';
+            audioElement.querySelector('.audio-content').appendChild(transcriptionDiv);
+        }
+        
+        // Set transcription content with confidence indicator
+        const confidencePercent = Math.round(transcriptionData.confidence * 100);
+        const confidenceClass = confidencePercent >= 70 ? 'high-confidence' : 'low-confidence';
+        
+        transcriptionDiv.innerHTML = `
+            <div class="transcription-content ${confidenceClass}">
+                <span class="transcription-icon">🗨️</span>
+                <span class="transcription-message">"${transcriptionData.transcription}"</span>
+                <span class="transcription-confidence">(${confidencePercent}%)</span>
+            </div>
+        `;
+        
+        console.log(`📝 Added transcription to ${transmissionId}: "${transcriptionData.transcription}"`);
+        
+    } catch (error) {
+        console.error('Error handling transcription:', error);
+    }
+}
+

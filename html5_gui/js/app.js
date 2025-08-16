@@ -378,7 +378,12 @@ function attemptReconnect() {
 	if (retryPanel) {
 		retryPanel.style.display = 'none';
 	}
-	connectWebSocket();
+	//connectWebSocket();
+	if (window.connectWebSocket) {
+		connectWebSocket();
+	} else {
+		console.log("⚠️ connectWebSocket not yet available");
+	}
 }
 
 // Auto-uppercase callsign input
@@ -618,7 +623,12 @@ function setupPageVisibilityHandler() {
 	document.addEventListener('visibilitychange', function() {
 		if (!document.hidden && (!ws || ws.readyState !== WebSocket.OPEN)) {
 			addLogEntry('Page became visible - checking connection', 'info');
-			connectWebSocket();
+			//connectWebSocket();
+			if (window.connectWebSocket) {
+				connectWebSocket();
+			} else {
+				console.log("⚠️ connectWebSocket not yet available");
+			}
 		}
 	});
 }
@@ -637,7 +647,12 @@ document.addEventListener('DOMContentLoaded', function() {
 	
 	// Initialize connection
 	addLogEntry('Starting Opulent Voice Web Interface', 'info');
-	connectWebSocket();
+	//connectWebSocket();
+	if (window.connectWebSocket) {
+		connectWebSocket();
+	} else {
+		console.log("⚠️ connectWebSocket not yet available");
+	}
 });
 
 // Make functions globally available
