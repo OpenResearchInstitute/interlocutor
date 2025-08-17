@@ -1869,25 +1869,91 @@ if __name__ == "__main__":
 			# CRITICAL: Exit here - don't fall through to CLI mode
 			sys.exit(0)
 			
+
 		elif config.ui.chat_only_mode:
-			# Chat-only mode (existing code unchanged)
+			# Chat-only mode using existing components - CONSERVATIVE APPROACH
 			print("💬 Chat-only mode (no GPIO/audio)")
-			# Create a minimal chat-only system
-			from terminal_chat import TerminalChatSystem
-			chat_system = TerminalChatSystem(station_id, config)
-			receiver.chat_interface = chat_system
 			
-			print(f"✅ {station_id} Chat System Ready!")
-			print("💬 Type messages in terminal")
+			# Use existing components with minimal changes
+			protocol = OpulentVoiceProtocolWithIP(station_id, dest_ip=config.network.target_ip)
+			transmitter = NetworkTransmitter(
+				NetworkTransmitter.ENCAP_MODE_UDP, 
+				config.network.target_ip, 
+				config.network.target_port
+			)
+			
+			# Use existing AudioDrivenFrameManager (the 40ms engine)
+			frame_manager = AudioDrivenFrameManager(
+				station_id,
+				protocol,
+				transmitter,
+				config
+			)
+			
+			# Use existing ChatManagerAudioDriven 
+			chat_manager = ChatManagerAudioDriven(station_id, frame_manager)
+			
+			# Use existing TerminalChatInterface
+			chat_interface = TerminalChatInterface(station_id, chat_manager)
+			
+			# Use existing MessageReceiver for incoming messages
+			receiver = MessageReceiver(
+				listen_port=config.network.listen_port,
+				chat_interface=chat_interface
+			)
+			
+			# Simple timing loop that calls the existing 40ms processor
+			def chat_timing_loop():
+				"""40ms timing loop using existing frame_manager.process_nonvoice_and_transmit()"""
+				running = True
+				next_frame_time = time.time()
+				frame_interval = 0.040  # 40ms - YOUR PROTOCOL REQUIREMENT
+				
+				while running:
+					try:
+						current_time = time.time()
+						
+						if current_time >= next_frame_time:
+							# Use existing 40ms processor (no changes to core logic)
+							frame_manager.process_nonvoice_and_transmit(current_time)
+							next_frame_time += frame_interval
+							
+							# Prevent drift
+							if next_frame_time < current_time:
+								next_frame_time = current_time + frame_interval
+						
+						time.sleep(0.001)  # 1ms sleep prevents busy waiting
+						
+					except KeyboardInterrupt:
+						running = False
+						break
+					except Exception as e:
+						DebugConfig.debug_print(f"Chat timing error: {e}")
+						next_frame_time = time.time() + frame_interval
+			
+			# Start components
+			receiver.start()
+			chat_interface.start()
+			
+			print(f"✅ {station_id} Chat-Only System Ready!")
+			print("💬 Type messages and press Enter to send")
+			print("👂 Listening for incoming messages") 
+			print("⏱️  40ms timing maintained for protocol compliance")
 			print("⌨️  Press Ctrl+C to exit")
 			
+			# Start timing thread
+			timing_thread = threading.Thread(target=chat_timing_loop, daemon=True)
+			timing_thread.start()
+			
 			try:
-				chat_system.start()
 				while True:
 					time.sleep(0.1)
 			except KeyboardInterrupt:
 				print("\n🛑 Chat system shutting down...")
-				chat_system.stop()
+				chat_interface.stop()
+				receiver.stop()
+
+
 
 		else:
 			# FULL CLI RADIO MODE

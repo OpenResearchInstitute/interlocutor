@@ -451,6 +451,9 @@ class EnhancedRadioWebInterface:
 
 			DebugConfig.debug_print(f"🎤 AUDIO PACKET: {direction} from {station_id}")
 
+
+
+
 			if direction == 'outgoing':
 				# OUTGOING: Add to our own outgoing transmission if exists
 				if station_id in self.outgoing_active_transmissions:
@@ -458,25 +461,32 @@ class EnhancedRadioWebInterface:
 					transmission['audio_packets'].append(audio_packet)
 					transmission['packet_count'] += 1
 					transmission['total_duration_ms'] += audio_data.get('duration_ms', 40)
-        
+
 					DebugConfig.debug_print(f"📤 OUTGOING AUDIO: Added packet to {transmission['transmission_id']} "
 						f"({transmission['packet_count']} packets)")
-				else:
-					print(f"⚠️ OUTGOING AUDIO: No active outgoing transmission for {station_id}")
         
-				# Send outgoing audio notification to web clients
-				await self.broadcast_to_all({
-					"type": "outgoing_audio_received",
-					"data": {
-						"from_station": station_id,
-						"timestamp": timestamp,
-						"audio_id": audio_packet['audio_id'],
-						"audio_length": audio_data.get('audio_length', 0),
-						"sample_rate": audio_data.get('sample_rate', 48000),
-						"duration_ms": audio_data.get('duration_ms', 40),
-						"direction": "outgoing"
-					}
-				})
+					# Send outgoing audio notification to web clients
+					await self.broadcast_to_all({
+						"type": "outgoing_audio_received",
+						"data": {
+							"from_station": station_id,
+							"timestamp": timestamp,
+							"audio_id": audio_packet['audio_id'],
+ 							"audio_length": audio_data.get('audio_length', 0),
+							"sample_rate": audio_data.get('sample_rate', 48000),
+							"duration_ms": audio_data.get('duration_ms', 40),
+							"direction": "outgoing"
+						}
+ 					})
+				else:
+					# GUARD: Don't process late audio packets (prevents ghost transmissions)
+					DebugConfig.debug_print(f"📤 DROPPED: Late outgoing audio from {station_id} (transmission already ended)")
+					return  # Stop processing - prevents ghost transmission
+
+
+
+
+
 			else:
 				# INCOMING: Use existing logic (unchanged)
 				if station_id in self.active_transmissions:
