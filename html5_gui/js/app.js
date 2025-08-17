@@ -356,18 +356,36 @@ function announceToScreenReader(message) {
 	}
 }
 
-// Uptime counter
+
+// Uptime counter with time formatting
 function updateUptime() {
 	const elapsed = Date.now() - startTime;
-	const minutes = Math.floor(elapsed / 60000);
-	const seconds = Math.floor((elapsed % 60000) / 1000);
+	const totalSeconds = Math.floor(elapsed / 1000);
+	
+	const days = Math.floor(totalSeconds / 86400);
+	const hours = Math.floor((totalSeconds % 86400) / 3600);
+	const minutes = Math.floor((totalSeconds % 3600) / 60);
+	const seconds = totalSeconds % 60;
 	
 	const uptimeElement = document.getElementById('uptime');
 	if (uptimeElement) {
-		uptimeElement.textContent = 
-			`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+		let formattedUptime;
+		
+		if (days > 0) {
+			formattedUptime = `${days}d ${hours}h ${minutes}m`;
+		} else if (hours > 0) {
+			formattedUptime = `${hours}h ${minutes}m ${seconds}s`;
+		} else {
+			formattedUptime = `${minutes}m ${seconds}s`;
+		}
+		
+		uptimeElement.textContent = formattedUptime;
 	}
 }
+
+
+
+
 
 // Manual reconnect function
 function attemptReconnect() {
