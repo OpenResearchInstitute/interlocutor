@@ -571,6 +571,12 @@ class ConfigurationManager:
 		if hasattr(args, 'listen_port') and args.listen_port:
 			self.config.network.listen_port = args.listen_port
 
+		# Protocol settings
+		if hasattr(args, 'target_type') and args.target_type is not None:
+			self.config.protocol.target_type = args.target_type
+		if hasattr(args, 'keepalive_interval') and args.keepalive_interval is not None:
+			self.config.protocol.keepalive_interval = args.keepalive_interval
+
 		# GPIO settings
 		if hasattr(args, 'ptt_pin') and args.ptt_pin is not None:
 			self.config.gpio.ptt_pin = args.ptt_pin
