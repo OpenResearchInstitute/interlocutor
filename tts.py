@@ -504,13 +504,14 @@ class OpulentVoiceTTS:
             self.logger.info(f"TTS engine changed from {old_engine} to {new_engine}")
             # For engine changes, we'd need to reload - but for now, log it
             self.logger.info("TTS engine changes require restart")
-    
+
         # Log the current state
         enabled = self._get_tts_enabled()
         incoming_enabled = self._get_incoming_enabled()
         outgoing_enabled = self._get_outgoing_enabled()
-        self.logger.info(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}")
-
+        include_station_id = self._get_include_station_id()
+        include_confirmation = self._get_include_confirmation()
+        self.logger.info(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}, include_station_id={include_station_id}, include_confirmation={include_confirmation}")
 
     def set_audio_output_manager(self, audio_output_manager):
         """Connect to the app's audio output system for PCM playback"""
@@ -641,7 +642,7 @@ class OpulentVoiceTTS:
         except AttributeError:
             return True
 
-    def _get_include_confirmation(self) -> bool:
+    def _get_include_confirmation_old(self) -> bool:
         """Get include confirmation setting from config"""
         if not self.config:
             return True
@@ -650,6 +651,24 @@ class OpulentVoiceTTS:
             return getattr(self.config.gui.tts, 'include_confirmation', True)
         except AttributeError:
             return True
+
+
+    def _get_include_confirmation(self) -> bool:
+        """Get include confirmation setting from config"""
+        if not self.config:
+            print(f"🔊 TTS DEBUG: No config available, defaulting to False")
+            return False  # ← Fixed: default to False
+        
+        try:
+            value = getattr(self.config.gui.tts, 'include_confirmation', False)  # ← Fixed: fallback to False
+            print(f"🔊 TTS DEBUG: Read include_confirmation from config: {value}")
+            return value
+        except AttributeError as e:
+            print(f"🔊 TTS DEBUG: Config attribute error: {e}, defaulting to False")
+            return False  # ← Fixed: error fallback to False
+
+
+
 
     def _get_outgoing_delay(self) -> float:
         """Get outgoing message delay from config"""

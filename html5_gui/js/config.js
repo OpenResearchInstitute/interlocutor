@@ -5,6 +5,15 @@ function loadCurrentConfig() {
 	sendWebSocketMessage('get_current_config');
 }
 
+
+
+
+
+
+
+
+
+
 function populateEnhancedConfigFromData(config) {
 	console.log("📋 DEBUG: populateEnhancedConfigFromData called");
 	console.log("📋 DEBUG: config object:", config);
@@ -112,6 +121,22 @@ function populateEnhancedConfigFromData(config) {
 		if ('outgoing_enabled' in tts) {
 			const outgoingElement = document.getElementById('tts-outgoing');
 			if (outgoingElement) outgoingElement.checked = tts.outgoing_enabled;
+		}
+
+		if ('include_station_id' in tts) {
+			const includeStationElement = document.getElementById('include-station-id');
+			if (includeStationElement) {
+				includeStationElement.checked = tts.include_station_id;
+				console.log("🔊 TTS DEBUG: Set include-station-id to:", tts.include_station_id);
+			}
+		}
+
+		if ('include_confirmation' in tts) {
+			const includeConfirmationElement = document.getElementById('include-confirmation');
+			if (includeConfirmationElement) {
+				includeConfirmationElement.checked = tts.include_confirmation;
+				console.log("🔊 TTS DEBUG: Set include-confirmation to:", tts.include_confirmation);
+			}
 		}
 
 		if ('rate' in tts) {
@@ -264,10 +289,10 @@ function gatherEnhancedConfigData() {
 			},
 			tts: { 
 				enabled: document.getElementById('tts-enabled')?.checked || false,
-				incoming_enabled: document.getElementById('tts-incoming')?.checked || true,
+				incoming_enabled: document.getElementById('tts-incoming')?.checked || false,
 				outgoing_enabled: document.getElementById('tts-outgoing')?.checked || false,
-				include_station_id: document.getElementById('include-station-id')?.checked || true,
-				include_confirmation: document.getElementById('include-confirmation')?.checked || true,
+				include_station_id: document.getElementById('include-station-id')?.checked || false,
+				include_confirmation: document.getElementById('include-confirmation')?.checked || false,
 				rate: parseInt(document.getElementById('speech-rate')?.value) || 200,
 				volume: parseFloat(document.getElementById('speech-volume')?.value) || 0.8,  // If you add volume slider
 				engine: 'system',  // Default
@@ -275,9 +300,24 @@ function gatherEnhancedConfigData() {
 				outgoing_delay_seconds: 1.0,  // Default
 				interrupt_on_ptt: true  // Default
 			}
+
 		}
 	};
+
+
+
+//return configData;  // Make sure this line exists
+
 }
+
+
+
+
+
+
+
+
+
 
 function applyConfig() {
 	const config = gatherEnhancedConfigData();

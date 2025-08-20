@@ -1489,7 +1489,18 @@ class EnhancedRadioWebInterface:
 
 				if 'tts' in gui:
 					tts = gui['tts']
-					self.logger.info(f"🔧 Processing TTS config update: {tts}")
+
+
+					# Replaced self.logger.info below with:
+					enabled = self.config.gui.tts.enabled
+					incoming_enabled = self.config.gui.tts.incoming_enabled  
+					outgoing_enabled = self.config.gui.tts.outgoing_enabled
+					include_station_id = self.config.gui.tts.include_station_id
+					include_confirmation = self.config.gui.tts.include_confirmation
+
+					self.logger.info(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}, include_station_id={include_station_id}, include_confirmation={include_confirmation}")
+
+					#self.logger.info(f"🔧 Processing TTS config update: {tts}")
 
 					if 'enabled' in tts:
 						self.config.gui.tts.enabled = bool(tts['enabled'])

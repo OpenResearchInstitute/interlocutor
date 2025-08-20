@@ -1213,12 +1213,17 @@ class GPIOZeroPTTHandler:
 			if hasattr(self, 'tts_manager') and self.tts_manager:
 				# Update the existing TTS manager with new config
 				self.tts_manager.update_config(self.config)
+
 				# Get current settings for logging
 				enabled = self.tts_manager._get_tts_enabled()
 				incoming_enabled = self.tts_manager._get_incoming_enabled()
 				outgoing_enabled = self.tts_manager._get_outgoing_enabled()
+				include_station_id = self.tts_manager._get_include_station_id()
+				include_confirmation = self.tts_manager._get_include_confirmation()
+				print(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}, include_station_id={include_station_id}, include_confirmation={include_confirmation}")
 
-				print(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}")
+
+
 				self.logger.debug(f"🔧 TTS live config update successful")
 				return True
 			else:
