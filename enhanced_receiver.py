@@ -10,6 +10,7 @@ import struct
 import json
 import socket
 import pyaudio
+import logging
 from queue import Queue, Empty
 from typing import Optional, Dict, List, Callable
 from datetime import datetime
@@ -31,25 +32,32 @@ except ImportError:
     print("⚠️  Transcription module not available")
 
 
+try:
+    from tts import create_tts_manager, TTSResult 
+    TTS_AVAILABLE = True
+except ImportError:
+    TTS_AVAILABLE = False
+    print("⚠️ TTS module not available")
+
 
 class WebSocketBridge:
     """Bridges MessageReceiver events to WebSocket interface"""
-    
+
     def __init__(self):
         self.web_interface = None
         self.message_callbacks = []
         self.audio_callbacks = []
         self.control_callbacks = []
         self.outgoing_transmission_callbacks = []
-        
+
     def set_web_interface(self, web_interface):
         """Connect to web interface instance"""
         self.web_interface = web_interface
-        
+
     def add_message_callback(self, callback):
         """Add callback for received messages"""
         self.message_callbacks.append(callback)
-        
+
     def add_audio_callback(self, callback):
         """Add callback for received audio"""
         self.audio_callbacks.append(callback)
@@ -57,7 +65,7 @@ class WebSocketBridge:
     def add_control_callback(self, callback):
         """Add callback for received control messages"""
         self.control_callbacks.append(callback)
-        
+
     async def notify_message_received(self, message_data):
         """Notify web interface of received message"""
         if self.web_interface:
@@ -65,14 +73,14 @@ class WebSocketBridge:
                 await self.web_interface.on_message_received(message_data)
             except Exception as e:
                 print(f"Error notifying web interface: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.message_callbacks:
             try:
                 callback(message_data)
             except Exception as e:
                 print(f"Error in message callback: {e}")
-                
+
     async def notify_audio_received(self, audio_data):
         """Notify web interface of received audio"""
         if self.web_interface:
@@ -80,7 +88,7 @@ class WebSocketBridge:
                 await self.web_interface.on_audio_received(audio_data)
             except Exception as e:
                 print(f"Error notifying web interface of audio: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.audio_callbacks:
             try:
@@ -100,7 +108,7 @@ class WebSocketBridge:
                     await self.web_interface.on_message_received(control_data)
             except Exception as e:
                 print(f"Error notifying web interface of control: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.control_callbacks:
             try:
@@ -112,7 +120,7 @@ class WebSocketBridge:
     def add_outgoing_transmission_callback(self, callback):
         """Add callback for outgoing transmission events"""
         self.outgoing_transmission_callbacks.append(callback)
-    
+
     async def notify_outgoing_transmission_started(self, transmission_data):
         """Notify web interface of outgoing transmission start"""
         if self.web_interface:
@@ -122,14 +130,14 @@ class WebSocketBridge:
                     await self.web_interface.on_outgoing_transmission_started(transmission_data)
             except Exception as e:
                 print(f"Error notifying web interface of outgoing transmission start: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.outgoing_transmission_callbacks:
             try:
                 callback(transmission_data)
             except Exception as e:
                 print(f"Error in outgoing transmission callback: {e}")
-    
+
     async def notify_outgoing_transmission_ended(self, transmission_data):
         """Notify web interface of outgoing transmission end"""
         if self.web_interface:
@@ -138,7 +146,7 @@ class WebSocketBridge:
                     await self.web_interface.on_outgoing_transmission_ended(transmission_data)
             except Exception as e:
                 print(f"Error notifying web interface of outgoing transmission end: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.outgoing_transmission_callbacks:
             try:
@@ -154,7 +162,7 @@ class WebSocketBridge:
                 await self.web_interface.on_audio_received(audio_data)
             except Exception as e:
                 print(f"Error notifying web interface of outgoing audio: {e}")
-                
+
         # Also notify other callbacks
         for callback in self.audio_callbacks:
             try:
@@ -169,7 +177,7 @@ class WebSocketBridge:
 
 class EnhancedMessageReceiver:
     """Enhanced MessageReceiver with web interface integration"""
-    
+
     def __init__(self, listen_port=57372, chat_interface=None, block_list=[]):
         self.listen_port = listen_port
         self.chat_interface = chat_interface
@@ -179,18 +187,24 @@ class EnhancedMessageReceiver:
         self.receive_thread = None
         self._stopped = False
         self._audio_stopped = False
-        
+
         # Audio and message processing
         self.reassembler = SimpleFrameReassembler()
         self.cobs_manager = COBSFrameBoundaryManager()
         self.protocol = OpulentVoiceProtocolWithIP(StationIdentifier("TEMP"))
-        
+
         # Web interface bridge
         self.web_bridge = WebSocketBridge()
-        
+
         # Audio reception components
         self.audio_decoder = AudioDecoder()
         self.audio_output = None
+
+        # Add TTS Support
+        self.tts_manager = None
+        self.logger = logging.getLogger(__name__)
+
+
 
         # Statistics
         self.stats = {
@@ -201,7 +215,7 @@ class EnhancedMessageReceiver:
             'decode_errors': 0,
             'web_notifications': 0
         }
-        
+
     def set_web_interface(self, web_interface):
         """Connect to web interface for real-time updates"""
         self.web_bridge.set_web_interface(web_interface)
@@ -496,10 +510,10 @@ class EnhancedMessageReceiver:
     def _handle_text_packet(self, udp_payload, from_station, timestamp):
         """Handle received text packet"""
         self.stats['text_packets'] += 1
-        
+
         try:
             message_text = udp_payload.decode('utf-8')
-            
+
 
 
             # Display in CLI if chat interface available AND no web interface connected
@@ -510,6 +524,10 @@ class EnhancedMessageReceiver:
                     # Fallback display	
                     print(f"\n📨 [{from_station}]: {message_text}")
 
+            # Queue for TTS if enabled
+            if hasattr(self, 'tts_manager') and self.tts_manager:
+                self.tts_manager.queue_text_message(from_station, message_text, is_outgoing=False)
+
 
             # Notify web interface asynchronously
             self._notify_web_async('message_received', {
@@ -519,7 +537,7 @@ class EnhancedMessageReceiver:
                 'timestamp': str(timestamp), # ensure that this is a string
                 'direction': 'incoming'
             })
-            
+
         except UnicodeDecodeError:
             print(f"📨 [{from_station}]: <Binary text data: {len(udp_payload)}B>")
 
@@ -657,6 +675,20 @@ class EnhancedMessageReceiver:
 
 
 
+    def _handle_tts_result(self, result: TTSResult):
+        """Handle completed TTS results"""
+        try:
+            # Log TTS completion for debugging
+            if result.success:
+                direction_indicator = "📤" if result.direction == "outgoing" else "📥"
+                self.logger.debug(f"🔊 {direction_indicator} TTS completed: \"{result.text[:50]}...\" ({result.processing_time_ms}ms)")
+            else:
+                self.logger.warning(f"🔇 TTS failed for {result.station_id}: {result.error_message}")
+        except Exception as e:
+            self.logger.error(f"Error handling TTS result: {e}")
+
+
+
     def _initialize_transcription(self):
         '''Initialize transcription after config is available'''
         if not hasattr(self, 'config') or not self.config:
@@ -676,6 +708,41 @@ class EnhancedMessageReceiver:
                 print("✅ Transcription system updated with new config")
         else:
             print("⚠️ Transcription not available - install whisper")
+
+
+
+    def _initialize_tts(self):
+        """Initialize TTS after config is available - UPDATED to connect audio output"""
+        if not hasattr(self, 'config') or not self.config:
+            print("⚠️ No config available for TTS initialization")
+            return
+
+        if TTS_AVAILABLE:
+            # Always create TTS manager, even if disabled (so we can enable it later)
+            if not hasattr(self, 'tts_manager') or not self.tts_manager:
+                self.tts_manager = create_tts_manager(self.config)
+                if self.tts_manager:
+                    self.tts_manager.add_result_callback(self._handle_tts_result)
+                    
+                    # IMPORTANT: Connect TTS to the audio output system
+                    if hasattr(self, 'audio_output') and self.audio_output:
+                        self.tts_manager.set_audio_output_manager(self.audio_output)
+                        print("✅ TTS system created and connected to audio output")
+                    else:
+                        print("✅ TTS system created (audio output will be connected later)")
+                else:
+                    print("⚠️ Failed to create TTS manager")
+            else:
+                # Update existing TTS manager with new config
+                self.tts_manager.update_config(self.config)
+                
+                # Ensure audio output connection
+                if hasattr(self, 'audio_output') and self.audio_output:
+                    self.tts_manager.set_audio_output_manager(self.audio_output)
+                    
+                print("✅ TTS system updated with new config")
+        else:
+            print("⚠️ TTS not available - install pyttsx3 or ensure system TTS is available")
 
 
 

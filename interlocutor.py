@@ -306,6 +306,7 @@ class ChatManagerAudioDriven:
 		self.audio_frame_manager = audio_frame_manager  # Instead of frame_transmitter
 		self.ptt_active = False
 		self.pending_messages = []
+		self.tts_manager = None # potential future use
 	
 	def handle_message_input(self, message_text):
 		"""Handle message input (same interface as before)"""
@@ -324,6 +325,10 @@ class ChatManagerAudioDriven:
 		else:
 			# Queue immediately for audio-driven transmission
 			self.queue_message_for_transmission(message_text.strip())
+
+			# Potentially add TTS here for outgoing messages
+			# this would be handled by the enhanced_receiver integration
+
 			return {
 				'status': 'queued_audio_driven',
 				'action': 'show_queued',
@@ -840,6 +845,9 @@ class GPIOZeroPTTHandler:
 			# Use the same transcriber as the receiver
 			self.transcriber = self.enhanced_receiver.transcriber
 
+		# Add TTS support
+		self.tts_manager = None
+
 	def setup_gpio_callbacks(self):
 		"""Setup PTT button callbacks"""
 		self.ptt_button.when_pressed = self.ptt_pressed
@@ -933,19 +941,20 @@ class GPIOZeroPTTHandler:
 		finally:
 			device_manager.cleanup()
 
+
 	def setup_enhanced_receiver_with_audio(self):
 		"""Setup enhanced receiver with audio output using independently selected output device"""
 		try:
-			from enhanced_receiver import 	EnhancedMessageReceiver
-		
+			from enhanced_receiver import EnhancedMessageReceiver
+
 			# Create enhanced receiver (UNCHANGED)
 			self.enhanced_receiver = EnhancedMessageReceiver(
 				listen_port=self.config.network.listen_port,
 				chat_interface=self.chat_interface,
 				block_list=[self.station_id.to_bytes()],  # Block own frames only for now
 			)
-		
-			# CORRECTED: Setup audio output with the independently selected OUTPUT device
+
+			# Setup audio output with the independently selected OUTPUT device
 			if hasattr(self, 'selected_output_device') and hasattr(self, 'audio_params'):
 				print(f"🔊 Setting up received audio playback:")
 				print(f"   Using output device: {self.selected_output_device}")
@@ -959,20 +968,28 @@ class GPIOZeroPTTHandler:
 				if self.enhanced_receiver.audio_output.setup_with_device(self.selected_output_device):
 					if self.enhanced_receiver.audio_output.start_playback():
 						print(f"✅ Enhanced receiver: real-time audio output active")
+                        
+						# IMPORTANT: Now connect TTS to the audio output system
+						if hasattr(self.enhanced_receiver, 'tts_manager') and self.enhanced_receiver.tts_manager:
+							self.enhanced_receiver.tts_manager.set_audio_output_manager(self.enhanced_receiver.audio_output)
+							print(f"✅ TTS connected to audio output system")
+                        
 					else:
-						print(f"⚠️  Audio playback start failed")
+						print(f"⚠️ Audio playback start failed")
 				else:
-					print(f"⚠️  Audio device setup failed")
+					print(f"⚠️ Audio device setup failed")
 			else:
-				print("⚠️  No output device selected - voice reception will be web-only")
+				print("⚠️ No output device selected - voice reception will be web-only")
 
 			# Start the receiver (UNCHANGED)
 			self.enhanced_receiver.start()
 			return self.enhanced_receiver
-		
+        
 		except Exception as e:
 			print(f"✗ Enhanced receiver setup failed: {e}")
 			return None
+
+
 
 	def setup_enhanced_receiver_for_cli(self):
 		"""Setup enhanced receiver with audio output - CLI MODE ONLY (no web interface)"""
@@ -1000,12 +1017,18 @@ class GPIOZeroPTTHandler:
 				if self.enhanced_receiver.audio_output.setup_with_device(self.selected_output_device):
 					if self.enhanced_receiver.audio_output.start_playback():
 						print(f"✅ CLI mode: real-time audio output active")
+						
+						# IMPORTANT: Connect TTS to audio output system for CLI mode too
+						if hasattr(self.enhanced_receiver, 'tts_manager') and self.enhanced_receiver.tts_manager:
+							self.enhanced_receiver.tts_manager.set_audio_output_manager(self.enhanced_receiver.audio_output)
+							print(f"✅ CLI mode: TTS connected to audio output system")
+						
 					else:
-						print(f"⚠️  CLI mode: Audio playback start failed")
+						print(f"⚠️ CLI mode: Audio playback start failed")
 				else:
-					print(f"⚠️  CLI mode: Audio device setup failed")
+					print(f"⚠️ CLI mode: Audio device setup failed")
 			else:
-				print("⚠️  CLI mode: No output device selected - voice reception disabled")
+				print("⚠️ CLI mode: No output device selected - voice reception disabled")
 				print("   (Use --setup-audio to configure audio devices)")
 		
 			# Start the receiver (same as web interface mode)
@@ -1020,6 +1043,23 @@ class GPIOZeroPTTHandler:
 			import traceback
 			traceback.print_exc()
 			return None
+
+	# really not sure if this is the right place or file 
+	def setup_tts_system(self):
+		"""Setup text-to-speech system"""
+		try:
+			from tts import create_tts_manager
+			if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver:
+				self.enhanced_receiver.config = self.config
+				self.enhanced_receiver._initialize_tts()
+				self.tts_manager = self.enhanced_receiver.tts_manager
+				print("✅ TTS system initialized")
+			else:
+				print("⚠️ Enhanced receiver not available for TTS")
+		except ImportError:
+			print("⚠️ TTS module not available")
+
+
 
 	def validate_audio_frame(self, audio_data):
 		"""Validate audio data before encoding"""
@@ -1108,11 +1148,11 @@ class GPIOZeroPTTHandler:
 				if hasattr(self.enhanced_receiver, 'transcriber') and self.enhanced_receiver.transcriber:
 					# Update the existing transcriber with new config
 					self.enhanced_receiver.transcriber.update_config(self.config)
-                
+
 					# Get current settings for logging
 					enabled = self.enhanced_receiver.transcriber._get_transcription_enabled()
 					threshold = self.enhanced_receiver.transcriber._get_confidence_threshold()
-                
+
 					print(f"🔧 Transcriber config updated: enabled={enabled}, threshold={threshold}")
 					DebugConfig.debug_print(f"🔧 Transcriber live config update successful")
 					return True
@@ -1120,7 +1160,7 @@ class GPIOZeroPTTHandler:
 					# No transcriber exists - try to create it if transcription is now enabled
 					print("🔧 No transcriber exists - attempting to create one")
 					self.enhanced_receiver._initialize_transcription()
-                
+
 					if hasattr(self.enhanced_receiver, 'transcriber') and self.enhanced_receiver.transcriber:
 						enabled = self.enhanced_receiver.transcriber._get_transcription_enabled()
 						print(f"🔧 New transcriber created: enabled={enabled}")
@@ -1132,7 +1172,7 @@ class GPIOZeroPTTHandler:
 				print("⚠️ Enhanced receiver not available for transcriber update")
 				DebugConfig.debug_print("🔧 Enhanced receiver not found")
 				return False
-            
+
 		except Exception as e:
 			print(f"⌐ Error updating transcriber config: {e}")
 			DebugConfig.debug_print(f"🔧 Transcriber config update failed: {e}")
@@ -1140,6 +1180,64 @@ class GPIOZeroPTTHandler:
 
 
 
+	def update_tts_config(self):
+		"""Update TTS with new configuration"""
+		try:
+			if hasattr(self, 'enhanced_receiver') and self.enhanced_receiver:
+				if hasattr(self.enhanced_receiver, 'update_tts_config'):
+					success = self.enhanced_receiver.update_tts_config()
+					if success:
+						self.logger.info("🔧 TTS updated with new config")
+						return True
+					else:
+						self.logger.warning("🔧 TTS update failed - restart may be required")
+						return False
+				else:
+					self.logger.info("🔧 TTS config update not available - restart may be required")
+					return False
+			else:
+				self.logger.info("🔧 Enhanced receiver not available for TTS update")
+				return False
+
+		except Exception as e:
+			self.logger.error(f"🔧 Error updating TTS: {e}")
+			return False
+
+
+
+
+
+	def update_tts_config_old(self):
+		"""Update TTS with new configuration"""
+		try:
+			if hasattr(self, 'tts_manager') and self.tts_manager:
+				# Update the existing TTS manager with new config
+				self.tts_manager.update_config(self.config)
+				# Get current settings for logging
+				enabled = self.tts_manager._get_tts_enabled()
+				incoming_enabled = self.tts_manager._get_incoming_enabled()
+				outgoing_enabled = self.tts_manager._get_outgoing_enabled()
+
+				print(f"🔧 TTS config updated: enabled={enabled}, incoming={incoming_enabled}, outgoing={outgoing_enabled}")
+				self.logger.debug(f"🔧 TTS live config update successful")
+				return True
+			else:
+				# No TTS manager exists - try to create it if TTS is now enabled
+				print("🔧 No TTS manager exists - attempting to create one")
+				self._initialize_tts()
+
+				if hasattr(self, 'tts_manager') and self.tts_manager:
+					enabled = self.tts_manager._get_tts_enabled()
+					print(f"🔧 New TTS manager created: enabled={enabled}")
+					return True
+				else:
+					print("⚠️ Failed to create new TTS manager")
+					return False
+
+		except Exception as e:
+			print(f"⚠️ Error updating TTS config: {e}")
+			self.logger.debug(f"🔧 TTS config update failed: {e}")
+			return False
 
 
 
@@ -1793,9 +1891,19 @@ if __name__ == "__main__":
 			# IMPORTANT: Pass config to enhanced receiver for transcription
 			if enhanced_receiver and hasattr(enhanced_receiver, '__init__'):
 				# Update the enhanced receiver to include config
-				enhanced_receiver.config = config
+				enhanced_receiver.config = config # am I supposed to use self.config here???
 				enhanced_receiver._initialize_transcription()
+				enhanced_receiver._initialize_tts()
 
+				# ENSURE TTS is connected to audio output after everything is set up
+				if (hasattr(enhanced_receiver, 'tts_manager') and enhanced_receiver.tts_manager and
+					hasattr(enhanced_receiver, 'audio_output') and enhanced_receiver.audio_output):
+					enhanced_receiver.tts_manager.set_audio_output_manager(enhanced_receiver.audio_output)
+					print("✅ Final TTS-Audio connection verified")
+				elif hasattr(enhanced_receiver, 'tts_manager') and enhanced_receiver.tts_manager:
+					print("⚠️ TTS manager exists but no audio output available")
+				else:
+					print("⚠️ No TTS manager found after initialization")
 
 			# CRITICAL DEBUG: Verify the receiver is accessible
 			print(f"🔍 POST-SETUP RECEIVER DEBUG:")
@@ -1971,8 +2079,9 @@ if __name__ == "__main__":
 
 			# Initialize transcription for CLI
 			if enhanced_receiver:
-				enhanced_receiver.config = config
+				enhanced_receiver.config = config # same question here am I supposed to use self.config???
 				enhanced_receiver._initialize_transcription()
+				enhanced_receiver._initialize_tts()
 
 			receiver = enhanced_receiver
 	

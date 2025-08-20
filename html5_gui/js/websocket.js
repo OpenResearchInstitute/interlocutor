@@ -264,6 +264,11 @@ function handleWebSocketMessage(message) {
 			handleTranscriptionReceived(message.data);
 			break;
 
+//		This might not need to be here - duplicate handlers?
+//		case 'tts_test_result':
+//			console.log('Basic Handler: TTS Test Result:', data.data);
+//			break;
+
 		default:
 			// Try enhanced config handler for any unhandled messages
 			handleEnhancedConfigMessage(message);

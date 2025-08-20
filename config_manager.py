@@ -78,6 +78,62 @@ class TranscriptionConfig:
 
 
 @dataclass
+class TTSConfig:
+	"""Text-to-speech configuration"""
+	enabled: bool = False
+	engine: str = "system"  # "system", "pyttsx3"
+	voice: str = "default"
+	rate: int = 200  # words per minute
+	volume: float = 0.8  # 0.0 to 1.0
+
+	# Incoming message settings
+	incoming_enabled: bool = True
+	include_station_id: bool = True
+
+	# Outgoing message settings
+	outgoing_enabled: bool = False  # Default off, user can enable
+	include_confirmation: bool = True  # "Message sent: [text]"
+	outgoing_delay_seconds: float = 1.0  # Brief delay before reading back
+
+	# Audio behavior settings
+	interrupt_on_ptt: bool = True  # Pause TTS during transmission
+
+	def to_dict(self) -> Dict[str, Any]:
+		return {
+			'enabled': self.enabled,
+			'engine': self.engine,
+			'voice': self.voice,
+			'rate': self.rate,
+			'volume': self.volume,
+			'incoming_enabled': self.incoming_enabled,
+			'include_station_id': self.include_station_id,
+			'outgoing_enabled': self.outgoing_enabled,
+			'include_confirmation': self.include_confirmation,
+			'outgoing_delay_seconds': self.outgoing_delay_seconds,
+			'interrupt_on_ptt': self.interrupt_on_ptt
+		}
+
+	@classmethod
+	def from_dict(cls, data: Dict[str, Any]) -> 'TTSConfig':
+		return cls(
+			enabled=data.get('enabled', False),
+			engine=data.get('engine', 'system'),
+			voice=data.get('voice', 'default'),
+			rate=data.get('rate', 200),
+			volume=data.get('volume', 0.8),
+			incoming_enabled=data.get('incoming_enabled', True),
+			include_station_id=data.get('include_station_id', True),
+			outgoing_enabled=data.get('outgoing_enabled', False),
+			include_confirmation=data.get('include_confirmation', True),
+			outgoing_delay_seconds=data.get('outgoing_delay_seconds', 1.0),
+			interrupt_on_ptt=data.get('interrupt_on_ptt', True)
+		)
+
+
+
+
+
+@dataclass
 class AccessibilityConfig:
 	"""Accessibility configuration"""
 	high_contrast: bool = False
@@ -131,13 +187,15 @@ class GUIConfig:
 	"""GUI-specific configuration"""
 	audio_replay: AudioReplayConfig = field(default_factory=AudioReplayConfig)
 	transcription: TranscriptionConfig = field(default_factory=TranscriptionConfig)
+	tts: TTSConfig = field (default_factory = TTSConfig)
 	accessibility: AccessibilityConfig = field(default_factory=AccessibilityConfig)
-	
+
 	def to_dict(self) -> Dict[str, Any]:
 		"""Convert to dictionary for YAML serialization"""
 		return {
 			'audio_replay': self.audio_replay.to_dict(),
 			'transcription': self.transcription.to_dict(),
+			'tts': self.tts.to_dict(),
 			'accessibility': self.accessibility.to_dict()
 		}
 	
@@ -147,6 +205,7 @@ class GUIConfig:
 		return cls(
 			audio_replay=AudioReplayConfig.from_dict(data.get('audio_replay', {})),
 			transcription=TranscriptionConfig.from_dict(data.get('transcription', {})),
+			tts=TTSConfig.from_dict(data.get('tts', {})),
 			accessibility=AccessibilityConfig.from_dict(data.get('accessibility', {}))
 		)
 
@@ -756,7 +815,7 @@ protocol:
   target_type: "computer"         # "computer" (LAN/Internet) or "modem" (SDR/Radio)
                                   # computer: keepalives maintain stream
                                   # modem: no keepalives, modem handles hang-time
-                                  
+
   # Notes:
   # - Voice always preempts all other traffic (protocol requirement)
   # - UDP delivery is fire-and-forget (no retries possible)
@@ -792,12 +851,33 @@ gui:
     storage_duration_hours: 24    # How long to keep audio (hours)
     auto_cleanup: true            # Automatically clean old messages
 
-  # Transcription settings  
+  # Transcription settings
   transcription:
-    enabled: true                 # Enable audio transcription
+    enabled: false                 # Enable audio transcription
     method: "auto"                # auto, client-only, server-only, disabled
-    language: "en-US"             # Language for transcription
+    language: "auto"             # Language for transcription
     confidence_threshold: 0.7     # Minimum confidence for display
+    model_size: "base"            # tiny, base, small, medium, large
+
+  # Text-to-Speech settings
+  tts:
+    enabled: false                # Enable text-to-speech
+    engine: "system"              # TTS engine: system, pyttsx3
+    voice: "default"              # Voice selection (engine-specific)
+    rate: 200                     # Speech rate (words per minute)
+    volume: 0.8                   # Speech volume (0.0 to 1.0)
+
+    # Incoming message settings
+    incoming_enabled: true        # Read incoming text messages
+    include_station_id: true      # Include "Message from [station]:" prefix
+
+    # Outgoing message settings
+    outgoing_enabled: false       # Read your own outgoing messages
+    include_confirmation: true    # Include "Message sent:" prefix
+    outgoing_delay_seconds: 1.0   # Delay before reading outgoing messages
+
+    # Behavior settings
+    interrupt_on_ptt: true        # Pause TTS during voice transmission
 
   # Accessibility and typography settings
   accessibility:
@@ -807,7 +887,7 @@ gui:
     keyboard_shortcuts: true      # Enable keyboard shortcuts
     announce_new_messages: true   # Announce new messages
     focus_management: true        # Manage focus for accessibility
-    
+
     # Typography settings (Atkinson Hyperlegible font)
     font_family: "Atkinson Hyperlegible"  # Primary font family
     font_size: "medium"           # small, medium, large, x-large, xx-large
@@ -815,7 +895,7 @@ gui:
     character_spacing: "normal"   # normal, wide
 
 # Configuration metadata
-config_version: "1.2"
+config_version: "1.3"
 description: "Opulent Voice Protocol Configuration"
 """
 

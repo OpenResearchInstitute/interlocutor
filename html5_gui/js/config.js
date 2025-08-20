@@ -94,6 +94,48 @@ function populateEnhancedConfigFromData(config) {
 
 
 
+
+	// TTS Settings
+	if (config.gui && config.gui.tts) {
+		const tts = config.gui.tts;
+    
+		if ('enabled' in tts) {
+			const enabledElement = document.getElementById('tts-enabled');
+			if (enabledElement) enabledElement.checked = tts.enabled;
+		}
+    
+		if ('incoming_enabled' in tts) {
+			const incomingElement = document.getElementById('tts-incoming');
+	        	if (incomingElement) incomingElement.checked = tts.incoming_enabled;
+		}
+    
+		if ('outgoing_enabled' in tts) {
+			const outgoingElement = document.getElementById('tts-outgoing');
+			if (outgoingElement) outgoingElement.checked = tts.outgoing_enabled;
+		}
+
+		if ('rate' in tts) {
+			const rateSlider = document.getElementById('speech-rate');
+			const rateLabel = document.getElementById('speech-rate-label'); // You'll need this element in HTML
+        
+			if (rateSlider) {
+				rateSlider.value = tts.rate;
+            
+				// Update label immediately
+				if (rateLabel) {
+					rateLabel.textContent = tts.rate + ' WPM';
+				}
+            
+				// Add event listener for live updates
+				rateSlider.addEventListener('input', function() {
+					if (rateLabel) {
+						rateLabel.textContent = this.value + ' WPM';
+					}
+				});
+			}
+		}
+	}
+
 	
 	// GPIO settings
 	if (config.gpio) {
@@ -125,6 +167,42 @@ function populateEnhancedConfigFromData(config) {
 	
 	updateConfigStatus('Configuration loaded successfully');
 }
+
+
+
+
+function setupTTSTestButton() {
+	const testButton = document.getElementById('test-tts-button');
+	if (testButton) {
+		testButton.addEventListener('click', function() {
+			// Send test TTS command
+			if (ws && ws.readyState === WebSocket.OPEN) {
+				ws.send(JSON.stringify({
+					action: 'test_tts',
+					data: {
+						message: 'This is a test of the text to speech system at the current rate setting.'
+					}
+				}));
+                
+				// Give user feedback
+				const originalText = testButton.textContent;
+				testButton.textContent = 'Testing...';
+				testButton.disabled = true;
+                
+				// Reset button after a few seconds
+				setTimeout(() => {
+					testButton.textContent = originalText;
+					testButton.disabled = false;
+				}, 3000);
+			}
+		});
+	}
+}
+
+// Call this function when the page loads
+document.addEventListener('DOMContentLoaded', setupTTSTestButton);
+
+
 
 
 // AI!!! not sure this goes here or some other js file
@@ -183,6 +261,19 @@ function gatherEnhancedConfigData() {
 				language: 'auto',  // Always auto-detect
 				model_size: 'base', // Always use base model
 				method: transcriptionEnabledElement && transcriptionEnabledElement.checked ? 'auto' : 'disabled'
+			},
+			tts: { 
+				enabled: document.getElementById('tts-enabled')?.checked || false,
+				incoming_enabled: document.getElementById('tts-incoming')?.checked || true,
+				outgoing_enabled: document.getElementById('tts-outgoing')?.checked || false,
+				include_station_id: document.getElementById('include-station-id')?.checked || true,
+				include_confirmation: document.getElementById('include-confirmation')?.checked || true,
+				rate: parseInt(document.getElementById('speech-rate')?.value) || 200,
+				volume: parseFloat(document.getElementById('speech-volume')?.value) || 0.8,  // If you add volume slider
+				engine: 'system',  // Default
+				voice: 'default',  // Default
+				outgoing_delay_seconds: 1.0,  // Default
+				interrupt_on_ptt: true  // Default
 			}
 		}
 	};
@@ -430,6 +521,11 @@ function handleEnhancedConfigMessage(message) {
 				showNotification(`Test failed: ${testResult.message}`, 'error');
 			}
 			break;
+
+		case 'tts_test_result':
+			console.log('✅ Enhanced handler: TTS test completed:', data.data);
+			break;
+
 			
 		default:
 			console.log('📋 ENHANCED HANDLER DEBUG: Unknown message type:', message.type);

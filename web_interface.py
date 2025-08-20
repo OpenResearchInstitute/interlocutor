@@ -380,7 +380,22 @@ class EnhancedRadioWebInterface:
 						"type": "message_sent",
 						"data": message_data
 					})
-		
+
+
+					#Queue for TTS if enabled (for outgoing messages)
+					if (hasattr(self, 'radio_system') and 
+						hasattr(self.radio_system, 'enhanced_receiver') and 
+						hasattr(self.radio_system.enhanced_receiver, 'tts_manager') and 
+						self.radio_system.enhanced_receiver.tts_manager):
+
+						self.radio_system.enhanced_receiver.tts_manager.queue_text_message(
+							str(self.radio_system.station_id), 
+							message, 
+							is_outgoing=True
+						)
+
+
+
 			# Fallback: Send directly through radio system
 			elif self.radio_system and hasattr(self.radio_system, 'audio_frame_manager'):
 				self.radio_system.audio_frame_manager.queue_text_message(message)
@@ -1090,7 +1105,9 @@ class EnhancedRadioWebInterface:
 			elif command == 'test_connection_with_form': 
 				await self.handle_test_connection_with_form(websocket, data) 
 
-
+			# TTS command
+			elif command == 'test_tts':
+				await self.handle_test_tts(websocket, data)
 
 			# Voice commands (enhanced)
 			elif command == 'get_audio_stream':
@@ -1286,7 +1303,6 @@ class EnhancedRadioWebInterface:
 						'web_interface_port': getattr(self.config.ui, 'web_interface_port', 8000),
 						'web_interface_host': getattr(self.config.ui, 'web_interface_host', '0.0.0.0'),
 					},
-					# FIXED: Add GUI section to web interface
 					'gui': {
 						'transcription': {
 							'enabled': getattr(self.config.gui.transcription, 'enabled', False),
@@ -1295,6 +1311,19 @@ class EnhancedRadioWebInterface:
 							'confidence_threshold': getattr(self.config.gui.transcription, 'confidence_threshold', 0.7),
 							'model_size': getattr(self.config.gui.transcription, 'model_size', 'base'),
 						},
+						'tts': {
+							'enabled': getattr(self.config.gui.tts, 'enabled', False),
+							'engine': getattr(self.config.gui.tts, 'engine', 'system'),
+							'voice': getattr(self.config.gui.tts, 'voice', 'default'),
+							'rate': getattr(self.config.gui.tts, 'rate', 200),
+							'volume': getattr(self.config.gui.tts, 'volume', 0.8),
+							'incoming_enabled': getattr(self.config.gui.tts, 'incoming_enabled', True),
+							'include_station_id': getattr(self.config.gui.tts, 'include_station_id', True),
+							'outgoing_enabled': getattr(self.config.gui.tts, 'outgoing_enabled', False),
+ 							'include_confirmation': getattr(self.config.gui.tts, 'include_confirmation', True),
+							'outgoing_delay_seconds': getattr(self.config.gui.tts, 'outgoing_delay_seconds', 1.0),
+							'interrupt_on_ptt': getattr(self.config.gui.tts, 'interrupt_on_ptt', True)
+ 						},
 						'audio_replay': {
 							'enabled': getattr(self.config.gui.audio_replay, 'enabled', True),
 							'max_stored_messages': getattr(self.config.gui.audio_replay, 'max_stored_messages', 100),
@@ -1439,7 +1468,6 @@ class EnhancedRadioWebInterface:
 					self.config.ui.web_interface_host = ui['web_interface_host']
 				updated_sections.append('ui')
 
-			# FIXED: Add GUI section handling - this was the missing piece!
 			if 'gui' in data:
 				gui = data['gui']
 				self.logger.info(f"🔧 Processing GUI config update: {gui}")
@@ -1457,7 +1485,36 @@ class EnhancedRadioWebInterface:
 						self.config.gui.transcription.confidence_threshold = float(transcription['confidence_threshold'])
 					if 'model_size' in transcription:
 						self.config.gui.transcription.model_size = transcription['model_size']
-				
+						# do we need a pass here?
+
+				if 'tts' in gui:
+					tts = gui['tts']
+					self.logger.info(f"🔧 Processing TTS config update: {tts}")
+
+					if 'enabled' in tts:
+						self.config.gui.tts.enabled = bool(tts['enabled'])
+						self.logger.info(f"🔧 Set tts.enabled = {self.config.gui.tts.enabled}")
+					if 'engine' in tts:
+						self.config.gui.tts.engine = tts['engine']
+					if 'voice' in tts:
+						self.config.gui.tts.voice = tts['voice']
+					if 'rate' in tts:
+						self.config.gui.tts.rate = int(tts['rate'])
+					if 'volume' in tts:
+						self.config.gui.tts.volume = float(tts['volume'])
+					if 'incoming_enabled' in tts:
+						self.config.gui.tts.incoming_enabled = bool(tts['incoming_enabled'])
+					if 'include_station_id' in tts:
+						self.config.gui.tts.include_station_id = bool(tts['include_station_id'])
+					if 'outgoing_enabled' in tts:
+						self.config.gui.tts.outgoing_enabled = bool(tts['outgoing_enabled'])
+					if 'include_confirmation' in tts:
+						self.config.gui.tts.include_confirmation = bool(tts['include_confirmation'])
+					if 'outgoing_delay_seconds' in tts:
+						self.config.gui.tts.outgoing_delay_seconds = float(tts['outgoing_delay_seconds'])
+					if 'interrupt_on_ptt' in tts:
+						self.config.gui.tts.interrupt_on_ptt = bool(tts['interrupt_on_ptt'])
+
 				if 'audio_replay' in gui:
 					audio_replay = gui['audio_replay']
 					if 'enabled' in audio_replay:
@@ -1494,7 +1551,7 @@ class EnhancedRadioWebInterface:
 				
 				updated_sections.append('gui')
 
-				# NEW: Update transcriber with live config changes
+				# Update transcriber with live config changes
 				if self.radio_system and hasattr(self.radio_system, 'update_transcriber_config'):
 					try:
 						success = self.radio_system.update_transcriber_config()
@@ -1508,7 +1565,20 @@ class EnhancedRadioWebInterface:
 					self.logger.info("🔧 Transcriber config update not available - restart may be required")
 
 
-		
+				# Update TTS with live config changes
+				if self.radio_system and hasattr(self.radio_system, 'enhanced_receiver'):
+					try:
+						if hasattr(self.radio_system.enhanced_receiver, 'update_tts_config'):
+							success = self.radio_system.enhanced_receiver.update_tts_config()
+							if success:
+								self.logger.info("🔧 TTS updated with new GUI config")
+						elif hasattr(self.radio_system.enhanced_receiver, 'tts_manager'):
+							# Direct update if method doesn't exist
+							self.radio_system.enhanced_receiver.tts_manager.update_config(self.config)
+							self.logger.info("🔧 TTS config updated directly")
+					except Exception as e:
+						self.logger.error(f"🔧 Error updating TTS: {e}")
+
 			# Apply debug changes immediately to the global DebugConfig
 			if 'debug' in data:
 				try:
@@ -1845,6 +1915,48 @@ class EnhancedRadioWebInterface:
 				"message": f"Connection test failed: {str(e)}"
 			})
 
+
+
+
+	async def handle_test_tts(self, websocket: WebSocket, data: Dict):
+		"""Test TTS functionality"""
+		try:
+			test_message = data.get('message', 'This is a test of the text to speech system')
+        
+			# Queue test message through TTS system
+			if (self.radio_system and 
+				hasattr(self.radio_system, 'enhanced_receiver') and 
+				self.radio_system.enhanced_receiver and
+				hasattr(self.radio_system.enhanced_receiver, 'tts_manager') and 
+				self.radio_system.enhanced_receiver.tts_manager):
+
+				success = self.radio_system.enhanced_receiver.tts_manager.queue_text_message(
+					str(self.radio_system.station_id), 
+					test_message, 
+					is_outgoing=True  # Use outgoing TTS settings
+				)
+            
+				if success:
+					await self.send_to_client(websocket, {
+						"type": "tts_test_result",
+						"data": {"success": True, "message": "TTS test queued successfully"}
+					})
+				else:
+					await self.send_to_client(websocket, {
+						"type": "tts_test_result", 
+						"data": {"success": False, "message": "TTS test failed to queue"}
+					})
+			else:
+				await self.send_to_client(websocket, {
+					"type": "tts_test_result",
+					"data": {"success": False, "message": "TTS system not available"}
+				})
+            
+		except Exception as e:
+			await self.send_to_client(websocket, {
+				"type": "error",
+				"message": f"TTS test failed: {str(e)}"
+			})
 
 
 
