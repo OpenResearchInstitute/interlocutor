@@ -417,7 +417,76 @@ gui:<br>
 </div>
 
 
-<!-- Text-to-Speech Configuration -->
+
+
+
+
+
+
+
+
+
+
+<!-- Compact Text-to-Speech Configuration -->
+<div class="config-section">
+    <div class="section-header">
+        <span aria-hidden="true">🔊</span>
+        Text-to-Speech Settings
+    </div>
+
+    <!-- Single row with main enable checkbox -->
+    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
+        <input type="checkbox" id="tts-enabled">
+        <label for="tts-enabled">Enable Text-to-Speech</label>
+    </div>
+
+    <!-- Ultra-compact 2x2 grid for all TTS options -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem;">
+        <div class="checkbox-group" style="margin: 0;">
+            <input type="checkbox" id="tts-incoming" checked>
+            <label for="tts-incoming">📥 Read incoming</label>
+        </div>
+        <div class="checkbox-group" style="margin: 0;">
+            <input type="checkbox" id="tts-outgoing">
+            <label for="tts-outgoing">📤 Read outgoing</label>
+        </div>
+        <div class="checkbox-group" style="margin: 0;">
+            <input type="checkbox" id="include-station-id" checked>
+            <label for="include-station-id">Include Station ID</label>
+        </div>
+        <div class="checkbox-group" style="margin: 0;">
+            <input type="checkbox" id="include-confirmation" checked>
+            <label for="include-confirmation">Say Message Sent: as an outgoing message prefix</label>
+        </div>
+    </div>
+
+    <!-- Inline speech rate control -->
+    <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.9rem;">
+        <label for="speech-rate" style="margin: 0; white-space: nowrap;">Speed:</label>
+        <input type="range" id="speech-rate" min="100" max="300" value="200" style="flex: 1;">
+        <span id="speech-rate-label" style="min-width: 60px; text-align: center;">200 WPM</span>
+        <button id="test-tts-button" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🎵 Test</button>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- Text-to-Speech Configuration 
 <div class="config-section">
     <div class="section-header">
         <span aria-hidden="true">🔊</span>
@@ -460,12 +529,15 @@ gui:<br>
     <label for="speech-rate">Speech Rate</label>
     <input type="range" id="speech-rate" min="100" max="300" value="200">
     <div class="range-value">
-        <span id="speech-rate-label">200 WPM</span>  <!-- Changed from rate-value -->
+        <span id="speech-rate-label">200 WPM</span> 
     </div>
 </div>
 <div class="form-group">
-    <button id="test-tts-button" class="btn">🎵 Test TTS</button>  <!-- Changed from test-tts -->
+    <button id="test-tts-button" class="btn">🎵 Test TTS</button>
 </div>
+-->
+
+
 
 
 
