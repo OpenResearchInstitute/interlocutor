@@ -412,7 +412,7 @@ python -c "import whisper; whisper.load_model('base')"
 - Works on CPU (GPU optional for faster processing)
 ### Configuration
 
-Transcription settings are included in the default configuration. If you need to create or update your config:
+Full Transcription settings are included in the default configuration. If you need to create or update your config:
 
 ```
 # Create config with transcription settings included
@@ -432,6 +432,7 @@ gui:
 
 **To modify:** Edit these values in your existing config file as needed.
 **Recommended:** Start with `model_size: "base"` for best balance of speed and accuracy.
+**Configuration Tab in Web Interface** has a checkbox for enabling transcriptions, and has a slider bar to select the confidence level of the transcripion. Above this level, the transcriptrion is in normal text. Below this level, it is in italics. The italics are a sign that the transcription is below the confidence level that you have set. The default is 70%, or 0.7 in code. 
 
 ### Model Sizes
 
