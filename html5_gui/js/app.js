@@ -370,13 +370,18 @@ function updateUptime() {
 	const uptimeElement = document.getElementById('uptime');
 	if (uptimeElement) {
 		let formattedUptime;
-		
+		const paddedSecs = String(seconds).padStart(2, '0');
+		const paddedMins = String(minutes).padStart(2, '0');
+		const paddedHours = String(hours).padStart(2,'0');
+
 		if (days > 0) {
-			formattedUptime = `${days}d ${hours}h ${minutes}m`;
+			formattedUptime = `${days}d ${paddedHours}h ${paddedMins}m`;
 		} else if (hours > 0) {
-			formattedUptime = `${hours}h ${minutes}m ${seconds}s`;
+			formattedUptime = `${hours}h ${paddedMins}m ${paddedSecs}s`;
+		} else if (minutes > 0) {
+			formattedUptime = `${minutes}m ${paddedSecs}s`;
 		} else {
-			formattedUptime = `${minutes}m ${seconds}s`;
+			formattedUptime = `${seconds}s`
 		}
 		
 		uptimeElement.textContent = formattedUptime;
