@@ -512,7 +512,6 @@ The purpose of the Configuration System is to create, validate, and save one or 
 
 **Access URLs:**
 - Main interface: http://localhost:8000
-- Configuration: http://localhost:8000/config
 
 ### Configuration Sections
 
