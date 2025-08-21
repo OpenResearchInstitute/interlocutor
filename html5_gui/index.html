@@ -22,6 +22,50 @@
 	<!-- Skip link for keyboard users -->
 	<a href="#main-content" class="skip-link">Skip to main content</a>
 	
+	<style>
+		.skip-link {
+			position: absolute;
+			top: -40px;
+			left: 6px;
+			background: #000;
+			color: #fff;
+			padding: 8px;
+			text-decoration: none;
+			border-radius: 0 0 4px 4px;
+			z-index: 1000;
+		}
+		.skip-link:focus {
+			top: 0;
+		}
+		
+		.required-indicator {
+			font-weight: normal;
+			color: #666;
+			font-size: 0.9em;
+		}
+		
+		/* Ensure form validation styling doesn't rely on color alone */
+		.form-group input:invalid {
+			border-color: #d32f2f;
+			border-width: 2px;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%23d32f2f' viewBox='0 0 16 16'%3E%3Cpath d='M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z'/%3E%3Cpath d='M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 8px center;
+			background-size: 16px;
+			padding-right: 32px;
+		}
+		
+		.form-group input:valid {
+			border-color: #2e7d32;
+			border-width: 2px;
+			background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%232e7d32' viewBox='0 0 16 16'%3E%3Cpath d='M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z'/%3E%3Cpath d='M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.061L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z'/%3E%3C/svg%3E");
+			background-repeat: no-repeat;
+			background-position: right 8px center;
+			background-size: 16px;
+			padding-right: 32px;
+		}
+	</style>
+	
 </head>
 <body>
 	<!-- Screen reader announcements -->
@@ -67,10 +111,10 @@
 		
 		<!-- Chat Panel (Default View) -->
 		<div id="chat-panel" class="panel" role="tabpanel" aria-labelledby="chat-tab">
-			<div class="panel-title">
+			<h2 class="panel-title">
 				<span class="panel-icon">💬</span>
 				Communications
-			</div>
+			</h2>
 			
 			<div class="chat-container">
 				<div class="chat-header">
@@ -82,11 +126,12 @@
 					<button id="ptt-button" 
 							class="ptt-button" 
 							aria-pressed="false"
-							aria-describedby="ptt-status"
+							aria-describedby="ptt-help"
 							disabled>
 						<span aria-hidden="true">🎤</span>
-						<span class="ptt-text">PTT</span>
+						<span class="ptt-text">Push to Talk</span>
 					</button>
+					<div id="ptt-help" class="sr-only">Press and hold to transmit voice message, release to stop</div>
 				</div>
 				
 				<div id="message-history" 
@@ -110,19 +155,21 @@
 					<button class="retry-button" onclick="attemptReconnect()">Retry Connection</button>
 				</div>
 				
-				<form id="message-form" class="message-input-form">
+				<form id="message-form" class="message-input-form" novalidate>
 					<div class="input-container">
-						<label for="message-input" class="sr-only">Message to send</label>
+						<label for="message-input">Message to send</label>
 						<textarea id="message-input"
 							class="message-input"
 							placeholder="Type your message..."
 							rows="1"
+							aria-describedby="message-help"
 							disabled></textarea>
+						<div id="message-help" class="sr-only">Enter your radio message and press Send or Enter to transmit</div>
 					</div>
 					<button type="submit"
 						class="send-button"
 						disabled>
-						Send
+						Send Message
 					</button>
 				</form>				
 			</div>
@@ -130,17 +177,17 @@
 
 		<!-- Configuration Panel -->
 		<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
-			<div class="panel-title">
+			<h2 class="panel-title">
 				<span class="panel-icon">⚙️</span>
 				Configuration Management
-			</div>
+			</h2>
 			
 			<!-- Configuration Management Section -->
 			<div class="config-section config-management-consolidated">
-				<div class="section-header">
+				<h3 class="section-header">
 					<span aria-hidden="true">📋</span>
 					Configuration Management
-				</div>
+				</h3>
 				
 				<!-- Current Configuration Status -->
 				<div class="config-status-display">
@@ -158,14 +205,13 @@
 					
 					<!-- Load Configuration -->
 					<div class="operation-group">
-						<label class="operation-label">Load Configuration</label>
 						<div class="operation-controls">
 							<div class="input-group">
+								<label for="load-config-filename" class="operation-label">Load Configuration File</label>
 								<input type="text" 
 									   id="load-config-filename" 
 									   placeholder="Leave empty for auto-discovery"
-									   class="config-filename-input"
-									   aria-label="Configuration file to load">
+									   class="config-filename-input">
 								<button class="btn btn-primary operation-btn" onclick="loadConfigFile()">
 									<span aria-hidden="true">📂</span>
 									Load
@@ -179,14 +225,13 @@
 					
 					<!-- Save Configuration -->
 					<div class="operation-group">
-						<label class="operation-label">Save Configuration</label>
 						<div class="operation-controls">
 							<div class="input-group">
+								<label for="save-config-filename" class="operation-label">Save Configuration File</label>
 								<input type="text" 
 									   id="save-config-filename" 
 									   placeholder="Leave empty to save to original file"
-									   class="config-filename-input"
-									   aria-label="Configuration file to save to">
+									   class="config-filename-input">
 								<button class="btn btn-success operation-btn" onclick="saveConfigFile()">
 									<span aria-hidden="true">💾</span>
 									Save
@@ -200,14 +245,13 @@
 					
 					<!-- Create Template Configuration -->
 					<div class="operation-group">
-						<label class="operation-label">Create Template Configuration</label>
 						<div class="operation-controls">
 							<div class="input-group">
+								<label for="create-config-filename" class="operation-label">Create Template Configuration File</label>
 								<input type="text" 
 									   id="create-config-filename" 
 									   placeholder="opulent-voice.yaml"
-									   class="config-filename-input"
-									   aria-label="Template configuration filename">
+									   class="config-filename-input">
 								<button class="btn operation-btn" onclick="createConfigFileEnhanced()">
 									<span aria-hidden="true">📄</span>
 									Create Template
@@ -288,18 +332,19 @@
 			<div class="config-grid">
 				<!-- Station Configuration -->
 				<div class="config-section">
-					<div class="section-header">
+					<h3 class="section-header">
 						<span aria-hidden="true">📡</span>
 						Station Settings
-					</div>
+					</h3>
 					
 					<div class="form-group">
-						<label for="callsign">Callsign *</label>
+						<label for="callsign">Callsign * <span class="required-indicator">(Required)</span></label>
 						<input type="text" 
 							   id="callsign" 
 							   placeholder="N0CALL" 
 							   maxlength="10" 
 							   required
+							   aria-required="true"
 							   aria-describedby="callsign-help">
 						<div id="callsign-help" class="help-text">
 							The name for your station, such as an amateur radio callsign (A-Z, 0-9, -, /, .)
@@ -309,10 +354,10 @@
 
 				<!-- Network Configuration -->
 				<div class="config-section">
-					<div class="section-header">
+					<h3 class="section-header">
 						<span aria-hidden="true">🌐</span>
 						Network Settings
-					</div>
+					</h3>
 					
 					<div class="form-group">
 						<label for="target-ip">Target IP Address</label>
@@ -352,113 +397,95 @@
 					</div>
 				</div>
 
+				<!-- Transcription Configuration -->
+				<div class="config-section">
+					<h3 class="section-header">
+						<span aria-hidden="true">🗨️</span>
+						Transcription Settings
+					</h3>
+					
+					<!-- Essential Controls Only -->
+					<div class="checkbox-group">
+						<input type="checkbox" id="transcription-enabled">
+						<label for="transcription-enabled">Enable Audio Transcription</label>
+						<div class="help-text">
+							Convert received voice messages to text automatically
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="transcription-confidence">Confidence Threshold Slider</label>
+						<input type="range" 
+							   id="transcription-confidence" 
+							   min="0.3" 
+							   max="0.95" 
+							   step="0.05" 
+							   value="0.7"
+							   aria-describedby="confidence-help">
+						<div class="range-value">
+							<span id="confidence-value">70%</span>
+						</div>
+						<div id="confidence-help" class="help-text">
+							The confidence level below which we will print the transcription in italics.
+						</div>
+					</div>
+					
+					<!-- Advanced Settings (Read-only display) -->
+					<div class="advanced-settings">
+						<div class="help-text">
+							 <strong>For advanced users:</strong> Edit the YAML config file for additional configuration options (processing method, language, model size). 
+						</div>
+					</div>
+				</div>
 
+				<!-- Compact Text-to-Speech Configuration -->
+				<div class="config-section">
+					<h3 class="section-header">
+						<span aria-hidden="true">🔊</span>
+						Text-to-Speech Settings
+					</h3>
 
+					<!-- Single row with main enable checkbox -->
+					<div class="checkbox-group" style="margin-bottom: 0.75rem;">
+						<input type="checkbox" id="tts-enabled">
+						<label for="tts-enabled">Enable Text-to-Speech</label>
+					</div>
 
-<!-- Transcription Configuration -->
-<div class="config-section">
-    <div class="section-header">
-        <span aria-hidden="true">🗨️</span>
-        Transcription Settings
-    </div>
-    
-    <!-- Essential Controls Only -->
-    <div class="checkbox-group">
-        <input type="checkbox" id="transcription-enabled">
-        <label for="transcription-enabled">Enable Audio Transcription</label>
-        <div class="help-text">
-            Convert received voice messages to text automatically
-        </div>
-    </div>
-    
-    <div class="form-group">
-        <label for="transcription-confidence">Confidence Threshold Slider</label>
-        <input type="range" 
-               id="transcription-confidence" 
-               min="0.3" 
-               max="0.95" 
-               step="0.05" 
-               value="0.7"
-               aria-describedby="confidence-help">
-        <div class="range-value">
-            <span id="confidence-value">70%</span>
-        </div>
-        <div id="confidence-help" class="help-text">
-            The confidence level below which we will print the transcription in italics.
-        </div>
-    </div>
-    
-    <!-- Advanced Settings (Read-only display) -->
-    <div class="advanced-settings">
-        <div class="help-text">
-             <strong>For advanced users:</strong> Edit the YAML config file for additional configuration options (processing method, language, model size). 
-        </div>
-    </div>
-</div>
+					<!-- Ultra-compact 2x2 grid for all TTS options -->
+					<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem;">
+						<div class="checkbox-group" style="margin: 0;">
+							<input type="checkbox" id="tts-incoming">
+							<label for="tts-incoming">📥 Read incoming</label>
+						</div>
+						<div class="checkbox-group" style="margin: 0;">
+							<input type="checkbox" id="tts-outgoing">
+							<label for="tts-outgoing">📤 Read outgoing</label>
+						</div>
+						<div class="checkbox-group" style="margin: 0;">
+							<input type="checkbox" id="include-station-id">
+							<label for="include-station-id">Include Station ID</label>
+						</div>
+						<div class="checkbox-group" style="margin: 0;">
+							<input type="checkbox" id="include-confirmation">
+							<label for="include-confirmation">Say Message Sent: as an outgoing message prefix</label>
+						</div>
+					</div>
 
-
-
-
-
-
-
-
-
-
-
-
-<!-- Compact Text-to-Speech Configuration -->
-<div class="config-section">
-    <div class="section-header">
-        <span aria-hidden="true">🔊</span>
-        Text-to-Speech Settings
-    </div>
-
-    <!-- Single row with main enable checkbox -->
-    <div class="checkbox-group" style="margin-bottom: 0.75rem;">
-        <input type="checkbox" id="tts-enabled">
-        <label for="tts-enabled">Enable Text-to-Speech</label>
-    </div>
-
-    <!-- Ultra-compact 2x2 grid for all TTS options -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1rem; margin-bottom: 0.75rem; font-size: 0.9rem;">
-        <div class="checkbox-group" style="margin: 0;">
-            <input type="checkbox" id="tts-incoming">
-            <label for="tts-incoming">📥 Read incoming</label>
-        </div>
-        <div class="checkbox-group" style="margin: 0;">
-            <input type="checkbox" id="tts-outgoing">
-            <label for="tts-outgoing">📤 Read outgoing</label>
-        </div>
-        <div class="checkbox-group" style="margin: 0;">
-            <input type="checkbox" id="include-station-id">
-            <label for="include-station-id">Include Station ID</label>
-        </div>
-        <div class="checkbox-group" style="margin: 0;">
-            <input type="checkbox" id="include-confirmation">
-            <label for="include-confirmation">Say Message Sent: as an outgoing message prefix</label>
-        </div>
-    </div>
-
-    <!-- Inline speech rate control -->
-    <div style="display: flex; align-items: center; gap: 1rem; font-size: 0.9rem;">
-        <label for="speech-rate" style="margin: 0; white-space: nowrap;">Speed:</label>
-        <input type="range" id="speech-rate" min="100" max="300" value="200" style="flex: 1;">
-        <span id="speech-rate-label" style="min-width: 60px; text-align: center;">200 WPM</span>
-        <button id="test-tts-button" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🎵 Test</button>
-    </div>
-</div>
-
-
-
-
+					<!-- Inline speech rate control -->
+					<div style="display: flex; align-items: center; gap: 1rem; font-size: 0.9rem;">
+						<label for="speech-rate" style="margin: 0; white-space: nowrap;">Speed:</label>
+						<input type="range" id="speech-rate" min="100" max="300" value="200" style="flex: 1;">
+						<span id="speech-rate-label" style="min-width: 60px; text-align: center;">200 WPM</span>
+						<button id="test-tts-button" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🎵 Test</button>
+					</div>
+				</div>
 
 				<!-- Target Device Type Configuration -->
 				<div class="config-section">
-					<div class="section-header">
+					<h3 class="section-header">
 						<span aria-hidden="true">🔧</span>
 						Target Device Type Settings
-					</div>
+					</h3>
 					
 					<div class="form-group">
 						<label for="target-type">Target Type</label>
@@ -488,10 +515,10 @@
 
 				<!-- GPIO Configuration -->
 				<div class="config-section">
-					<div class="section-header">
+					<h3 class="section-header">
 						<span aria-hidden="true">🔌</span>
 						GPIO Settings (Raspberry Pi)
-					</div>
+					</h3>
 					
 					<div class="form-group">
 						<label for="ptt-pin">PTT GPIO Pin</label>
@@ -522,10 +549,10 @@
 
 				<!-- Debug Configuration -->
 				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🐛</span>
+					<h3 class="section-header">
+						<span aria-hidden="true">🛠</span>
 						Debug Settings
-					</div>
+					</h3>
 					
 					<div class="checkbox-group">
 						<input type="checkbox" id="verbose-mode">
@@ -552,10 +579,10 @@
 
 		<!-- Status Panel (Always Visible) -->
 		<div class="panel">
-			<div class="panel-title">
+			<h2 class="panel-title">
 				<span class="panel-icon">📊</span>
 				System Status
-			</div>
+			</h2>
 			
 			<div class="status-grid">
 				<div class="stat-item">
@@ -583,16 +610,18 @@
 			<div class="log-section">
 				<h3>System Log</h3>
 				<div class="log-controls">
-					<select id="log-level" aria-label="Log level filter">
+					<label for="log-level">Filter log messages by severity level</label>
+					<select id="log-level">
 						<option value="all">All Messages</option>
 						<option value="info">Info and Above</option>
 						<option value="warning">Warnings and Errors</option>
 						<option value="error">Errors Only</option>
 					</select>
 					
-					<button class="btn" onclick="clearLog()">
+					<button class="btn" onclick="clearLog()" aria-describedby="clear-log-help">
 						Clear Log
 					</button>
+					<div id="clear-log-help" class="sr-only">Removes all messages from the system log display</div>
 				</div>
 				
 				<div id="system-log" 
