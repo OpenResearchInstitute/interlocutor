@@ -410,9 +410,12 @@ python -c "import whisper; whisper.load_model('base')"
 - Additional ~500MB disk space for models
 - Adequate CPU for real-time processing
 - Works on CPU (GPU optional for faster processing)
+
 ### Configuration
 
-Full Transcription settings are included in the default configuration. If you need to create or update your config:
+**Configuration Tab in Web Interface** Audio Transcription can be enabled with a check box and the Confidence Threshold slider can be adjusted. Confidence Threshold means that above the level selected, the transcriptrion is in normal text. Below this level, it is in italics. The italics are a sign that the transcription is below the confidence level that you have set. The default is 70%, or 0.7 in code. 
+
+All of the Transcription settings are included in the default configuration. If you need to create or update your configuration file, then create it as follows.
 
 ```
 # Create config with transcription settings included
@@ -423,16 +426,23 @@ The transcription section will look like:
 ```yaml
 gui:
   transcription:
-    enabled: true                 # Enable transcription
-    method: "auto"                # Processing method  
-    language: "en-US"             # Target language
+    enabled: true                 # Enable transcription (true or false) 
+    method: "auto"                # Processing method (auto, client-only, server-only, disabled)
+    language: "auto"              # Target language (e.g  Japanese, English, German)
     confidence_threshold: 0.7     # Min confidence (0.0-1.0)
-    model_size: "base"            # Model size
+    model_size: "base"            # Model size (tiny, base, small, medium, large)
 ```
 
-**To modify:** Edit these values in your existing config file as needed.
-**Recommended:** Start with `model_size: "base"` for best balance of speed and accuracy.
-**Configuration Tab in Web Interface** has a checkbox for enabling transcriptions, and has a slider bar to select the confidence level of the transcripion. Above this level, the transcriptrion is in normal text. Below this level, it is in italics. The italics are a sign that the transcription is below the confidence level that you have set. The default is 70%, or 0.7 in code. 
+The processing **method** will be set to "disabled" when audio transcription is turned off (enabled = false). Method is set to "auto" automatically when audio transcription is turned on (enabled = true). If you want to specify the other options in the connfiguration file, then you can edit these values in the config file with a text editor. Here are the values for method:
+
+"auto" - Let system choose best option. Selected as the default when transcription is enabled. 
+"client-only" - Browser speech recognition
+"server-only" - Pi's local Whisper model
+"disabled" - Turns off transcription (same as enabled: false)
+
+**To modify transcription configuration:** Edit the transcription values in your existing config file with a text editor. Transcription Enabled and the Confidence Threshold are in the web interface configuration tab. Method, language, and model_size are in the configuration file. 
+**Recommended:** Start with `model_size: "base"` for best balance of speed and accuracy. 
+
 
 ### Model Sizes
 
