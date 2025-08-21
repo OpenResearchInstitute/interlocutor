@@ -563,9 +563,15 @@ function handleEnhancedConfigMessage(message) {
 			break;
 
 		case 'tts_test_result':
-			console.log('✅ Enhanced handler: TTS test completed:', data.data);
+			console.log('🔊 Enhanced handler: TTS test completed:', message.data);
+			if (message.data.success) {
+				showNotification('TTS test completed successfully', 'success');
+				addLogEntry('TTS test passed', 'success');
+			} else {
+				showNotification(`TTS test failed: ${message.data.message || 'Unknown error'}`, 'error');
+				addLogEntry(`TTS test failed: ${message.data.message || 'Unknown error'}`, 'error');
+			}
 			break;
-
 			
 		default:
 			console.log('📋 ENHANCED HANDLER DEBUG: Unknown message type:', message.type);

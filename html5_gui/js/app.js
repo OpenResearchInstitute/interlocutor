@@ -1,15 +1,15 @@
 // Main Application Logic for Opulent Voice Radio Interface
 
 // Global application state
-let ws = null;
+//let ws = null; // handled in websocket.js
 let currentStation = 'CONNECTING...';
 let messageCount = { sent: 0, received: 0 };
 let startTime = Date.now();
 let pttActive = false;
 let currentConfig = {};
-let reconnectAttempts = 0;
-let maxReconnectAttempts = 10;
-let reconnectDelay = 1000;
+//let reconnectAttempts = 0; // handled in websocket.js
+//let maxReconnectAttempts = 10; // handled in websocket.js
+//let reconnectDelay = 1000; // handled in websocket.js
 
 // Initialize welcome time
 document.addEventListener('DOMContentLoaded', function() {

@@ -21,6 +21,7 @@
 	
 	<!-- Skip link for keyboard users -->
 	<a href="#main-content" class="skip-link">Skip to main content</a>
+	
 </head>
 <body>
 	<!-- Screen reader announcements -->
@@ -371,7 +372,7 @@
     </div>
     
     <div class="form-group">
-        <label for="transcription-confidence">Confidence Threshold</label>
+        <label for="transcription-confidence">Confidence Threshold Slider</label>
         <input type="range" 
                id="transcription-confidence" 
                min="0.3" 
@@ -379,39 +380,18 @@
                step="0.05" 
                value="0.7"
                aria-describedby="confidence-help">
-        <div id="confidence-help" class="help-text">
-            Minimum confidence level to display transcriptions
-        </div>
         <div class="range-value">
             <span id="confidence-value">70%</span>
+        </div>
+        <div id="confidence-help" class="help-text">
+            The confidence level below which we will print the transcription in italics.
         </div>
     </div>
     
     <!-- Advanced Settings (Read-only display) -->
     <div class="advanced-settings">
-        <h4>Advanced Settings</h4>
-        <div class="setting-display">
-            <span class="setting-label">Language:</span>
-            <span class="setting-value">Auto-detect</span>
-        </div>
-        <div class="setting-display">
-            <span class="setting-label">Model Size:</span>
-            <span class="setting-value">Base (290MB, balanced speed/accuracy)</span>
-        </div>
         <div class="help-text">
-            💡 <strong>For advanced users:</strong> Edit the YAML config file to change language or model size:
-        </div>
-        <div class="code-example">
-            <code>
-gui:<br>
-&nbsp;&nbsp;transcription:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;language: "en"&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;# or "es", "fr", "auto"<br>
-&nbsp;&nbsp;&nbsp;&nbsp;model_size: "large"&nbsp;&nbsp;&nbsp;&nbsp;# tiny, base, small, medium, large
-            </code>
-        </div>
-        <div class="help-text">
-            ⚠️ <strong>Model sizes:</strong> tiny (39MB), base (290MB), small (461MB), medium (1.5GB), large (2.9GB)<br>
-            First use will download the model automatically.
+             <strong>For advanced users:</strong> Edit the YAML config file for additional configuration options (processing method, language, model size). 
         </div>
     </div>
 </div>
@@ -468,76 +448,6 @@ gui:<br>
         <button id="test-tts-button" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">🎵 Test</button>
     </div>
 </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-<!-- Text-to-Speech Configuration 
-<div class="config-section">
-    <div class="section-header">
-        <span aria-hidden="true">🔊</span>
-        Text-to-Speech Settings
-    </div>
-    
-    <div class="checkbox-group">
-        <input type="checkbox" id="tts-enabled">
-        <label for="tts-enabled">Enable Text-to-Speech</label>
-        <div class="help-text">
-            Read text messages aloud using synthesized speech
-        </div>
-    </div>
-    
-    <div class="form-group">
-        <h4>📥 Incoming Messages</h4>
-        <div class="checkbox-group">
-            <input type="checkbox" id="tts-incoming" checked>
-            <label for="tts-incoming">Read incoming messages</label>
-        </div>
-        <div class="checkbox-group">
-            <input type="checkbox" id="include-station-id" checked>
-            <label for="include-station-id">Include Station ID</label>
-        </div>
-    </div>
-    
-    <div class="form-group">
-        <h4>📤 Outgoing Messages</h4>
-        <div class="checkbox-group">
-            <input type="checkbox" id="tts-outgoing">
-            <label for="tts-outgoing">Read my outgoing messages</label>
-        </div>
-        <div class="checkbox-group">
-            <input type="checkbox" id="include-confirmation" checked>
-            <label for="include-confirmation">Include "Message sent:" prefix</label>
-        </div>
-    </div>
-    
-<div class="form-group">
-    <label for="speech-rate">Speech Rate</label>
-    <input type="range" id="speech-rate" min="100" max="300" value="200">
-    <div class="range-value">
-        <span id="speech-rate-label">200 WPM</span> 
-    </div>
-</div>
-<div class="form-group">
-    <button id="test-tts-button" class="btn">🎵 Test TTS</button>
-</div>
--->
-
-
 
 
 

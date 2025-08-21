@@ -2164,7 +2164,7 @@ class NetworkTransmitter:
 				except Exception as e:
 					print(f"✗ Connection error: {e}")
 					self.socket = None
-					time.sleep(1)
+					time.sleep(10) # changed from 1 to 10 to TEST
 					continue
 
 		if self.socket:

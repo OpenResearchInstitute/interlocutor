@@ -1,90 +1,165 @@
 // WebSocket Communication Management
 
-// WebSocket connection management
-function connectWebSocket() {
-	// Clear any existing connection
-	if (ws) {
-		ws.close();
-		ws = null;
-	}
-
-	const wsUrl = `ws://${window.location.host}/ws`;
-	addLogEntry(`Attempting to connect to ${wsUrl}`, 'info');
-	
-	try {
-		ws = new WebSocket(wsUrl);
-		
-		// Set a connection timeout
-		const connectionTimeout = setTimeout(() => {
-			if (ws.readyState === WebSocket.CONNECTING) {
-				addLogEntry('Connection timeout - retrying...', 'warning');
-				ws.close();
-			}
-		}, 5000);
-
-		ws.onopen = function(event) {
-			clearTimeout(connectionTimeout);
-			reconnectAttempts = 0;
-			reconnectDelay = 1000;
-			
-			updateConnectionStatus(true);
-			showNotification('Connected to Opulent Voice System', 'success');
-			addLogEntry('WebSocket connection established', 'success');
-			
-			// Hide retry panel if visible
-			const retryPanel = document.getElementById('connection-retry');
-			if (retryPanel) {
-				retryPanel.style.display = 'none';
-			}
-			
-			// Load initial data
-			loadCurrentConfig();
-			sendWebSocketMessage('get_message_history');
-		};
-
-		ws.onclose = function(event) {
-			clearTimeout(connectionTimeout);
-			updateConnectionStatus(false);
-			
-			// Only attempt reconnect if it wasn't a clean close
-			if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
-				addLogEntry(`Connection closed (code: ${event.code}). Reconnecting in ${reconnectDelay/1000}s...`, 'warning');
-				
-				setTimeout(() => {
-					reconnectAttempts++;
-					reconnectDelay = Math.min(reconnectDelay * 1.5, 30000); // Max 30 seconds
-					connectWebSocket();
-				}, reconnectDelay);
-			} else {
-				addLogEntry('Connection failed - maximum retry attempts reached', 'error');
-				showNotification('Connection failed. Check if the radio system is running.', 'error');
-				const retryPanel = document.getElementById('connection-retry');
-				if (retryPanel) {
-					retryPanel.style.display = 'block';
-				}
-			}
-		};
-
-		ws.onmessage = function(event) {
-			try {
-				const message = JSON.parse(event.data);
-				handleWebSocketMessage(message);
-			} catch (e) {
-				addLogEntry(`Error parsing message: ${e.message}`, 'error');
-			}
-		};
-
-		ws.onerror = function(error) {
-			clearTimeout(connectionTimeout);
-			addLogEntry('WebSocket error occurred', 'error');
-			updateConnectionStatus(false);
-		};
-
-	} catch (error) {
-		addLogEntry(`Failed to create WebSocket: ${error.message}`, 'error');
-		updateConnectionStatus(false);
-	}
+// WebSocket connection variables 
+if (typeof ws === 'undefined') {
+    var ws = null;
 }
+let reconnectAttempts = 0;
+let reconnectDelay = 1000;
+let maxReconnectAttempts = 10;
+
+
+
+
+
+
+
+
+
+// Robust WebSocket connection management
+function connectWebSocket() {
+    // STEP 1: Complete cleanup of existing connection
+    if (ws) {
+        // Remove all event handlers to prevent leaks
+        ws.onopen = null;
+        ws.onclose = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        
+        // Close connection if still open
+        if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+            ws.close(1000, "Reconnecting");
+        }
+        
+        ws = null;
+    }
+    
+    // STEP 2: Clear any pending reconnection timers
+    if (window.reconnectTimer) {
+        clearTimeout(window.reconnectTimer);
+        window.reconnectTimer = null;
+    }
+    
+    const wsUrl = `ws://${window.location.host}/ws`;
+    addLogEntry(`Attempting to connect to ${wsUrl}`, 'info');
+    
+    try {
+        ws = new WebSocket(wsUrl);
+        
+        // STEP 3: Set connection timeout
+        const connectionTimeout = setTimeout(() => {
+            if (ws && ws.readyState === WebSocket.CONNECTING) {
+                addLogEntry('Connection timeout - retrying...', 'warning');
+                ws.close(1000, "Timeout");
+            }
+        }, 5000);
+
+        ws.onopen = function(event) {
+            console.log(`✅ ${new Date().toISOString()}: WebSocket OPENED successfully`);
+            
+            clearTimeout(connectionTimeout);
+            reconnectAttempts = 0;
+            reconnectDelay = 1000;
+            
+            updateConnectionStatus(true);
+            showNotification('Connected to Opulent Voice System', 'success');
+            addLogEntry('WebSocket connection established', 'success');
+            
+            // Hide retry panel if visible
+            const retryPanel = document.getElementById('connection-retry');
+            if (retryPanel) {
+                retryPanel.style.display = 'none';
+            }
+            
+            // Load initial data
+            loadCurrentConfig();
+            sendWebSocketMessage('get_message_history');
+        };
+
+        ws.onclose = function(event) {
+            console.log(`🔌 ${new Date().toISOString()}: WebSocket CLOSED, code: ${event.code}, reason: '${event.reason}', wasClean: ${event.wasClean}`);
+            
+            clearTimeout(connectionTimeout);
+            updateConnectionStatus(false);
+            
+            // STEP 4: Implement connection failure tracking
+            if (!window.connectionFailures) {
+                window.connectionFailures = 0;
+            }
+            window.connectionFailures++;
+            
+            // STEP 5: Auto-refresh after too many failures
+            if (window.connectionFailures >= 5) {
+                addLogEntry('Too many connection failures - refreshing page...', 'warning');
+                showNotification('Connection unstable - refreshing page...', 'warning');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+                return;
+            }
+            
+            // Only attempt reconnect if it wasn't a clean close
+            if (event.code !== 1000 && reconnectAttempts < maxReconnectAttempts) {
+                addLogEntry(`Connection closed (code: ${event.code}). Reconnecting in ${reconnectDelay/1000}s... (attempt ${reconnectAttempts + 1}/${maxReconnectAttempts})`, 'warning');
+                
+                // STEP 6: Store timer reference for cleanup
+                window.reconnectTimer = setTimeout(() => {
+                    reconnectAttempts++;
+                    reconnectDelay = Math.min(reconnectDelay * 1.5, 30000);
+                    connectWebSocket();
+                }, reconnectDelay);
+            } else {
+                addLogEntry('Connection failed - maximum retry attempts reached', 'error');
+                showNotification('Connection failed. Check if the radio system is running.', 'error');
+                const retryPanel = document.getElementById('connection-retry');
+                if (retryPanel) {
+                    retryPanel.style.display = 'block';
+                }
+            }
+        };
+
+        ws.onmessage = function(event) {
+            try {
+                const message = JSON.parse(event.data);
+                console.log(`📨 ${new Date().toISOString()}: Received ${message.type} message`);
+                
+                // STEP 7: Reset failure counter on successful message
+                window.connectionFailures = 0;
+                
+                handleWebSocketMessage(message);
+            } catch (e) {
+                addLogEntry(`Error parsing message: ${e.message}`, 'error');
+            }
+        };
+
+        ws.onerror = function(error) {
+            clearTimeout(connectionTimeout);
+            addLogEntry('WebSocket error occurred', 'error');
+            updateConnectionStatus(false);
+        };
+
+    } catch (error) {
+        addLogEntry(`Failed to create WebSocket: ${error.message}`, 'error');
+        updateConnectionStatus(false);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function sendWebSocketMessage(action, data = {}) {
 	if (ws && ws.readyState === WebSocket.OPEN) {
@@ -264,17 +339,14 @@ function handleWebSocketMessage(message) {
 			handleTranscriptionReceived(message.data);
 			break;
 
-//		This might not need to be here - duplicate handlers?
-//		case 'tts_test_result':
-//			console.log('Basic Handler: TTS Test Result:', data.data);
-//			break;
-
 		default:
 			// Try enhanced config handler for any unhandled messages
 			handleEnhancedConfigMessage(message);
 
 			// Only log as unknown if it's NOT a config-related message
-			if (!message.type.includes('config') && !message.type.includes('connection_test')) {
+			if (!message.type.includes('config') && 
+			    !message.type.includes('connection_test') && 
+			    !message.type.includes('tts_test_result')) {
 				console.warn('🔍 Unknown message type:', message.type);
 				addLogEntry(`Unknown message type: ${message.type}`, 'warning');
 			}

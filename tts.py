@@ -18,6 +18,7 @@ import asyncio
 import logging
 import threading
 import time
+import struct
 from queue import Queue, Empty
 from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
@@ -212,15 +213,28 @@ class TTSEngineManager:
         return False
 
 
+
+
+
     def _linux_pcm_speak(self, text: str, voice: str, rate: int, volume: float) -> bool:
-        """Generate PCM audio and play through existing audio system"""
+        """Generate PCM audio and play through existing audio system - FIXED SAMPLE RATE"""
         try:
             if not self.audio_output_manager:
                 self.logger.warning("No audio output manager available for TTS")
                 return False
             
-            # Generate PCM audio using espeak to stdout
-            cmd = ["espeak", "--stdout", "-s", str(rate)]
+            # CRITICAL FIX: espeak doesn't support -r option, so we need to resample
+            # Your audio system expects 48kHz, but espeak defaults to 22kHz
+            target_sample_rate = 48000  # Match your audio system's sample rate
+            
+            # Generate PCM audio using espeak (will be 22kHz by default)
+            cmd = [
+                "espeak", 
+                "--stdout", 
+                "-s", str(rate),
+                "-a", str(int(volume * 100))  # Convert 0.0-1.0 to 0-100
+            ]
+            
             if voice != "default" and voice:
                 cmd.extend(["-v", voice])
             cmd.append(text)
@@ -231,20 +245,39 @@ class TTSEngineManager:
             
             if result.returncode == 0 and result.stdout:
                 # espeak --stdout gives us WAV format
-                # Skip the WAV header (44 bytes) to get raw PCM
+                # Parse WAV header to get the ACTUAL sample rate
                 if len(result.stdout) > 44:
-                    pcm_data = result.stdout[44:]  # Skip WAV header
+                    wav_data = result.stdout
                     
-                    print(f"🔊 TTS: Generated {len(pcm_data)} bytes of PCM audio")
-                    
-                    # Queue through existing audio system (same as voice bubbles!)
-                    self.audio_output_manager.queue_audio_for_playback(
-                        pcm_data, 
-                        "TTS_PLAYBACK"
-                    )
-                    
-                    print(f"🔊 TTS: Queued PCM audio for playback")
-                    return True
+                    # Parse WAV header to verify sample rate
+                    # WAV header format: positions 24-27 contain sample rate (little-endian)
+                    if wav_data[:4] == b'RIFF' and wav_data[8:12] == b'WAVE':
+                        actual_sample_rate = struct.unpack('<I', wav_data[24:28])[0]
+                        channels = struct.unpack('<H', wav_data[22:24])[0]
+                        bits_per_sample = struct.unpack('<H', wav_data[34:36])[0]
+                        
+                        print(f"🔊 TTS: WAV header - {actual_sample_rate}Hz, {channels}ch, {bits_per_sample}bit")
+                        
+                        # Skip WAV header (44 bytes) to get raw PCM
+                        pcm_data = wav_data[44:]
+                        
+                        # ALWAYS resample since espeak defaults to 22kHz and we need 48kHz
+                        print(f"🔊 TTS: Converting {actual_sample_rate}Hz → {target_sample_rate}Hz")
+                        pcm_data = self._resample_audio(pcm_data, actual_sample_rate, target_sample_rate)
+                        
+                        print(f"🔊 TTS: Generated {len(pcm_data)} bytes of PCM audio at {target_sample_rate}Hz")
+                        
+                        # Queue through existing audio system
+                        self.audio_output_manager.queue_audio_for_playback(
+                            pcm_data, 
+                            "TTS_PLAYBACK"
+                        )
+                        
+                        print(f"🔊 TTS: Queued PCM audio for playback")
+                        return True
+                    else:
+                        print(f"🔊 TTS: Invalid WAV header")
+                        return False
                 else:
                     print(f"🔊 TTS: Generated audio too short ({len(result.stdout)} bytes)")
                     return False
@@ -260,8 +293,99 @@ class TTSEngineManager:
         except Exception as e:
             self.logger.error(f"Linux PCM TTS error: {e}")
             print(f"🔊 TTS: Exception: {e}")
-            return False    
-    
+            return False
+
+
+
+
+    def _resample_audio(self, pcm_data: bytes, from_rate: int, to_rate: int) -> bytes:
+        """Resample PCM audio data from one sample rate to another"""
+        try:
+            # Try scipy first for high-quality resampling
+            import numpy as np
+            from scipy import signal
+            
+            # Convert bytes to numpy array (assuming 16-bit mono)
+            audio_samples = np.frombuffer(pcm_data, dtype=np.int16)
+            
+            # Calculate resampling ratio
+            ratio = to_rate / from_rate
+            
+            # Resample using scipy
+            resampled_samples = signal.resample(audio_samples, int(len(audio_samples) * ratio))
+            
+            # Convert back to 16-bit integers
+            resampled_samples = np.clip(resampled_samples, -32768, 32767).astype(np.int16)
+            
+            print(f"🔊 TTS: High-quality resampling completed")
+            return resampled_samples.tobytes()
+            
+        except ImportError:
+            print("🔊 TTS: scipy not available - using numpy-only resampling")
+            return self._numpy_resample(pcm_data, from_rate, to_rate)
+        except Exception as e:
+            print(f"🔊 TTS: Scipy resampling error: {e}")
+            return self._numpy_resample(pcm_data, from_rate, to_rate)
+
+    def _numpy_resample(self, pcm_data: bytes, from_rate: int, to_rate: int) -> bytes:
+        """Numpy-only resampling using linear interpolation"""
+        try:
+            import numpy as np
+            
+            audio_samples = np.frombuffer(pcm_data, dtype=np.int16).astype(np.float32)
+            
+            # Calculate new length
+            ratio = to_rate / from_rate
+            new_length = int(len(audio_samples) * ratio)
+            
+            # Create new time indices
+            old_indices = np.arange(len(audio_samples))
+            new_indices = np.linspace(0, len(audio_samples) - 1, new_length)
+            
+            # Linear interpolation
+            resampled = np.interp(new_indices, old_indices, audio_samples)
+            
+            # Convert back to 16-bit integers
+            resampled = np.clip(resampled, -32768, 32767).astype(np.int16)
+            
+            print(f"🔊 TTS: Numpy resampling completed ({len(audio_samples)} → {len(resampled)} samples)")
+            return resampled.tobytes()
+            
+        except Exception as e:
+            print(f"🔊 TTS: Numpy resampling error: {e}")
+            return self._simple_resample(pcm_data, from_rate, to_rate)
+
+    def _simple_resample(self, pcm_data: bytes, from_rate: int, to_rate: int) -> bytes:
+        """Simple resampling by duplication or decimation"""
+        try:
+            import numpy as np
+            
+            audio_samples = np.frombuffer(pcm_data, dtype=np.int16)
+            ratio = to_rate / from_rate
+            
+            if ratio > 1:
+                # Upsample by repeating samples
+                repeat_count = int(ratio)
+                resampled = np.repeat(audio_samples, repeat_count)
+            else:
+                # Downsample by taking every nth sample
+                step = int(1 / ratio)
+                resampled = audio_samples[::step]
+            
+            return resampled.tobytes()
+            
+        except Exception as e:
+            print(f"🔊 TTS: Simple resampling error: {e}")
+            return pcm_data
+
+
+
+
+
+
+
+
+
 
 
 class TTSQueue:
