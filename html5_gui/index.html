@@ -69,8 +69,8 @@
 </head>
 <body>
 	<!-- Screen reader announcements -->
-	<div id="sr-announcements" aria-live="polite" aria-atomic="true" class="sr-only"></div>
-	<div id="sr-status" aria-live="assertive" aria-atomic="true" class="sr-only"></div>
+	<div id="sr-announcements" aria-live="polite" aria-atomic="true" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;"></div>
+	<div id="sr-status" aria-live="assertive" aria-atomic="true" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;"></div>
 	
 	<header role="banner" class="main-header">
 		<div class="header-content">
@@ -85,7 +85,7 @@
 			</div>
 			
 			<div class="header-controls">
-				<nav class="tab-navigation" role="tablist">
+				<nav class="tab-navigation" role="tablist" aria-label="Main navigation">
 					<button class="tab-button active" 
 							role="tab" 
 							aria-selected="true" 
@@ -111,10 +111,10 @@
 		
 		<!-- Chat Panel (Default View) -->
 		<div id="chat-panel" class="panel" role="tabpanel" aria-labelledby="chat-tab">
-			<h2 class="panel-title">
+			<div class="panel-title">
 				<span class="panel-icon">💬</span>
 				Communications
-			</h2>
+			</div>
 			
 			<div class="chat-container">
 				<div class="chat-header">
@@ -131,7 +131,7 @@
 						<span aria-hidden="true">🎤</span>
 						<span class="ptt-text">Push to Talk</span>
 					</button>
-					<div id="ptt-help" class="sr-only">Press and hold to transmit voice message, release to stop</div>
+					<div id="ptt-help" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">Press and hold to transmit voice message, release to stop</div>
 				</div>
 				
 				<div id="message-history" 
@@ -164,7 +164,7 @@
 							rows="1"
 							aria-describedby="message-help"
 							disabled></textarea>
-						<div id="message-help" class="sr-only">Enter your radio message and press Send or Enter to transmit</div>
+						<div id="message-help" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">Enter your radio message and press Send or Enter to transmit</div>
 					</div>
 					<button type="submit"
 						class="send-button"
@@ -177,17 +177,17 @@
 
 		<!-- Configuration Panel -->
 		<div id="config-panel" class="config-tabs" role="tabpanel" aria-labelledby="config-tab">
-			<h2 class="panel-title">
+			<div class="panel-title">
 				<span class="panel-icon">⚙️</span>
 				Configuration Management
-			</h2>
+			</div>
 			
 			<!-- Configuration Management Section -->
 			<div class="config-section config-management-consolidated">
-				<h3 class="section-header">
+				<div class="section-header">
 					<span aria-hidden="true">📋</span>
 					Configuration Management
-				</h3>
+				</div>
 				
 				<!-- Current Configuration Status -->
 				<div class="config-status-display">
@@ -332,10 +332,10 @@
 			<div class="config-grid">
 				<!-- Station Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">📡</span>
 						Station Settings
-					</h3>
+					</div>
 					
 					<div class="form-group">
 						<label for="callsign">Callsign * <span class="required-indicator">(Required)</span></label>
@@ -354,10 +354,10 @@
 
 				<!-- Network Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🌐</span>
 						Network Settings
-					</h3>
+					</div>
 					
 					<div class="form-group">
 						<label for="target-ip">Target IP Address</label>
@@ -399,10 +399,10 @@
 
 				<!-- Transcription Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🗨️</span>
 						Transcription Settings
-					</h3>
+					</div>
 					
 					<!-- Essential Controls Only -->
 					<div class="checkbox-group">
@@ -440,10 +440,10 @@
 
 				<!-- Compact Text-to-Speech Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🔊</span>
 						Text-to-Speech Settings
-					</h3>
+					</div>
 
 					<!-- Single row with main enable checkbox -->
 					<div class="checkbox-group" style="margin-bottom: 0.75rem;">
@@ -482,10 +482,10 @@
 
 				<!-- Target Device Type Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🔧</span>
 						Target Device Type Settings
-					</h3>
+					</div>
 					
 					<div class="form-group">
 						<label for="target-type">Target Type</label>
@@ -515,10 +515,10 @@
 
 				<!-- GPIO Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🔌</span>
 						GPIO Settings (Raspberry Pi)
-					</h3>
+					</div>
 					
 					<div class="form-group">
 						<label for="ptt-pin">PTT GPIO Pin</label>
@@ -549,10 +549,10 @@
 
 				<!-- Debug Configuration -->
 				<div class="config-section">
-					<h3 class="section-header">
+					<div class="section-header">
 						<span aria-hidden="true">🛠</span>
 						Debug Settings
-					</h3>
+					</div>
 					
 					<div class="checkbox-group">
 						<input type="checkbox" id="verbose-mode">
@@ -579,10 +579,10 @@
 
 		<!-- Status Panel (Always Visible) -->
 		<div class="panel">
-			<h2 class="panel-title">
+			<div class="panel-title">
 				<span class="panel-icon">📊</span>
 				System Status
-			</h2>
+			</div>
 			
 			<div class="status-grid">
 				<div class="stat-item">
@@ -621,7 +621,7 @@
 					<button class="btn" onclick="clearLog()" aria-describedby="clear-log-help">
 						Clear Log
 					</button>
-					<div id="clear-log-help" class="sr-only">Removes all messages from the system log display</div>
+					<div id="clear-log-help" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">Removes all messages from the system log display</div>
 				</div>
 				
 				<div id="system-log" 
@@ -644,5 +644,7 @@
 	<script src="/static/js/app.js"></script>
 	<script src="/static/js/audio.js"></script>
 	<script src="/static/js/config.js"></script>
+	<script src="/static/js/accessibility_announcements.js"></script>
+
 </body>
 </html>

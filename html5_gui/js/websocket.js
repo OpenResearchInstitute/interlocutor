@@ -339,6 +339,18 @@ function handleWebSocketMessage(message) {
 			handleTranscriptionReceived(message.data);
 			break;
 
+		// Future Enhancement
+		// This adds  a handler for accessibility announcements
+		// in order to coordinate between Python and JavaScript.
+		case 'accessibility_announcement':
+			if (typeof accessibilityAnnouncer !== 'undefined') {
+				const data = message.data;
+				if (data.type === 'newMessage') {
+					accessibilityAnnouncer.announceNewMessage(data.from, data.message);
+				}
+			}
+			break;
+
 		default:
 			// Try enhanced config handler for any unhandled messages
 			handleEnhancedConfigMessage(message);

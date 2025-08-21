@@ -514,8 +514,6 @@ class EnhancedMessageReceiver:
         try:
             message_text = udp_payload.decode('utf-8')
 
-
-
             # Display in CLI if chat interface available AND no web interface connected
             if self.chat_interface and not self.web_bridge.web_interface:
                 if hasattr(self.chat_interface, 'display_received_message'):
@@ -523,6 +521,15 @@ class EnhancedMessageReceiver:
                 else:
                     # Fallback display	
                     print(f"\n📨 [{from_station}]: {message_text}")
+
+            # Add accessibility announcement for web interface
+            if self.web_bridge.web_interface:
+                # Send accessibility announcement to web interface
+                self._notify_web_async('accessibility_announcement', {
+                    'type': 'newMessage',
+                    'from': from_station,
+                    'message': message_text
+                })
 
             # Queue for TTS if enabled
             if hasattr(self, 'tts_manager') and self.tts_manager:
@@ -537,6 +544,9 @@ class EnhancedMessageReceiver:
                 'timestamp': str(timestamp), # ensure that this is a string
                 'direction': 'incoming'
             })
+
+            # Accessibility announcements
+            accessibilityAnnouncer.announceNewMessage(from_station, message_text)
 
         except UnicodeDecodeError:
             print(f"📨 [{from_station}]: <Binary text data: {len(udp_payload)}B>")

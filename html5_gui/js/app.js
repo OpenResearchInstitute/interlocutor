@@ -44,9 +44,23 @@ function switchTab(tabName) {
 			console.log("📋 DEBUG: WebSocket not ready, can't request config");
 		}
 	}
-	
-	announceToScreenReader(`Switched to ${tabName} tab`);
+
+	// Use accessibility announcer
+	if (typeof accessibilityAnnouncer !== 'undefined' && accessibilityAnnouncer) {
+		accessibilityAnnouncer.announceTabChange(tabName);
+	} else {
+		console.log('📊 AccessibilityAnnouncer not ready yet - tab:', tabName);
+		// Keep the existing fallback
+		announceToScreenReader(`Switched to ${tabName} tab`);
+	}
 }
+
+
+
+
+
+
+
 
 // Connection status management
 function updateConnectionStatus(connected) {
@@ -68,6 +82,14 @@ function updateConnectionStatus(connected) {
 		messageInput.disabled = false;
 		sendButton.disabled = false;
 		messageInput.placeholder = 'Type your message...';
+
+		// Accessibility announcements
+		if (typeof accessibilityAnnouncer !== 'undefined' && accessibilityAnnouncer) {
+			accessibilityAnnouncer.announceConnectionStatus('Connected');
+		} else {
+			console.log('🔊 AccessibilityAnnouncer not ready yet - status:', 'Connected');
+		}
+
 	} else {
 		statusIndicator.className = 'status-indicator disconnected';
 		statusText.textContent = 'Disconnected';
@@ -85,6 +107,13 @@ function updateConnectionStatus(connected) {
 		// Reset PTT state
 		if (pttActive) {
 			handlePTTStateChange(false);
+		}
+
+		// Accessibility announcements
+		if (typeof accessibilityAnnouncer !== 'undefined' && accessibilityAnnouncer) {
+			accessibilityAnnouncer.announceConnectionStatus('Disconnected');
+		} else {
+			console.log('🔊 AccessibilityAnnouncer not ready - status: Disconnected');
 		}
 	}
 }
