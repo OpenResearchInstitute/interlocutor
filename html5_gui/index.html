@@ -609,6 +609,7 @@
 			<!-- System Log -->
 			<div class="log-section">
 				<h3>System Log</h3>
+				
 				<div class="log-controls">
 					<label for="log-level">Filter log messages by severity level</label>
 					<select id="log-level">
@@ -617,11 +618,6 @@
 						<option value="warning">Warnings and Errors</option>
 						<option value="error">Errors Only</option>
 					</select>
-					
-					<button class="btn" onclick="clearLog()" aria-describedby="clear-log-help">
-						Clear Log
-					</button>
-					<div id="clear-log-help" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">Removes all messages from the system log display</div>
 				</div>
 				
 				<div id="system-log" 
@@ -630,6 +626,13 @@
 					 aria-live="polite"
 					 aria-label="System log messages"
 					 tabindex="0">
+				</div>
+				
+				<div class="log-clear-controls">
+					<button class="btn" onclick="clearLog()" aria-describedby="clear-log-help">
+						Clear Log
+					</button>
+					<div id="clear-log-help" style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;">Removes all messages from the system log display</div>
 				</div>
 			</div>
 		</div>

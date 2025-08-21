@@ -549,6 +549,12 @@ body {
 .log-entry.error { color: var(--error-color); }
 .log-entry.success { color: var(--success-color); }
 
+.log-clear-controls {
+	display: flex;
+	justify-content: center;
+	margin-top: 0.5rem;
+}
+
 /* Notification System */
 .notification {
 	position: fixed;
