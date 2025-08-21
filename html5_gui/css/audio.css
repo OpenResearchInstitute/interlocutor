@@ -514,7 +514,7 @@
 
 
 # ===================================================================
-# 6. CSS styles for transcription display
+# CSS styles for transcription display
 # ===================================================================
 
 /* Transcription display styles */
@@ -558,6 +558,39 @@
     opacity: 0.7;
     font-weight: normal;
 }
+
+
+
+/* TTS styling */
+/* TTS Test Button Disabled State */
+.tts-disabled {
+	opacity: 0.5 !important;
+	cursor: not-allowed !important;
+	background-color: #666 !important;
+	color: #999 !important;
+	border-color: #555 !important;
+}
+
+.tts-disabled:hover {
+	background-color: #666 !important;
+	color: #999 !important;
+	transform: none !important;
+	box-shadow: none !important;
+}
+
+.tts-disabled:focus {
+	background-color: #666 !important;
+	color: #999 !important;
+	box-shadow: none !important;
+}
+
+/* Ensure the button text is clearly readable when disabled */
+#test-tts-button.tts-disabled {
+	font-size: 0.8rem;
+	min-width: 140px; /* Ensure enough space for "Enable TTS to Test" text */
+}
+
+
 
 /* Outgoing message transcription styling */
 .message.outgoing .transcription-text {

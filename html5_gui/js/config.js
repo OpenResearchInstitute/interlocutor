@@ -191,41 +191,129 @@ function populateEnhancedConfigFromData(config) {
 	}
 	
 	updateConfigStatus('Configuration loaded successfully');
+	updateTTSButtonStatesFromConfig(config);
+
 }
+
+
+
+
+
+
+
 
 
 
 
 function setupTTSTestButton() {
 	const testButton = document.getElementById('test-tts-button');
-	if (testButton) {
-		testButton.addEventListener('click', function() {
-			// Send test TTS command
-			if (ws && ws.readyState === WebSocket.OPEN) {
-				ws.send(JSON.stringify({
-					action: 'test_tts',
-					data: {
-						message: 'This is a test of the text to speech system at the current rate setting.'
-					}
-				}));
-                
-				// Give user feedback
-				const originalText = testButton.textContent;
-				testButton.textContent = 'Testing...';
-				testButton.disabled = true;
-                
-				// Reset button after a few seconds
-				setTimeout(() => {
-					testButton.textContent = originalText;
-					testButton.disabled = false;
-				}, 3000);
-			}
-		});
+	const ttsEnabledCheckbox = document.getElementById('tts-enabled');
+	
+	if (!testButton || !ttsEnabledCheckbox) {
+		console.warn('TTS test button or enabled checkbox not found');
+		return;
 	}
+	
+	// Function to update button state based on TTS enabled status
+	function updateTestButtonState() {
+		const isTTSEnabled = ttsEnabledCheckbox.checked;
+		
+		if (isTTSEnabled) {
+			// TTS is enabled - button should be functional
+			testButton.disabled = false;
+			testButton.textContent = '🎵 Test';
+			testButton.classList.remove('tts-disabled');
+			testButton.title = 'Test text-to-speech with current settings';
+		} else {
+			// TTS is disabled - button should be grayed out
+			testButton.disabled = true;
+			testButton.textContent = 'Enable TTS to Test';
+			testButton.classList.add('tts-disabled');
+			testButton.title = 'Enable TTS first to test text-to-speech';
+		}
+	}
+	
+	// Set initial state
+	updateTestButtonState();
+	
+	// Listen for changes to the TTS enabled checkbox
+	ttsEnabledCheckbox.addEventListener('change', updateTestButtonState);
+	
+	// Enhanced click handler that respects enabled state
+	testButton.addEventListener('click', function() {
+		// Double-check TTS is enabled before proceeding
+		if (!ttsEnabledCheckbox.checked) {
+			showNotification('Please enable TTS first before testing', 'warning');
+			return;
+		}
+		
+		// Send test TTS command
+		if (ws && ws.readyState === WebSocket.OPEN) {
+			ws.send(JSON.stringify({
+				action: 'test_tts',
+				data: {
+					message: 'This is a test of the text to speech system at the current rate setting.'
+				}
+			}));
+			
+			// Give user feedback
+			const originalText = testButton.textContent;
+			testButton.textContent = 'Testing...';
+			testButton.disabled = true;
+			
+			// Reset button after a few seconds
+			setTimeout(() => {
+				updateTestButtonState(); // Use the state function instead of hardcoded reset
+			}, 3000);
+		} else {
+			showNotification('Cannot test TTS: not connected to radio system', 'error');
+		}
+	});
 }
+
 
 // Call this function when the page loads
 document.addEventListener('DOMContentLoaded', setupTTSTestButton);
+
+
+
+
+
+function updateTTSButtonStatesFromConfig(config) {
+	if (!config || !config.gui || !config.gui.tts) {
+		return;
+	}
+	
+	const ttsEnabled = config.gui.tts.enabled || false;
+	const ttsEnabledCheckbox = document.getElementById('tts-enabled');
+	const testButton = document.getElementById('test-tts-button');
+	
+	// Update checkbox state
+	if (ttsEnabledCheckbox) {
+		ttsEnabledCheckbox.checked = ttsEnabled;
+	}
+	
+	// Update test button state
+	if (testButton) {
+		if (ttsEnabled) {
+			testButton.disabled = false;
+			testButton.textContent = '🎵 Test';
+			testButton.classList.remove('tts-disabled');
+			testButton.title = 'Test text-to-speech with current settings';
+		} else {
+			testButton.disabled = true;
+			testButton.textContent = 'Enable TTS to Test';
+			testButton.classList.add('tts-disabled');
+			testButton.title = 'Enable TTS first to test text-to-speech';
+		}
+	}
+}
+
+
+
+
+
+
 
 
 
@@ -236,6 +324,7 @@ document.getElementById('transcription-confidence').addEventListener('input', fu
 	const value = Math.round(this.value * 100);
 	document.getElementById('confidence-value').textContent = value + '%';
 });
+
 
 
 
