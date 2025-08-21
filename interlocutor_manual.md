@@ -250,6 +250,20 @@ On first run, you'll be prompted to:
 
 The web interface will be available at `http://localhost:8000`
 
+Ctrl+1 = Switch to Chat tab, the communications page
+
+Ctrl+2 = Switch to Configuration tab, where we build, verify, load, and save configuration files
+
+For full keyboard accessibility:
+- Tab through elements in order
+- Shift+Tab to go backwards
+- Enter/Space on buttons to activate them
+- Arrow keys in form controls
+
+Tab order should be:
+
+Skip link → Chat button → Configuration button → PTT button → Message input → Send button → Configuration form fields...
+
 ## Troubleshooting
 
 ### PyAudio Installation Issues
