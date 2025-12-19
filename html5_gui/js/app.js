@@ -305,6 +305,7 @@ function populateStatusFromData(status) {
 		const targetPortElement = document.getElementById('target-port');
 		if (targetIpElement) targetIpElement.value = status.config.target_ip || '';
 		if (targetPortElement) targetPortElement.value = status.config.target_port || '';
+		if (targetEncapElement) targetEncapElement.value = status.config.encap_mode || '';
 	}
 }
 

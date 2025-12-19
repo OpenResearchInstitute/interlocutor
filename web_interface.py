@@ -1271,6 +1271,7 @@ class EnhancedRadioWebInterface:
 						'target_ip': self.config.network.target_ip,
 						'target_port': self.config.network.target_port,
 						'listen_port': self.config.network.listen_port,
+						'encap_mode': self.config.network.encap_mode,
 						'voice_port': getattr(self.config.network, 'voice_port', 57373),
 						'text_port': getattr(self.config.network, 'text_port', 57374),
 						'control_port': getattr(self.config.network, 'control_port', 57375),
@@ -1406,6 +1407,8 @@ class EnhancedRadioWebInterface:
 					self.config.network.target_port = int(network['target_port'])
 				if 'listen_port' in network:
 					self.config.network.listen_port = int(network['listen_port'])
+				if 'encap_mode' in network:
+					self.config.network.encap_mode = network['encap_mode']
 				if 'voice_port' in network:
 					self.config.network.voice_port = int(network['voice_port'])
 				if 'text_port' in network:
@@ -2103,6 +2106,11 @@ class EnhancedRadioWebInterface:
 			errors.append("Invalid listen port")
 			field_errors['listen-port'] = "Port must be 1-65535"
 		
+		encap_mode = network.get('encap_mode')
+		if encap_mode and encap_mode != "UDP" and encap_mode != "TCP":
+			errors.append("Invalid encapsulation mode")
+			field_errors['encap-mode'] = "Mode must be UDP or TCP"
+		
 		# Validate GPIO pins
 		gpio = form_config.get('gpio', {})
 		ptt_pin = gpio.get('ptt_pin')
@@ -2152,6 +2160,8 @@ class EnhancedRadioWebInterface:
 				temp_config.network.target_port = int(network['target_port'])
 			if 'listen_port' in network:
 				temp_config.network.listen_port = int(network['listen_port'])
+			if 'encap_mode' in network:
+				temp_config.network.encap_mode = network['encap_mode']
 		
 		if 'gpio' in form_config:
 			gpio = form_config['gpio']
@@ -2196,40 +2206,48 @@ class EnhancedRadioWebInterface:
 			# IMPROVED NETWORK TEST
 			target_ip = self.config.network.target_ip
 			target_port = self.config.network.target_port
+			encap_mode = self.config.network.encap_mode
         
-			try:
-				import socket
-            
-				# Test UDP connectivity with timeout
-				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-				sock.settimeout(3.0)  # 3 second timeout
-            
-				# Try to connect (for UDP this just validates the address)
+			if encap_mode == "UDP":
 				try:
-					sock.connect((target_ip, target_port))
-                
-					# Send actual test frame like before
-					if hasattr(self.radio_system, 'transmitter'):
-						test_data = b"TEST_CONNECTION_FORM"
-						test_success = self.radio_system.transmitter.send_frame(test_data)
-						test_results["target_reachable"] = test_success
-					else:
-						test_results["target_reachable"] = True  # At least IP is valid
-                    
-				except socket.gaierror:
-					# DNS resolution failed
+					import socket
+				
+					# Test UDP connectivity with timeout
+					sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+					sock.settimeout(3.0)  # 3 second timeout
+				
+					# Try to connect (for UDP this just validates the address)
+					try:
+						sock.connect((target_ip, target_port))
+					
+						# Send actual test frame like before
+						if hasattr(self.radio_system, 'transmitter'):
+							test_data = b"TEST_CONNECTION_FORM"
+							test_success = self.radio_system.transmitter.send_frame(test_data)
+							test_results["target_reachable"] = test_success
+						else:
+							test_results["target_reachable"] = True  # At least IP is valid
+						
+					except socket.gaierror:
+						# DNS resolution failed
+						test_results["target_reachable"] = False
+						self.logger.warning(f"Cannot resolve hostname: {target_ip}")
+					except socket.error as e:
+						# Network unreachable, host unreachable, etc.
+						test_results["target_reachable"] = False
+						self.logger.warning(f"Network error to {encap_mode}:{target_ip}:{target_port}: {e}")
+					finally:
+						sock.close()
+					
+				except Exception as e:
 					test_results["target_reachable"] = False
-					self.logger.warning(f"Cannot resolve hostname: {target_ip}")
-				except socket.error as e:
-					# Network unreachable, host unreachable, etc.
-					test_results["target_reachable"] = False
-					self.logger.warning(f"Network error to {target_ip}:{target_port}: {e}")
-				finally:
-					sock.close()
-                
-			except Exception as e:
-				test_results["target_reachable"] = False
-				self.logger.warning(f"Network test failed: {e}")
+					self.logger.warning(f"Network test failed: {e}")
+			elif encap_mode == "TCP":
+				#!!! implement this
+				...
+				self.logger.warning("Network test unimplemented for TCP")
+			else:
+				self.logger.error(f"Encapsulation mode {encap_mode} is invalid")
     
 		overall_success = all([
 		test_results["network_available"],
@@ -2291,6 +2309,7 @@ class EnhancedRadioWebInterface:
 			"config": {
 				"target_ip": self.config.network.target_ip if self.config else "unknown",
 				"target_port": self.config.network.target_port if self.config else 0,
+				"encap_mode": self.config.network.encap_mode if self.config else "unknown",
 				"audio_enabled": True  # TODO: Check actual audio status
 			},
 			"stats": self.get_system_stats(),

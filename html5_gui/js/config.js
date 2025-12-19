@@ -58,6 +58,10 @@ function populateEnhancedConfigFromData(config) {
 			const listenPortElement = document.getElementById('listen-port');
 			if (listenPortElement) listenPortElement.value = config.network.listen_port;
 		}
+		if (config.network.encap_mode) {
+			const encapModeElement = document.getElementById('encap-mode');
+			if (encapModeElement) encapModeElement.value = config.network.encap_mode;
+		}
 	}
 	
 	// Target Device Type settings
@@ -349,7 +353,8 @@ function gatherEnhancedConfigData() {
 		network: {
 			target_ip: targetIpElement ? targetIpElement.value.trim() : '',
 			target_port: targetPortElement ? (parseInt(targetPortElement.value) || 57372) : 57372,
-			listen_port: listenPortElement ? (parseInt(listenPortElement.value) || 57372) : 57372
+			listen_port: listenPortElement ? (parseInt(listenPortElement.value) || 57372) : 57372,
+			encap_mode: encapModeElement ? encapModeElement.value.trim() : ''
 		},
 		protocol: {
 			target_type: targetTypeElement ? (targetTypeElement.value || 'computer') : 'computer',
@@ -440,6 +445,10 @@ function validateConfig(config) {
 	
 	if (config.network.target_port < 1 || config.network.target_port > 65535) {
 		errors.push('Target port must be between 1 and 65535');
+	}
+	
+	if (config.network.encap_mode != "UDP" && config.network.encap_mode != "TCP") {
+		errors.push('Encapsulation mode must be UDP or TCP');
 	}
 	
 	if (errors.length > 0) {

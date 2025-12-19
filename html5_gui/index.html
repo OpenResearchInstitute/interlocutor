@@ -379,7 +379,18 @@
 							   max="65535"
 							   aria-describedby="target-port-help">
 						<div id="target-port-help" class="help-text">
-							UDP port for radio communication
+							UDP or TCP port number for encapsulated frames
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label for="encap-mode">Encapsulation Mode</label>
+						<select id="encap-mode" aria-describedby="encap-mode-help">
+							<option value="UDP">UDP (for reliable, simple networks)</option>
+							<option value="TCP">TCP (for remote networks)</option>
+						</select>
+						<div id="encap-mode-help" class=""help-text">
+							Encapsulation protocol type, UDP or TCP
 						</div>
 					</div>
 					

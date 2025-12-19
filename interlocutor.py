@@ -808,7 +808,7 @@ class GPIOZeroPTTHandler:
 
 		# Network setup using config
 		self.protocol = OpulentVoiceProtocolWithIP(station_identifier, dest_ip=config.network.target_ip)
-		self.transmitter = NetworkTransmitter(NetworkTransmitter.ENCAP_MODE_UDP, config.network.target_ip, config.network.target_port)
+		self.transmitter = NetworkTransmitter(config.network.encap_mode, config.network.target_ip, config.network.target_port)
 
 		# Audio-driven frame manager with config
 		self.audio_frame_manager = AudioDrivenFrameManager(
@@ -1471,8 +1471,9 @@ class GPIOZeroPTTHandler:
 		print(f"   Bitrate: {self.bitrate} bps CBR")
 		print(f"   Frame size: {self.frame_duration_ms}ms ({self.samples_per_frame} samples)")
 		print(f"   Frame rate: {1000/self.frame_duration_ms} fps")
-		print(f"   Network target: {self.transmitter.target_ip}:{self.transmitter.target_port}")
+		print(f"   Network target: {self.transmitter.encap_mode}:{self.transmitter.target_ip}:{self.transmitter.target_port}")
 		print(f"   Stream starts automatically when there's activity")
+		#!!! last line assumes UDP, correct this for TCP
 
 	def test_gpio(self):
 		"""Test GPIO functionality"""
@@ -1491,7 +1492,7 @@ class GPIOZeroPTTHandler:
 	def test_network(self):
 		"""Test network connectivity - VALIDATES 80-BYTE OPUS CONSTRAINT"""
 		print("🌐 Testing network...")
-		print(f"   Target: {self.transmitter.target_ip}:{self.transmitter.target_port}")
+		print(f"   Target: {self.transmitter.encap_mode}:{self.transmitter.target_ip}:{self.transmitter.target_port}")
 
 		# Create something that looks like 80 bytes of Opus data
 		# Random data is worst case situation for COBS, and will result
@@ -1867,7 +1868,7 @@ if __name__ == "__main__":
 		station_id = StationIdentifier(config.callsign)
 
 		DebugConfig.system_print(f"📡 Station: {station_id}")
-		DebugConfig.system_print(f"📡 Target: {config.network.target_ip}:{config.network.target_port}")
+		DebugConfig.system_print(f"📡 Target: {config.network.encap_mode}:{config.network.target_ip}:{config.network.target_port}")
 		DebugConfig.system_print(f"👂 Listen: Port {config.network.listen_port}")
 		DebugConfig.system_print(f"🎯 Target Type: {config.protocol.target_type}")
 		if config.debug.verbose:

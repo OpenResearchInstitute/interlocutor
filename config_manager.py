@@ -268,6 +268,7 @@ class NetworkConfig:
 	target_ip: str = "192.168.2.152"
 	target_port: int = 57372
 	listen_port: int = 57372
+	encap_mode: str = "UDP"
 	
 	# Protocol-specific ports
 	voice_port: int = 57373
@@ -381,6 +382,7 @@ class OpulentVoiceConfig:
 				'target_ip': self.network.target_ip,
 				'target_port': self.network.target_port,
 				'listen_port': self.network.listen_port,
+				'encap_mode': self.network.encap_mode,
 				'voice_port': self.network.voice_port,
 				'text_port': self.network.text_port,
 				'control_port': self.network.control_port,
@@ -629,6 +631,8 @@ class ConfigurationManager:
 			self.config.network.target_port = args.port
 		if hasattr(args, 'listen_port') and args.listen_port:
 			self.config.network.listen_port = args.listen_port
+		if hasattr(args, 'encap_mode') and args.encap_mode:
+			self.config.network.encap_mode = args.encap_mode
 
 		# Protocol settings
 		if hasattr(args, 'target_type') and args.target_type is not None:
@@ -783,6 +787,7 @@ network:
   target_ip: "192.168.2.152"      # Target IP for transmission
   target_port: 57372              # Target port for transmission
   listen_port: 57372              # Local port for receiving
+  encap_mode: "UDP"               # IP protocol used (UDP or TCP)
   
   # Protocol-specific UDP ports (usually don't need to change)
   voice_port: 57373               # Port for voice (RTP) traffic
@@ -1604,13 +1609,13 @@ def setup_configuration_temp_replaced(argv=None) -> tuple[OpulentVoiceConfig, bo
 
 if __name__ == "__main__":
 	# Example usage
-	config, should_exit = setup_configuration()
+	config, should_exit, _ = setup_configuration()
 	
 	if should_exit:
 		sys.exit(0 if config is None else 1)
 	
 	print(f"Configuration loaded successfully!")
 	print(f"Station: {config.callsign}")
-	print(f"Target: {config.network.target_ip}:{config.network.target_port}")
+	print(f"Target: {config.network.encap_mode}:{config.network.target_ip}:{config.network.target_port}")
 	print(f"Audio: {config.audio.sample_rate}Hz, {config.audio.bitrate}bps")
 	print(f"GPIO: PTT=GPIO{config.gpio.ptt_pin}, LED=GPIO{config.gpio.led_pin}")

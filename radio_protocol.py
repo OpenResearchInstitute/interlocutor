@@ -2083,12 +2083,8 @@ class NetworkTransmitter:
 	and create a new one with the new target IP and port.
 	"""
 
-
-	ENCAP_MODE_NONE = 0		# no transmissions
-	ENCAP_MODE_TCP = 1		# TCP encapsulation of Opulent Voice frames
-	ENCAP_MODE_UDP = 2		# UDP encapsulation of Opulent Voice frames
 	
-	def __init__(self, encap_mode=ENCAP_MODE_UDP, target_ip="192.168.1.100", target_port=57372):
+	def __init__(self, encap_mode="UDP", target_ip="192.168.1.100", target_port=57372):
 		self.target_ip = target_ip
 		self.target_port = target_port
 		self.encap_mode = encap_mode
@@ -2106,12 +2102,12 @@ class NetworkTransmitter:
 	def setup_socket(self):
 		"""Setup the socket based on encapsulation mode"""
 
-		if self.encap_mode == self.ENCAP_MODE_TCP:
+		if self.encap_mode == "TCP":
 			self.setup_socket_tcp()
-		elif self.encap_mode == self.ENCAP_MODE_UDP:
+		elif self.encap_mode == "UDP":
 			self.setup_socket_udp()
 		else:
-			print("✗ Invalid encapsulation mode. Use ENCAP_MODE_TCP or ENCAP_MODE_UDP.")
+			print("✗ Invalid encapsulation mode. Use TCP or UDP.")
 			self.socket = None
 		
 		if self.socket:
@@ -2160,7 +2156,7 @@ class NetworkTransmitter:
 			if not self.socket:
 				try:
 					self.socket = socket.create_connection((self.target_ip, self.target_port))
-					print(f"Connected to {self.target_ip}:{self.target_port}")
+					print(f"Connected to TCP:{self.target_ip}:{self.target_port}")
 				except Exception as e:
 					print(f"✗ Connection error: {e}")
 					self.socket = None
@@ -2190,7 +2186,7 @@ class NetworkTransmitter:
 			bytes_sent = self.socket.sendto(frame_data, (self.target_ip, self.target_port))
 			self.stats['packets_sent'] += 1
 			self.stats['bytes_sent'] += bytes_sent
-			DebugConfig.debug_print(f"📤 Sent frame: {bytes_sent}B to {self.target_ip}:{self.target_port}")
+			DebugConfig.debug_print(f"📤 Sent frame: {bytes_sent}B to UDP:{self.target_ip}:{self.target_port}")
 			return True
 
 		except Exception as e:
