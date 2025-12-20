@@ -2083,7 +2083,10 @@ class NetworkTransmitter:
 	and create a new one with the new target IP and port.
 	"""
 
-	
+	# Encapsulation mode constants
+	ENCAP_MODE_UDP = "UDP"
+	ENCAP_MODE_TCP = "TCP"
+
 	def __init__(self, encap_mode="UDP", target_ip="192.168.1.100", target_port=57372):
 		self.target_ip = target_ip
 		self.target_port = target_port

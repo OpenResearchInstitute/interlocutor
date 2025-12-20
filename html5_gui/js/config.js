@@ -347,6 +347,7 @@ function gatherEnhancedConfigData() {
 	const logLevelElement = document.getElementById('log-level-config');
 	const transcriptionEnabledElement = document.getElementById('transcription-enabled');
 	const transcriptionConfidenceElement = document.getElementById('transcription-confidence');
+	const encapModeElement = document.getElementById('encap-mode');
 
 	return {
 		callsign: callsignElement ? callsignElement.value.trim() : '',
