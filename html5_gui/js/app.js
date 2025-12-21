@@ -303,6 +303,7 @@ function populateStatusFromData(status) {
 	if (status.config) {
 		const targetIpElement = document.getElementById('target-ip');
 		const targetPortElement = document.getElementById('target-port');
+		const targetEncapElement = document.getElementById('encap-mode');
 		if (targetIpElement) targetIpElement.value = status.config.target_ip || '';
 		if (targetPortElement) targetPortElement.value = status.config.target_port || '';
 		if (targetEncapElement) targetEncapElement.value = status.config.encap_mode || '';

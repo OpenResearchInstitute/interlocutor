@@ -269,11 +269,8 @@ class NetworkConfig:
 	target_port: int = 57372
 	listen_port: int = 57372
 	encap_mode: str = "UDP"
-	
-	# Protocol-specific ports
-	voice_port: int = 57373
-	text_port: int = 57374
-	control_port: int = 57375
+	target_type: str = "computer"       # "computer" or "modem" - also in protocol for compat
+	keepalive_interval: float = 2.0     # Interval for keepalive frames - also in protocol for compat
 
 @dataclass
 class AudioConfig:
@@ -291,12 +288,15 @@ class AudioConfig:
 
 
 @dataclass
-class GPIOConfig:
-	"""GPIO pin configuration"""
+class HardwareConfig:
+	"""Hardware peripheral settings (GPIO pins for Raspberry Pi)"""
 	ptt_pin: int = 23
 	led_pin: int = 17
 	button_bounce_time: float = 0.02
 	led_brightness: float = 1.0
+
+# Alias for backward compatibility
+GPIOConfig = HardwareConfig
 
 @dataclass
 class ProtocolConfig:
@@ -313,14 +313,13 @@ class ProtocolConfig:
 	target_type: str = "computer"       # "computer" or "modem"
 
 @dataclass
-class DebugConfig:
-	"""Debug and logging configuration"""
+class ConsoleConfig:
+	"""Console messages logging level configuration"""
 	verbose: bool = False
 	quiet: bool = False
-	log_level: str = "INFO"
-	log_file: Optional[str] = None
-	show_frame_details: bool = False
-	show_timing_info: bool = False
+
+# Alias for backward compatibility
+DebugConfig = ConsoleConfig
 
 @dataclass
 class UserInterfaceConfig:
@@ -352,114 +351,135 @@ class UserInterfaceConfig:
 
 @dataclass
 class OpulentVoiceConfig:
-	"""Complete configuration for Opulent Voice system"""
+	"""Complete configuration for Opulent Voice system - v2.0"""
 	# Station identification
 	callsign: str = "NOCALL"
 	
-	# Configuration sections
+	# Configuration sections (internal names kept for backward compatibility)
 	network: NetworkConfig = field(default_factory=NetworkConfig)
 	audio: AudioConfig = field(default_factory=AudioConfig)
-	gpio: GPIOConfig = field(default_factory=GPIOConfig)
-	protocol: ProtocolConfig = field(default_factory=ProtocolConfig)
-	debug: DebugConfig = field(default_factory=DebugConfig)
+	gpio: HardwareConfig = field(default_factory=HardwareConfig)  # Was GPIOConfig
+	protocol: ProtocolConfig = field(default_factory=ProtocolConfig)  # Keep for frame constants
+	debug: ConsoleConfig = field(default_factory=ConsoleConfig)  # Was DebugConfig
 	ui: UserInterfaceConfig = field(default_factory=UserInterfaceConfig)
 	gui: GUIConfig = field(default_factory=GUIConfig)
-	# If you don't already have a UI field, add this too:
-	# ui: UIConfig = field(default_factory=UIConfig)
 	
 	# Metadata
-	config_version: str = "1.0"
+	config_version: str = "2.0"
 	description: str = "Opulent Voice Protocol Configuration"
 
-	@classmethod
 	def to_dict(self) -> Dict[str, Any]:
-		"""Convert to dictionary for YAML serialization - FIXED to include GUI"""
+		"""Convert to dictionary for YAML serialization - v2.0 format"""
 		return {
-			'callsign': self.callsign,
 			'config_version': self.config_version,
-			'description': self.description,
+			'station': {
+				'callsign': self.callsign,
+			},
 			'network': {
 				'target_ip': self.network.target_ip,
 				'target_port': self.network.target_port,
 				'listen_port': self.network.listen_port,
 				'encap_mode': self.network.encap_mode,
-				'voice_port': self.network.voice_port,
-				'text_port': self.network.text_port,
-				'control_port': self.network.control_port,
+				'target_type': self.network.target_type,
+				'keepalive_interval': self.network.keepalive_interval,
 			},
-			'audio': {
-				'input_device': self.audio.input_device,
-				'device_keywords': self.audio.device_keywords,
-				# Note: Other audio settings are protocol constants, not saved
+			'transcription': self.gui.transcription.to_dict(),
+			'tts': self.gui.tts.to_dict(),
+			'console': {
+				'verbose': self.debug.verbose,
+				'quiet': self.debug.quiet,
 			},
-			'gpio': {
+			'hardware': {
 				'ptt_pin': self.gpio.ptt_pin,
 				'led_pin': self.gpio.led_pin,
 				'button_bounce_time': self.gpio.button_bounce_time,
 				'led_brightness': self.gpio.led_brightness,
 			},
-			'protocol': {
-				'frame_size': self.protocol.frame_size,
-				'header_size': self.protocol.header_size,
-				'payload_size': self.protocol.payload_size,
-				'continuous_stream': self.protocol.continuous_stream,
-				'keepalive_interval': self.protocol.keepalive_interval,
-				'target_type': self.protocol.target_type,
-			},
-			'debug': {
-				'verbose': self.debug.verbose,
-				'quiet': self.debug.quiet,
-				'log_level': self.debug.log_level,
-				'log_file': self.debug.log_file,
-				'show_frame_details': self.debug.show_frame_details,
-				'show_timing_info': self.debug.show_timing_info,
-			},
-			'ui': {
-				'chat_enabled': self.ui.chat_enabled,
-				'chat_only_mode': self.ui.chat_only_mode,
-				'show_statistics': self.ui.show_statistics,
-				'auto_scroll': self.ui.auto_scroll,
-				'theme': self.ui.theme,
-				'window_width': self.ui.window_width,
-				'window_height': self.ui.window_height,
-				'always_on_top': self.ui.always_on_top,
-			},
-			# FIXED: Include GUI section in serialization
-			'gui': self.gui.to_dict(),
 		}
 
 	@classmethod
 	def from_dict(cls, data: Dict[str, Any]) -> 'OpulentVoiceConfig':
-		"""Create from dictionary (YAML loading) - FIXED to include GUI"""
+		"""Create from dictionary (YAML loading) - supports v2.0 format"""
 		config = cls()
 		
-		# Load basic fields
-		if 'callsign' in data:
-			config.callsign = data['callsign']
+		# Load metadata
 		if 'config_version' in data:
 			config.config_version = data['config_version']
 		if 'description' in data:
 			config.description = data['description']
 		
-		# Load sections using existing logic or create from dict
-		if 'network' in data:
-			config.network = NetworkConfig(**data['network'])
-		if 'audio' in data:
-			# Only load input_device
-			if 'input_device' in data['audio']:
-				config.audio.input_device = data['audio']['input_device']
-		if 'gpio' in data:
-			config.gpio = GPIOConfig(**data['gpio'])
-		if 'protocol' in data:
-			config.protocol = ProtocolConfig(**data['protocol'])
-		if 'debug' in data:
-			config.debug = DebugConfig(**data['debug'])
-		if 'ui' in data:
-			config.ui = UserInterfaceConfig(**data['ui'])
+		# v2.0 format: station.callsign
+		if 'station' in data:
+			if 'callsign' in data['station']:
+				config.callsign = data['station']['callsign']
+		# v1.x fallback: top-level callsign
+		elif 'callsign' in data:
+			config.callsign = data['callsign']
 		
-		# FIXED: Load GUI section
+		# Load network section (v2.0 includes target_type and keepalive_interval)
+		if 'network' in data:
+			net_data = data['network']
+			config.network.target_ip = net_data.get('target_ip', config.network.target_ip)
+			config.network.target_port = net_data.get('target_port', config.network.target_port)
+			config.network.listen_port = net_data.get('listen_port', config.network.listen_port)
+			config.network.encap_mode = net_data.get('encap_mode', config.network.encap_mode)
+			config.network.target_type = net_data.get('target_type', config.network.target_type)
+			config.network.keepalive_interval = net_data.get('keepalive_interval', config.network.keepalive_interval)
+			# Also update protocol for backward compatibility
+			config.protocol.target_type = config.network.target_type
+			config.protocol.keepalive_interval = config.network.keepalive_interval
+		
+		# v1.x fallback: protocol section
+		if 'protocol' in data:
+			proto_data = data['protocol']
+			if 'target_type' in proto_data:
+				config.protocol.target_type = proto_data['target_type']
+				config.network.target_type = proto_data['target_type']
+			if 'keepalive_interval' in proto_data:
+				config.protocol.keepalive_interval = proto_data['keepalive_interval']
+				config.network.keepalive_interval = proto_data['keepalive_interval']
+		
+		# v2.0 format: transcription at top level
+		if 'transcription' in data:
+			config.gui.transcription = TranscriptionConfig.from_dict(data['transcription'])
+		
+		# v2.0 format: tts at top level
+		if 'tts' in data:
+			config.gui.tts = TTSConfig.from_dict(data['tts'])
+		
+		# v2.0 format: console section
+		if 'console' in data:
+			console_data = data['console']
+			config.debug.verbose = console_data.get('verbose', False)
+			config.debug.quiet = console_data.get('quiet', False)
+		# v1.x fallback: debug section
+		elif 'debug' in data:
+			debug_data = data['debug']
+			config.debug.verbose = debug_data.get('verbose', False)
+			config.debug.quiet = debug_data.get('quiet', False)
+		
+		# v2.0 format: hardware section
+		if 'hardware' in data:
+			hw_data = data['hardware']
+			config.gpio.ptt_pin = hw_data.get('ptt_pin', config.gpio.ptt_pin)
+			config.gpio.led_pin = hw_data.get('led_pin', config.gpio.led_pin)
+			config.gpio.button_bounce_time = hw_data.get('button_bounce_time', config.gpio.button_bounce_time)
+			config.gpio.led_brightness = hw_data.get('led_brightness', config.gpio.led_brightness)
+		# v1.x fallback: gpio section
+		elif 'gpio' in data:
+			gpio_data = data['gpio']
+			config.gpio.ptt_pin = gpio_data.get('ptt_pin', config.gpio.ptt_pin)
+			config.gpio.led_pin = gpio_data.get('led_pin', config.gpio.led_pin)
+			config.gpio.button_bounce_time = gpio_data.get('button_bounce_time', config.gpio.button_bounce_time)
+			config.gpio.led_brightness = gpio_data.get('led_brightness', config.gpio.led_brightness)
+		
+		# v1.x fallback: gui section (for transcription/tts if not at top level)
 		if 'gui' in data:
-			config.gui = GUIConfig.from_dict(data['gui'])
+			gui_data = data['gui']
+			if 'transcription' in gui_data and 'transcription' not in data:
+				config.gui.transcription = TranscriptionConfig.from_dict(gui_data['transcription'])
+			if 'tts' in gui_data and 'tts' not in data:
+				config.gui.tts = TTSConfig.from_dict(gui_data['tts'])
 		
 		return config
 
@@ -532,50 +552,22 @@ class ConfigurationManager:
 		return self.config
 	
 	def _load_yaml_file(self, file_path: Path) -> OpulentVoiceConfig:
-		"""Load configuration from YAML file"""
+		"""Load configuration from YAML file - supports v1.x and v2.0 formats"""
 		try:
 			with open(file_path, 'r') as f:
 				yaml_data = yaml.safe_load(f) or {}
 			
-			# Convert flat YAML to nested config object
-			config = OpulentVoiceConfig()
+			# Use from_dict which handles both v1.x and v2.0 formats
+			config = OpulentVoiceConfig.from_dict(yaml_data)
 			
-			# Direct callsign assignment
-			if 'callsign' in yaml_data:
-				config.callsign = yaml_data['callsign']
-			
-			# Load each section
-			if 'network' in yaml_data:
-				config.network = self._dict_to_dataclass(NetworkConfig, yaml_data['network'])
-			
-			# MODIFIED: Audio config now uses defaults only - no user overrides
-			if 'audio' in yaml_data:
-				# Only load input_device if specified, ignore other audio settings
-				audio_data = yaml_data['audio']
-				if 'input_device' in audio_data:
-					config.audio.input_device = audio_data['input_device']
-					# All other audio settings use developer defaults
-
-			if 'gpio' in yaml_data:
-				config.gpio = self._dict_to_dataclass(GPIOConfig, yaml_data['gpio'])
-			
-			if 'protocol' in yaml_data:
-				config.protocol = self._dict_to_dataclass(ProtocolConfig, yaml_data['protocol'])
-			
-			if 'debug' in yaml_data:
-				config.debug = self._dict_to_dataclass(DebugConfig, yaml_data['debug'])
-			
-			if 'ui' in yaml_data:
-				config.ui = self._dict_to_dataclass(UserInterfaceConfig, yaml_data['ui'])
-
-
+			# Log GUI section if present
 			if 'gui' in yaml_data:
 				self.logger.info(f"Loading GUI section from YAML: {yaml_data['gui']}")
-				config.gui = GUIConfig.from_dict(yaml_data['gui'])
 				self.logger.info(f"Loaded GUI config - transcription enabled: {config.gui.transcription.enabled}")
+			elif 'transcription' in yaml_data or 'tts' in yaml_data:
+				self.logger.info(f"Loaded v2.0 format - transcription enabled: {config.gui.transcription.enabled}")
 			else:
-				self.logger.info("No GUI section in YAML, using defaults")
-				# GUI section will use defaults from dataclass
+				self.logger.info("No GUI/transcription/tts section in YAML, using defaults")
 			
 			return config
 			
@@ -720,7 +712,7 @@ class ConfigurationManager:
 	
 	def save_config(self, file_path: Optional[str] = None) -> bool:
 		"""
-		Save current configuration to YAML file
+		Save current configuration to YAML file in v2.0 format
 		
 		Args:
 			file_path: Target file path, or None to use loaded file path
@@ -739,8 +731,8 @@ class ConfigurationManager:
 			# Ensure directory exists
 			target_path.parent.mkdir(parents=True, exist_ok=True)
 			
-			# Convert config to dictionary
-			config_dict = asdict(self.config)
+			# Convert config to v2.0 format dictionary
+			config_dict = self.config.to_dict()
 			
 			# Write YAML with comments
 			with open(target_path, 'w') as f:
@@ -777,131 +769,84 @@ class ConfigurationManager:
 		"""Generate sample YAML with extensive comments"""
 		return """# Opulent Voice Protocol Configuration File
 # This file configures all aspects of the Opulent Voice radio system
-# CLI arguments will override these settings when provided
+# Sections are ordered to match the web interface Configuration tab
 
-# Station identification (required)
-callsign: "N0CALL"  # Your station callsign - supports A-Z, 0-9, -, /, .
+# =============================================================================
+# STATION SETTINGS
+# =============================================================================
+station:
+  callsign: "N0CALL"              # Your station callsign (A-Z, 0-9, -, /, .)
 
-# Network configuration
+# =============================================================================
+# NETWORK SETTINGS
+# =============================================================================
 network:
-  target_ip: "192.168.2.152"      # Target IP for transmission
-  target_port: 57372              # Target port for transmission
-  listen_port: 57372              # Local port for receiving
-  encap_mode: "UDP"               # IP protocol used (UDP or TCP)
-  
-  # Protocol-specific UDP ports (usually don't need to change)
-  voice_port: 57373               # Port for voice (RTP) traffic
-  text_port: 57374                # Port for text/chat traffic  
-  control_port: 57375             # Port for control messages
+  target_ip: "192.168.2.152"      # Target IP address for transmission
+  target_port: 57372              # Target port for encapsulated frames
+  listen_port: 57372              # Local port for receiving messages
+  encap_mode: "UDP"               # Encapsulation mode: UDP or TCP
+  target_type: "computer"         # Target type: "computer" or "modem"
+                                  #   computer: LAN/Internet, uses keepalives
+                                  #   modem: SDR/Radio, modem handles hang-time
+  keepalive_interval: 2.0         # Keepalive interval for computer targets (seconds)
 
-# Audio system configuration
-audio:
-  # Audio device selection (optional)
-  input_device: null              # Specific device name, or null for auto-detect
+# =============================================================================
+# TRANSCRIPTION SETTINGS
+# =============================================================================
+transcription:
+  enabled: false                  # Enable audio transcription
+  confidence_threshold: 0.7       # Confidence threshold for display (0.0-1.0)
+  # Advanced settings (edit manually if needed):
+  method: "auto"                  # auto, client-only, server-only, disabled
+  language: "auto"                # Language for transcription
+  model_size: "base"              # tiny, base, small, medium, large
 
-# GPIO pin configuration (Raspberry Pi)
-gpio:
-  ptt_pin: 23                     # GPIO pin for PTT button
-  led_pin: 17                     # GPIO pin for PTT LED
+# =============================================================================
+# TEXT-TO-SPEECH SETTINGS
+# =============================================================================
+tts:
+  enabled: false                  # Enable text-to-speech
+  incoming_enabled: true          # Read incoming text messages
+  outgoing_enabled: false         # Read your own outgoing messages
+  include_station_id: true        # Include "Message from [station]:" prefix
+  include_confirmation: true      # Include "Message sent:" prefix for outgoing
+  rate: 200                       # Speech rate (words per minute)
+  # Advanced settings (edit manually if needed):
+  engine: "system"                # TTS engine: system, pyttsx3
+  voice: "default"                # Voice selection (engine-specific)
+  volume: 0.8                     # Speech volume (0.0 to 1.0)
+  outgoing_delay_seconds: 1.0     # Delay before reading outgoing messages
+  interrupt_on_ptt: true          # Pause TTS during voice transmission
+
+# =============================================================================
+# CONSOLE MESSAGES LOGGING LEVEL
+# =============================================================================
+console:
+  verbose: false                  # Verbose output (more detail)
+  quiet: false                    # Quiet mode (minimal output)
+
+# =============================================================================
+# HARDWARE PERIPHERAL SETTINGS
+# =============================================================================
+hardware:
+  ptt_pin: 23                     # GPIO pin for PTT button (Raspberry Pi)
+  led_pin: 17                     # GPIO pin for PTT LED indicator
+  # Advanced settings (edit manually if needed):
   button_bounce_time: 0.02        # Button debounce time (seconds)
   led_brightness: 1.0             # LED brightness (0.0 - 1.0)
 
-# Protocol settings
-protocol:
-  frame_size: 133                 # Opulent Voice frame size (bytes)
-  header_size: 12                 # Header size (bytes) 
-  payload_size: 121               # Payload size (bytes)
-  
-  # Frame generation behavior
-  continuous_stream: true         # Generate continuous 40ms frames when active
-  keepalive_interval: 2.0         # Keepalive interval for computer targets (seconds)
-  
-  # Target configuration - affects timeout behavior
-  target_type: "computer"         # "computer" (LAN/Internet) or "modem" (SDR/Radio)
-                                  # computer: keepalives maintain stream
-                                  # modem: no keepalives, modem handles hang-time
-
-  # Notes:
-  # - Voice always preempts all other traffic (protocol requirement)
-  # - UDP delivery is fire-and-forget (no retries possible)
-
-# Debug and logging
-debug:
-  verbose: false                  # Enable verbose debug output
-  quiet: false                    # Quiet mode (minimal output)
-  log_level: "INFO"               # Logging level: DEBUG, INFO, WARNING, ERROR
-  log_file: null                  # Log file path, or null for console only
-  show_frame_details: false       # Show detailed frame information
-  show_timing_info: false         # Show timing/performance information
-
-# User interface configuration
-ui:
-  chat_enabled: true              # Enable chat interface
-  chat_only_mode: false           # Run in chat-only mode (no GPIO/audio)
-  show_statistics: true           # Show transmission statistics
-  auto_scroll: true               # Auto-scroll chat messages
-  
-  # Future GUI settings (for HTML5 interface)
-  theme: "dark"                   # UI theme: dark, light
-  window_width: 800               # Default window width
-  window_height: 600              # Default window height
-  always_on_top: false            # Keep window always on top
-
-# GUI-specific configuration
-gui:
-  # Audio replay settings
-  audio_replay:
-    enabled: true                 # Enable audio message replay
-    max_stored_messages: 100      # Maximum stored audio messages
-    storage_duration_hours: 24    # How long to keep audio (hours)
-    auto_cleanup: true            # Automatically clean old messages
-
-  # Transcription settings
-  transcription:
-    enabled: false                 # Enable audio transcription
-    method: "auto"                # auto, client-only, server-only, disabled
-    language: "auto"             # Language for transcription
-    confidence_threshold: 0.7     # Minimum confidence for display
-    model_size: "base"            # tiny, base, small, medium, large
-
-  # Text-to-Speech settings
-  tts:
-    enabled: false                # Enable text-to-speech
-    engine: "system"              # TTS engine: system, pyttsx3
-    voice: "default"              # Voice selection (engine-specific)
-    rate: 200                     # Speech rate (words per minute)
-    volume: 0.8                   # Speech volume (0.0 to 1.0)
-
-    # Incoming message settings
-    incoming_enabled: true        # Read incoming text messages
-    include_station_id: true      # Include "Message from [station]:" prefix
-
-    # Outgoing message settings
-    outgoing_enabled: false       # Read your own outgoing messages
-    include_confirmation: true    # Include "Message sent:" prefix
-    outgoing_delay_seconds: 1.0   # Delay before reading outgoing messages
-
-    # Behavior settings
-    interrupt_on_ptt: true        # Pause TTS during voice transmission
-
-  # Accessibility and typography settings
-  accessibility:
-    high_contrast: false          # Enable high contrast mode
-    reduced_motion: false         # Reduce animations and motion
-    screen_reader_optimized: false # Optimize for screen readers
-    keyboard_shortcuts: true      # Enable keyboard shortcuts
-    announce_new_messages: true   # Announce new messages
-    focus_management: true        # Manage focus for accessibility
-
-    # Typography settings (Atkinson Hyperlegible font)
-    font_family: "Atkinson Hyperlegible"  # Primary font family
-    font_size: "medium"           # small, medium, large, x-large, xx-large
-    line_height: 1.6              # Line spacing multiplier
-    character_spacing: "normal"   # normal, wide
-
-# Configuration metadata
-config_version: "1.3"
+# =============================================================================
+# CONFIGURATION METADATA
+# =============================================================================
+config_version: "2.0"
 description: "Opulent Voice Protocol Configuration"
+
+# =============================================================================
+# NOTES
+# =============================================================================
+# - Audio device configuration is handled separately via CLI (--setup-audio)
+# - Voice transmission always preempts all other traffic (protocol requirement)
+# - For more information, see the user manual
 """
 
 

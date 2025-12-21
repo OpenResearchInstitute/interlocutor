@@ -382,17 +382,6 @@
 							UDP or TCP port number for encapsulated frames
 						</div>
 					</div>
-
-					<div class="form-group">
-						<label for="encap-mode">Encapsulation Mode</label>
-						<select id="encap-mode" aria-describedby="encap-mode-help">
-							<option value="UDP">UDP (for reliable, simple networks)</option>
-							<option value="TCP">TCP (for remote networks)</option>
-						</select>
-						<div id="encap-mode-help" class=""help-text">
-							Encapsulation protocol type, UDP or TCP
-						</div>
-					</div>
 					
 					<div class="form-group">
 						<label for="listen-port">Listen Port</label>
@@ -404,6 +393,42 @@
 							   aria-describedby="listen-port-help">
 						<div id="listen-port-help" class="help-text">
 							Local port for receiving messages
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label for="encap-mode">Encapsulation Mode</label>
+						<select id="encap-mode" aria-describedby="encap-mode-help">
+							<option value="UDP">UDP (for reliable, simple networks)</option>
+							<option value="TCP">TCP (for remote networks)</option>
+						</select>
+						<div id="encap-mode-help" class="help-text">
+							Encapsulation protocol type, UDP or TCP
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label for="target-type">Target Type</label>
+						<select id="target-type" aria-describedby="target-type-help">
+							<option value="computer">Computer (LAN/Internet)</option>
+							<option value="modem">Modem (SDR/Radio)</option>
+						</select>
+						<div id="target-type-help" class="help-text">
+							Affects keepalive and timeout behavior
+						</div>
+					</div>
+					
+					<div class="form-group">
+						<label for="keepalive-interval">Keepalive Interval for Computer Target (seconds)</label>
+						<input type="number" 
+							   id="keepalive-interval" 
+							   placeholder="2.0" 
+							   min="0.5" 
+							   max="60"
+							   step="0.1"
+							   aria-describedby="keepalive-help">
+						<div id="keepalive-help" class="help-text">
+							Keepalive timing when target type is computer
 						</div>
 					</div>
 				</div>
@@ -491,44 +516,29 @@
 					</div>
 				</div>
 
-				<!-- Target Device Type Configuration -->
+				<!-- Console Messages Logging Level -->
 				<div class="config-section">
 					<div class="section-header">
-						<span aria-hidden="true">🔧</span>
-						Target Device Type Settings
+						<span aria-hidden="true">📋</span>
+						Console Messages Logging Level
 					</div>
 					
-					<div class="form-group">
-						<label for="target-type">Target Type</label>
-						<select id="target-type" aria-describedby="target-type-help">
-							<option value="computer">Computer (LAN/Internet)</option>
-							<option value="modem">Modem (SDR/Radio)</option>
-						</select>
-						<div id="target-type-help" class="help-text">
-							Affects keepalive and timeout behavior
-						</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="verbose-mode">
+						<label for="verbose-mode">Verbose</label>
 					</div>
 					
-					<div class="form-group">
-						<label for="keepalive-interval">Keepalive Interval (seconds)</label>
-						<input type="number" 
-							   id="keepalive-interval" 
-							   placeholder="2.0" 
-							   min="0.5" 
-							   max="60"
-							   step="0.1"
-							   aria-describedby="keepalive-help">
-						<div id="keepalive-help" class="help-text">
-							Keepalive timing for computer targets
-						</div>
+					<div class="checkbox-group">
+						<input type="checkbox" id="quiet-mode">
+						<label for="quiet-mode">Quiet</label>
 					</div>
 				</div>
 
-				<!-- GPIO Configuration -->
+				<!-- Hardware Peripheral Settings -->
 				<div class="config-section">
 					<div class="section-header">
 						<span aria-hidden="true">🔌</span>
-						GPIO Settings (Raspberry Pi)
+						Hardware Peripheral Settings
 					</div>
 					
 					<div class="form-group">
@@ -555,24 +565,6 @@
 						<div id="led-pin-help" class="help-text">
 							GPIO pin for PTT LED indicator
 						</div>
-					</div>
-				</div>
-
-				<!-- Debug Configuration -->
-				<div class="config-section">
-					<div class="section-header">
-						<span aria-hidden="true">🛠</span>
-						Debug Settings
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="verbose-mode">
-						<label for="verbose-mode">Verbose Debug Output</label>
-					</div>
-					
-					<div class="checkbox-group">
-						<input type="checkbox" id="quiet-mode">
-						<label for="quiet-mode">Quiet Mode (Minimal Output)</label>
 					</div>
 				</div>
 			</div>

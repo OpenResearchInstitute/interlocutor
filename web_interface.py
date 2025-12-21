@@ -380,7 +380,19 @@ class EnhancedRadioWebInterface:
 						"type": "message_sent",
 						"data": message_data
 					})
-					# Note: TTS is handled by ChatManagerAudioDriven.handle_message_input()
+
+
+					#Queue for TTS if enabled (for outgoing messages)
+					if (hasattr(self, 'radio_system') and 
+						hasattr(self.radio_system, 'enhanced_receiver') and 
+						hasattr(self.radio_system.enhanced_receiver, 'tts_manager') and 
+						self.radio_system.enhanced_receiver.tts_manager):
+
+						self.radio_system.enhanced_receiver.tts_manager.queue_text_message(
+							str(self.radio_system.station_id), 
+							message, 
+							is_outgoing=True
+						)
 
 
 
@@ -1282,9 +1294,6 @@ class EnhancedRadioWebInterface:
 					'debug': {
 						'verbose': self.config.debug.verbose,
 						'quiet': self.config.debug.quiet,
-						'log_level': self.config.debug.log_level,
-						'show_frame_details': getattr(self.config.debug, 'show_frame_details', False),
-						'show_timing_info': getattr(self.config.debug, 'show_timing_info', False),
 					},
 					'ui': {
 						'chat_only_mode': getattr(self.config.ui, 'chat_only_mode', False),
@@ -1439,12 +1448,6 @@ class EnhancedRadioWebInterface:
 					self.config.debug.verbose = bool(debug['verbose'])
 				if 'quiet' in debug:
 					self.config.debug.quiet = bool(debug['quiet'])
-				if 'log_level' in debug:
-					self.config.debug.log_level = debug['log_level']
-				if 'show_frame_details' in debug:
-					self.config.debug.show_frame_details = bool(debug['show_frame_details'])
-				if 'show_timing_info' in debug:
-					self.config.debug.show_timing_info = bool(debug['show_timing_info'])
 				updated_sections.append('debug')
 		
 			if 'ui' in data:
@@ -2171,8 +2174,6 @@ class EnhancedRadioWebInterface:
 				temp_config.debug.verbose = bool(debug['verbose'])
 			if 'quiet' in debug:
 				temp_config.debug.quiet = bool(debug['quiet'])
-			if 'log_level' in debug:
-				temp_config.debug.log_level = debug['log_level']
 		
 		return temp_config
 
