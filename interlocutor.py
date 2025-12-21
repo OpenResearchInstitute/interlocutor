@@ -306,7 +306,8 @@ class ChatManagerAudioDriven:
 		self.audio_frame_manager = audio_frame_manager  # Instead of frame_transmitter
 		self.ptt_active = False
 		self.pending_messages = []
-		self.tts_manager = None # potential future use
+		self.tts_manager = None # Set when TTS is initialized
+		self.web_interface_active = False  # Set to True when web interface is handling TTS
 	
 	def handle_message_input(self, message_text):
 		"""Handle message input (same interface as before)"""
@@ -326,8 +327,13 @@ class ChatManagerAudioDriven:
 			# Queue immediately for audio-driven transmission
 			self.queue_message_for_transmission(message_text.strip())
 
-			# Potentially add TTS here for outgoing messages
-			# this would be handled by the enhanced_receiver integration
+			# Queue for TTS if enabled (for outgoing messages)
+			if self.tts_manager:
+				self.tts_manager.queue_text_message(
+					str(self.station_id), 
+					message_text.strip(), 
+					is_outgoing=True
+				)
 
 			return {
 				'status': 'queued_audio_driven',
@@ -1017,12 +1023,7 @@ class GPIOZeroPTTHandler:
 				if self.enhanced_receiver.audio_output.setup_with_device(self.selected_output_device):
 					if self.enhanced_receiver.audio_output.start_playback():
 						print(f"✅ CLI mode: real-time audio output active")
-						
-						# IMPORTANT: Connect TTS to audio output system for CLI mode too
-						if hasattr(self.enhanced_receiver, 'tts_manager') and self.enhanced_receiver.tts_manager:
-							self.enhanced_receiver.tts_manager.set_audio_output_manager(self.enhanced_receiver.audio_output)
-							print(f"✅ CLI mode: TTS connected to audio output system")
-						
+						# Note: TTS-to-audio connection happens after _initialize_tts() is called
 					else:
 						print(f"⚠️ CLI mode: Audio playback start failed")
 				else:
@@ -1906,6 +1907,11 @@ if __name__ == "__main__":
 					hasattr(enhanced_receiver, 'audio_output') and enhanced_receiver.audio_output):
 					enhanced_receiver.tts_manager.set_audio_output_manager(enhanced_receiver.audio_output)
 					print("✅ Final TTS-Audio connection verified")
+					
+					# Also connect TTS to chat manager for CLI outgoing messages (if user types in terminal)
+					if hasattr(radio, 'chat_manager') and radio.chat_manager:
+						radio.chat_manager.tts_manager = enhanced_receiver.tts_manager
+						
 				elif hasattr(enhanced_receiver, 'tts_manager') and enhanced_receiver.tts_manager:
 					print("⚠️ TTS manager exists but no audio output available")
 				else:
@@ -2089,6 +2095,17 @@ if __name__ == "__main__":
 				enhanced_receiver._initialize_transcription()
 				enhanced_receiver._initialize_tts()
 
+				# Connect TTS to audio output (must happen AFTER _initialize_tts())
+				if (hasattr(enhanced_receiver, 'tts_manager') and enhanced_receiver.tts_manager and
+					hasattr(enhanced_receiver, 'audio_output') and enhanced_receiver.audio_output):
+					enhanced_receiver.tts_manager.set_audio_output_manager(enhanced_receiver.audio_output)
+					print("✅ CLI mode: TTS connected to audio output system")
+					
+					# Also connect TTS to chat manager for outgoing message readback
+					if hasattr(radio, 'chat_manager') and radio.chat_manager:
+						radio.chat_manager.tts_manager = enhanced_receiver.tts_manager
+						print("✅ CLI mode: TTS connected to chat manager for outgoing messages")
+
 			receiver = enhanced_receiver
 	
 			# Connect receiver to chat interface
@@ -2132,4 +2149,3 @@ if __name__ == "__main__":
 			chat_system.stop()
 
 		print("Thank you for using Opulent Voice!")
-
