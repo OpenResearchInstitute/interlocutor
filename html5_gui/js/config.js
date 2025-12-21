@@ -329,6 +329,19 @@ document.getElementById('transcription-confidence').addEventListener('input', fu
 	document.getElementById('confidence-value').textContent = value + '%';
 });
 
+// Make verbose and quiet modes mutually exclusive
+document.getElementById('verbose-mode').addEventListener('change', function() {
+	if (this.checked) {
+		document.getElementById('quiet-mode').checked = false;
+	}
+});
+
+document.getElementById('quiet-mode').addEventListener('change', function() {
+	if (this.checked) {
+		document.getElementById('verbose-mode').checked = false;
+	}
+});
+
 
 
 
