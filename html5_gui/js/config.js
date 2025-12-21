@@ -188,10 +188,6 @@ function populateEnhancedConfigFromData(config) {
 			const quietElement = document.getElementById('quiet-mode');
 			if (quietElement) quietElement.checked = config.debug.quiet;
 		}
-		if (config.debug.log_level) {
-			const logLevelElement = document.getElementById('log-level-config');
-			if (logLevelElement) logLevelElement.value = config.debug.log_level;
-		}
 	}
 	
 	updateConfigStatus('Configuration loaded successfully');
@@ -357,7 +353,6 @@ function gatherEnhancedConfigData() {
 	const ledPinElement = document.getElementById('led-pin');
 	const verboseElement = document.getElementById('verbose-mode');
 	const quietElement = document.getElementById('quiet-mode');
-	const logLevelElement = document.getElementById('log-level-config');
 	const transcriptionEnabledElement = document.getElementById('transcription-enabled');
 	const transcriptionConfidenceElement = document.getElementById('transcription-confidence');
 	const encapModeElement = document.getElementById('encap-mode');
@@ -382,8 +377,7 @@ function gatherEnhancedConfigData() {
 		},
 		debug: {
 			verbose: verboseElement ? verboseElement.checked : false,
-			quiet: quietElement ? quietElement.checked : false,
-			log_level: logLevelElement ? (logLevelElement.value || 'INFO') : 'INFO'
+			quiet: quietElement ? quietElement.checked : false
 		},
 		// MINIMAL GUI section - only essential transcription controls
 		gui: {
@@ -519,8 +513,7 @@ function resetToDefaults() {
 			{ id: 'target-type', value: 'computer' },
 			{ id: 'keepalive-interval', value: '2.0' },
 			{ id: 'ptt-pin', value: '23' },
-			{ id: 'led-pin', value: '17' },
-			{ id: 'log-level-config', value: 'INFO' }
+			{ id: 'led-pin', value: '17' }
 		];
 
 		elements.forEach(elem => {
@@ -529,8 +522,6 @@ function resetToDefaults() {
 		});
 
 		const checkboxes = [
-			{ id: 'verbose-mode', checked: false },
-			{ id: 'quiet-mode', checked: false },
 			{ id: 'verbose-mode', checked: false },
 			{ id: 'quiet-mode', checked: false },
 			{ id: 'transcription-enabled', checked: false }
