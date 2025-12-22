@@ -62,25 +62,33 @@ function populateEnhancedConfigFromData(config) {
 			const encapModeElement = document.getElementById('encap-mode');
 			if (encapModeElement) encapModeElement.value = config.network.encap_mode;
 		}
+		// v2.0: target_type and keepalive_interval are in network section
+		if (config.network.target_type) {
+			const targetTypeElement = document.getElementById('target-type');
+			if (targetTypeElement) targetTypeElement.value = config.network.target_type;
+		}
+		if (config.network.keepalive_interval) {
+			const keepaliveElement = document.getElementById('keepalive-interval');
+			if (keepaliveElement) keepaliveElement.value = config.network.keepalive_interval;
+		}
 	}
 	
-	// Target Device Type settings
+	// v1.x fallback: Target Device Type settings from protocol section
 	if (config.protocol) {
 		if (config.protocol.target_type) {
 			const targetTypeElement = document.getElementById('target-type');
-			if (targetTypeElement) targetTypeElement.value = config.protocol.target_type;
+			if (targetTypeElement && !targetTypeElement.value) targetTypeElement.value = config.protocol.target_type;
 		}
 		if (config.protocol.keepalive_interval) {
 			const keepaliveElement = document.getElementById('keepalive-interval');
-			if (keepaliveElement) keepaliveElement.value = config.protocol.keepalive_interval;
+			if (keepaliveElement && !keepaliveElement.value) keepaliveElement.value = config.protocol.keepalive_interval;
 		}
 	}
 
 	// Transcription settings
-	// GUI settings - MINIMAL: Only essential transcription controls
-	if (config.gui && config.gui.transcription) {
-		const transcription = config.gui.transcription;
-    
+	// Transcription settings - v2.0 format (top-level) or v1.x (gui.transcription)
+	const transcription = config.transcription || (config.gui && config.gui.transcription);
+	if (transcription) {
 		console.log("📋 DEBUG: Loading transcription config:", transcription);
             
 		// Essential controls only
@@ -93,14 +101,14 @@ function populateEnhancedConfigFromData(config) {
 		}
     
 		if ('confidence_threshold' in transcription) {
-			const threshold = transcription.confidence_threshold;  // ✅ USE THE ACTUAL VALUE
+			const threshold = transcription.confidence_threshold;
 			const confidenceElement = document.getElementById('transcription-confidence');
 			if (confidenceElement) {
-				confidenceElement.value = threshold;  // ✅ SET TO CONFIG VALUE, NOT HARDCODED
+				confidenceElement.value = threshold;
 			}
 			const confidenceValueElement = document.getElementById('confidence-value');
 			if (confidenceValueElement) {
-				confidenceValueElement.textContent = Math.round(threshold * 100) + '%';  // ✅ FIX VARIABLE NAME
+				confidenceValueElement.textContent = Math.round(threshold * 100) + '%';
 			}
 		}
 	}  
@@ -108,10 +116,9 @@ function populateEnhancedConfigFromData(config) {
 
 
 
-	// TTS Settings
-	if (config.gui && config.gui.tts) {
-		const tts = config.gui.tts;
-    
+	// TTS Settings - v2.0 format (top-level) or v1.x (gui.tts)
+	const tts = config.tts || (config.gui && config.gui.tts);
+	if (tts) {
 		if ('enabled' in tts) {
 			const enabledElement = document.getElementById('tts-enabled');
 			if (enabledElement) enabledElement.checked = tts.enabled;
@@ -145,7 +152,7 @@ function populateEnhancedConfigFromData(config) {
 
 		if ('rate' in tts) {
 			const rateSlider = document.getElementById('speech-rate');
-			const rateLabel = document.getElementById('speech-rate-label'); // You'll need this element in HTML
+			const rateLabel = document.getElementById('speech-rate-label');
         
 			if (rateSlider) {
 				rateSlider.value = tts.rate;
@@ -166,27 +173,29 @@ function populateEnhancedConfigFromData(config) {
 	}
 
 	
-	// GPIO settings
-	if (config.gpio) {
-		if (config.gpio.ptt_pin) {
+	// Hardware settings - v2.0 format (hardware) or v1.x (gpio)
+	const hardware = config.hardware || config.gpio;
+	if (hardware) {
+		if (hardware.ptt_pin) {
 			const pttPinElement = document.getElementById('ptt-pin');
-			if (pttPinElement) pttPinElement.value = config.gpio.ptt_pin;
+			if (pttPinElement) pttPinElement.value = hardware.ptt_pin;
 		}
-		if (config.gpio.led_pin) {
+		if (hardware.led_pin) {
 			const ledPinElement = document.getElementById('led-pin');
-			if (ledPinElement) ledPinElement.value = config.gpio.led_pin;
+			if (ledPinElement) ledPinElement.value = hardware.led_pin;
 		}
 	}
 	
-	// Debug settings
-	if (config.debug) {
-		if (config.debug.verbose !== undefined) {
+	// Console settings - v2.0 format (console) or v1.x (debug)
+	const console_config = config.console || config.debug;
+	if (console_config) {
+		if (console_config.verbose !== undefined) {
 			const verboseElement = document.getElementById('verbose-mode');
-			if (verboseElement) verboseElement.checked = config.debug.verbose;
+			if (verboseElement) verboseElement.checked = console_config.verbose;
 		}
-		if (config.debug.quiet !== undefined) {
+		if (console_config.quiet !== undefined) {
 			const quietElement = document.getElementById('quiet-mode');
-			if (quietElement) quietElement.checked = config.debug.quiet;
+			if (quietElement) quietElement.checked = console_config.quiet;
 		}
 	}
 	
@@ -325,28 +334,16 @@ document.getElementById('transcription-confidence').addEventListener('input', fu
 	document.getElementById('confidence-value').textContent = value + '%';
 });
 
-// Make verbose and quiet modes mutually exclusive
-document.getElementById('verbose-mode').addEventListener('change', function() {
-	if (this.checked) {
-		document.getElementById('quiet-mode').checked = false;
-	}
-});
-
-document.getElementById('quiet-mode').addEventListener('change', function() {
-	if (this.checked) {
-		document.getElementById('verbose-mode').checked = false;
-	}
-});
 
 
 
-
-// Enhanced config data gathering
+// Enhanced config data gathering - v2.0 format
 function gatherEnhancedConfigData() {
 	const callsignElement = document.getElementById('callsign');
 	const targetIpElement = document.getElementById('target-ip');
 	const targetPortElement = document.getElementById('target-port');
 	const listenPortElement = document.getElementById('listen-port');
+	const encapModeElement = document.getElementById('encap-mode');
 	const targetTypeElement = document.getElementById('target-type');
 	const keepaliveElement = document.getElementById('keepalive-interval');
 	const pttPinElement = document.getElementById('ptt-pin');
@@ -355,7 +352,6 @@ function gatherEnhancedConfigData() {
 	const quietElement = document.getElementById('quiet-mode');
 	const transcriptionEnabledElement = document.getElementById('transcription-enabled');
 	const transcriptionConfidenceElement = document.getElementById('transcription-confidence');
-	const encapModeElement = document.getElementById('encap-mode');
 
 	return {
 		callsign: callsignElement ? callsignElement.value.trim() : '',
@@ -363,30 +359,66 @@ function gatherEnhancedConfigData() {
 			target_ip: targetIpElement ? targetIpElement.value.trim() : '',
 			target_port: targetPortElement ? (parseInt(targetPortElement.value) || 57372) : 57372,
 			listen_port: listenPortElement ? (parseInt(listenPortElement.value) || 57372) : 57372,
-			encap_mode: encapModeElement ? encapModeElement.value.trim() : ''
+			encap_mode: encapModeElement ? encapModeElement.value.trim() : 'UDP',
+			target_type: targetTypeElement ? (targetTypeElement.value || 'computer') : 'computer',
+			keepalive_interval: keepaliveElement ? (parseFloat(keepaliveElement.value) || 2.0) : 2.0
 		},
+		// Keep protocol for backward compatibility with Python side
 		protocol: {
 			target_type: targetTypeElement ? (targetTypeElement.value || 'computer') : 'computer',
 			keepalive_interval: keepaliveElement ? (parseFloat(keepaliveElement.value) || 2.0) : 2.0
 		},
+		// v2.0: hardware (also send as gpio for backward compatibility)
+		hardware: {
+			ptt_pin: pttPinElement ? (parseInt(pttPinElement.value) || 23) : 23,
+			led_pin: ledPinElement ? (parseInt(ledPinElement.value) || 17) : 17,
+			button_bounce_time: 0.02,
+			led_brightness: 1.0
+		},
 		gpio: {
 			ptt_pin: pttPinElement ? (parseInt(pttPinElement.value) || 23) : 23,
 			led_pin: ledPinElement ? (parseInt(ledPinElement.value) || 17) : 17,
-			button_bounce_time: 0.02,  // Default
-			led_brightness: 1.0        // Default
+			button_bounce_time: 0.02,
+			led_brightness: 1.0
+		},
+		// v2.0: console (also send as debug for backward compatibility)
+		console: {
+			verbose: verboseElement ? verboseElement.checked : false,
+			quiet: quietElement ? quietElement.checked : false
 		},
 		debug: {
 			verbose: verboseElement ? verboseElement.checked : false,
 			quiet: quietElement ? quietElement.checked : false
 		},
-		// MINIMAL GUI section - only essential transcription controls
+		// v2.0: transcription at top level
+		transcription: {
+			enabled: transcriptionEnabledElement ? transcriptionEnabledElement.checked : false,
+			confidence_threshold: transcriptionConfidenceElement ? parseFloat(transcriptionConfidenceElement.value) : 0.7,
+			language: 'auto',
+			model_size: 'base',
+			method: transcriptionEnabledElement && transcriptionEnabledElement.checked ? 'auto' : 'disabled'
+		},
+		// v2.0: tts at top level
+		tts: { 
+			enabled: document.getElementById('tts-enabled')?.checked || false,
+			incoming_enabled: document.getElementById('tts-incoming')?.checked || false,
+			outgoing_enabled: document.getElementById('tts-outgoing')?.checked || false,
+			include_station_id: document.getElementById('include-station-id')?.checked || false,
+			include_confirmation: document.getElementById('include-confirmation')?.checked || false,
+			rate: parseInt(document.getElementById('speech-rate')?.value) || 200,
+			volume: 0.8,
+			engine: 'system',
+			voice: 'default',
+			outgoing_delay_seconds: 1.0,
+			interrupt_on_ptt: true
+		},
+		// Also send gui section for backward compatibility
 		gui: {
 			transcription: {
 				enabled: transcriptionEnabledElement ? transcriptionEnabledElement.checked : false,
 				confidence_threshold: transcriptionConfidenceElement ? parseFloat(transcriptionConfidenceElement.value) : 0.7,
-				// Use sensible defaults for non-configurable settings
-				language: 'auto',  // Always auto-detect
-				model_size: 'base', // Always use base model
+				language: 'auto',
+				model_size: 'base',
 				method: transcriptionEnabledElement && transcriptionEnabledElement.checked ? 'auto' : 'disabled'
 			},
 			tts: { 
@@ -396,20 +428,14 @@ function gatherEnhancedConfigData() {
 				include_station_id: document.getElementById('include-station-id')?.checked || false,
 				include_confirmation: document.getElementById('include-confirmation')?.checked || false,
 				rate: parseInt(document.getElementById('speech-rate')?.value) || 200,
-				volume: parseFloat(document.getElementById('speech-volume')?.value) || 0.8,  // If you add volume slider
-				engine: 'system',  // Default
-				voice: 'default',  // Default
-				outgoing_delay_seconds: 1.0,  // Default
-				interrupt_on_ptt: true  // Default
+				volume: 0.8,
+				engine: 'system',
+				voice: 'default',
+				outgoing_delay_seconds: 1.0,
+				interrupt_on_ptt: true
 			}
-
 		}
 	};
-
-
-
-//return configData;  // Make sure this line exists
-
 }
 
 
@@ -510,6 +536,7 @@ function resetToDefaults() {
 			{ id: 'target-ip', value: '192.168.2.152' },
 			{ id: 'target-port', value: '57372' },
 			{ id: 'listen-port', value: '57372' },
+			{ id: 'encap-mode', value: 'UDP' },
 			{ id: 'target-type', value: 'computer' },
 			{ id: 'keepalive-interval', value: '2.0' },
 			{ id: 'ptt-pin', value: '23' },
@@ -524,7 +551,12 @@ function resetToDefaults() {
 		const checkboxes = [
 			{ id: 'verbose-mode', checked: false },
 			{ id: 'quiet-mode', checked: false },
-			{ id: 'transcription-enabled', checked: false }
+			{ id: 'transcription-enabled', checked: false },
+			{ id: 'tts-enabled', checked: false },
+			{ id: 'tts-incoming', checked: true },
+			{ id: 'tts-outgoing', checked: false },
+			{ id: 'include-station-id', checked: true },
+			{ id: 'include-confirmation', checked: true }
 		];
 
 		checkboxes.forEach(cb => {
