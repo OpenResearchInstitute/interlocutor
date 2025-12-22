@@ -380,19 +380,7 @@ class EnhancedRadioWebInterface:
 						"type": "message_sent",
 						"data": message_data
 					})
-
-
-					#Queue for TTS if enabled (for outgoing messages)
-					if (hasattr(self, 'radio_system') and 
-						hasattr(self.radio_system, 'enhanced_receiver') and 
-						hasattr(self.radio_system.enhanced_receiver, 'tts_manager') and 
-						self.radio_system.enhanced_receiver.tts_manager):
-
-						self.radio_system.enhanced_receiver.tts_manager.queue_text_message(
-							str(self.radio_system.station_id), 
-							message, 
-							is_outgoing=True
-						)
+					# TTS is handled by chat_manager path, not here
 
 
 
