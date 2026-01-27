@@ -1,8 +1,8 @@
 # Opulent Voice Protocol Specification
 ## High-Fidelity Digital Voice and Data for Amateur Radio
 
-**Version:** 1.0  
-**Date:** July 2025  
+**Version:** 1.1  
+**Date:** January 2026  
 **Status:** Implementation Draft  
 **Organization:** Open Research Institute  
 
@@ -43,16 +43,17 @@ The Opulent Voice Protocol defines a complete digital voice and data communicati
 ```
 ┌─────────────────────────────────────────┐
 │           Application Layer             │
-│     (Voice, Text, Data, Control)        │
+│     (Voice, Control, Text, Data)        │
 ├─────────────────────────────────────────┤
 │         Opulent Voice Protocol          │
-│ (COBS Framing, Priority, Encapsulation) │
+│   (COBS, Station ID, Authentication)    │
 ├─────────────────────────────────────────┤
 │           Transport Layer               │
-│         (IP/UDP/RTP Headers)            │
+│         (COBS/IP/UDP/RTP Headers)       │
 ├─────────────────────────────────────────┤
 │           Physical Layer                │
-│      (FEC, Modulation, RF)              │
+│        (Randomization, FEC,             |
+|    Interleaving, Modulation, RF)        │
 └─────────────────────────────────────────┘
 ```
 
@@ -63,7 +64,7 @@ The Opulent Voice Protocol defines a complete digital voice and data communicati
 - **Authentication**: Station identification and access control comply with regulatory and policy situations ranging from uncontrolled access to highly restricted access. Authentication can be done on a per-frame basis, when triggered or requested, or not at all. 
 
 **Implementation Freedom:**
-The protocol can be implemented in various ways - as separate modules, integrated systems, or distributed across different hardware platforms, but all implementations must use OPV headers, COBS encoding, IP headers, UDP headers, and RTP (for Opus payloads) for dataframe interoperability. For modem interoperability, the forward error correction, scrambling, whitening, and synchronization frames must be included. For transmission interoperability, the preamble, dummy frames, and end of transmission signals must be included. The reference implementations of Interlocutor and Locutus are given throughout this document as examples. 
+The protocol can be implemented in various ways. It can be implemented as separate modules, integrated systems, or distributed across different hardware platforms. All implementations must use OPV headers, COBS encoding, IP headers, UDP headers, and RTP (for Opus payloads) for dataframe interoperability. For modem interoperability, randomization, the forward error correction, interleaving, and synchronization word must be included. For transmission interoperability, the preamble, dummy frames, and end of transmission signals must be included. The reference implementations of Interlocutor and Locutus are given throughout this document as an example. 
 
 ---
 
@@ -71,35 +72,32 @@ The protocol can be implemented in various ways - as separate modules, integrate
 
 ### 2.1 Opulent Voice Protocol Frame Format
 
-The Opulent Voice Protocol uses fixed-size and fixed-timing frames for all data types:
+The Opulent Voice Protocol uses fixed-size and fixed-timing frames for all data types. It is 134 bytes long and 40 mS in duration.
 
 ```
 ┌─────────────────────────────────────────┐
 │          OPV Header (12 bytes)          │
 ├─────────────────────────────────────────┤
 │                 Payload                 |
-|   (12-byte header + 122-byte payload)   │
+|            (122-byte payload)           │
 └─────────────────────────────────────────┘
 ```
 
 **Frame Requirements:**
 - **Header Size**: 12 bytes.
-- **Timing**: Frames must be transmitted at regular intervals.
+- **Timing**: Frames are 40 mS in duration.
 - **Priority**: Voice frames have transmission priority over control frames, which have priority over text frames, which have priority over data frames.
 - **Encapsulation**: Standard Internet protocols (COBS/IP/UDP/RTP) are used within the Opulent Voice payload.
 
 **OPV Header Structure:**
 
 ```
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 ├─────────────────────────────────────────────────────────────────┤
-│                  Station Identifier (48 bits)                   │
-│                                                                 │
+│                  Station Identifier (6 bytes)                   │
 ├─────────────────────────────────────────────────────────────────┤
-│                    Token (24 bits)                              │
+│                    Token (3 bytes)                              │
 ├─────────────────────────────────────────────────────────────────┤
-│                   Reserved (24 bits)                            │
+│                   Reserved (3 bytes)                            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -192,7 +190,7 @@ Voice payloads carry OPUS-encoded audio data with streaming protocol integration
 
 **Protocol Requirements:**
 - **Codec:** Opus compression
-- **Bitrate:** 16 kbps minimum (higher bitrates permitted)
+- **Bitrate:** 16 kbps (higher bitrates anticipated in future versions)
 - **Frame Duration:** 40 ms per frame
 - **Sample Rate:** 48 kHz
 - **Channels:** Mono
@@ -212,7 +210,7 @@ Voice payloads carry OPUS-encoded audio data with streaming protocol integration
 
 #### Implementation Example: Interlocutor
 
-Uses RTP headers for streaming management with Opus payload. Structure: RTP Header (12 bytes) + Opus data (80 bytes) = 92 bytes total. RTP provides sequence numbering, timestamps at 48 kHz sample rate, and the SSRC field takes the station identification value. The complete voice payload is then encapsulated in UDP/IP headers before COBS encoding into the OPV frame.
+Uses RTP headers for streaming management with Opus payload. Structure: RTP Header (12 bytes) + Opus data (80 bytes) = 92 bytes total. RTP provides sequence numbering, timestamps at 48 kHz sample rate, and the SSRC field takes a hash of the station identification value. The complete voice payload is then encapsulated in UDP/IP headers before COBS encoding into the OPV frame.
 
 ### 3.2 Text Payloads
 
@@ -246,6 +244,14 @@ Control payloads manage system state, authentication, and protocol functions.
 - **System Commands:** Configuration and control functions can be communicated through this channel.
 - **Priority:** High priority, may interrupt non-voice traffic.
 - **Security:** Control fremas provide support for secure cryptographic authentication. This is not a required function of the protocol, but it is an option that provides significant additional value.
+
+**Payload Format:**
+```
+┌───────────────────────────────────────────┐
+│           UTF-8 Encoded Text              │
+│           (Variable Length)               │
+└───────────────────────────────────────────┘
+```
 
 **Standard Control Messages:**
 
@@ -352,8 +358,8 @@ Different message types receive appropriate network priority:
 ### 4.3 Port and Addressing
 
 **Protocol Requirements:**
-- **Addressing:** Support for point-to-point and and conference scenarios
-- **Port Management:** Destination ports are used to indicate the data types. There is not a data type field in the protocol header. 
+- **Addressing:** Support for point-to-point and and conference connection scenarios with an IP address and port in the IP header.
+- **Port Management:** UDP Destination ports in the UDP header are used to indicate the data types. The Opulent Voice header does not have a data type. 
 - **Network Integration:** Compatible with existing Internet infrastructure and services. 
 
 #### Implementation Example: Interlocutor
@@ -393,7 +399,7 @@ OPV implements strict priority queuing where higher priority messages always pre
 **Buffer Overflow Handling:**
 - Voice: Never buffered (real-time only) 
 - Control: Larger buffer, user notification on overflow
-- Text: Fixed size queue, oldest messages dropped
+- Text: Fixed size queue, oldest messages dropped if implementation's queue size is exceeded.
 - Data: Flow control, transmission pauses when buffer full
 
 Authentication and authorization failures need immediate user attention, while dropped chat messages are more of a usability issue than a system integrity issue.
@@ -404,7 +410,7 @@ Authentication and authorization failures need immediate user attention, while d
 
 ### 6.1 COBS Framing
 
-Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data. Data may be smaller than the fixed-length payaload of a single frame, or it may be much larger, requiring many frames to transmit. We need to know where our data begins and ends, and COBS provides that knowledge. 
+Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data. Data may be smaller than the fixed-length payload of a single frame, or it may be much larger, requiring many frames to transmit. We need to know where our data begins and ends, and COBS provides that knowledge. 
 
 **COBS Benefits:**
 - Guaranteed frame delimiters (0x00 bytes)
@@ -413,7 +419,7 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 - Compatible with byte-oriented interfaces
 
 **Implementation:**
-1. Apply COBS encoding to complete OPV frame
+1. Apply COBS encoding to OPV frame
 2. Append 0x00 delimiter
 3. Transmit encoded frame + delimiter
 4. Receiver uses 0x00 bytes to find frame boundaries
@@ -422,7 +428,7 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 
 **Primary Target: MSK Modem**
 - Minimum Shift Keying modulation
-- PLUTO SDR implementation
+- Libre SDR implementation
 - Over-the-air amateur radio transmission
 
 **Development/Testing: Ethernet**
@@ -452,19 +458,16 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 1. Station includes callsign + token in every transmission
 2. System stores (timestamp, callsign, token) for tracking
 3. When authentication required:
-   System → Station: Authentication challenge
-   Station → System: Signed response + certificate
+   System to Station: Authentication challenge
+   Station to System: Signed response + certificate
    System: Verify certificate chain and signature
 4. Authentication result communicated to all participants
 ```
 
 ### 7.2 Authorization Framework
 
-**Protocol Requirements:**
-- **Access Levels:** Support for different privilege levels
-- **Emergency Override:** Critical traffic must bypass normal restrictions
-- **Policy Flexibility:** Configurable access control policies
-- **Graceful Degradation:** Maintain basic functionality when control systems offline
+**Protocol Options:**
+Opulent Voice authentication and authorization can provide support for different privilege levels. Critical traffic can bypass normal restrictions with an emergency override. Policy flexibility can be provided through configurable access control. Opulent Voice can maintain basic functionality when control systems go offline. 
 
 **Access Control Concepts:**
 - **Deny Lists:** Stations temporarily or permanently restricted
@@ -475,9 +478,7 @@ Consistent Overhead Byte Stuffing (COBS) provides frame boundaries for our data.
 ### 7.3 Security Considerations
 
 **Threat Model:**
-- **Primary Threat:** Unauthorized use overwhelming system capacity
-- **Secondary Threats:** Interference, identity spoofing, denial of service
-- **Design Principle:** Security should not impede emergency communications
+Unauthorized use overwhelming system capacity and jammers. Interference, identity spoofing, and denial of service. The recommended design principal is that security should not impede emergency communications. 
 
 #### Implementation Example: Interlocutor
 
@@ -487,46 +488,196 @@ Supports ARRL Logbook of the World (LoTW) certificate authentication. Station ca
 
 ## 8. Physical Layer Requirements
 
-### 8.1 Forward Error Correction
+### 8.1 Frame Structure Overview
 
-**Protocol Requirements:**
-- **Header Protection:** Error correction suitable for frame headers
-- **Payload Protection:** Robust coding for data payload
-- **Burst Protection:** Interleaving to handle burst errors
-- **Performance:** Sufficient correction for target channel conditions
+| Parameter | Value | Notes |
+|-------|-----------|----------|
+| Input Frame Size | 134 bytes (1072 bits) | From application layer |
+| Encoded Frame Size | 268 bytes (2144 bits) | After FEC |
+| Frame Period |40 ms | Synchronized to audio callback |
+| Symbol Rate | 27,100 symbols/second | MSK modulation |
 
-**Protocol Approach:**
-- Header: Golay codes (work well with 12-byte headers)
-- Payload: 1/2 rate convolutional coding
-- Interleaving: Spread errors across frame boundaries
+---
 
-### 8.2 Modulation
+### 8.2 Synchronization Word
 
-**Protocol Requirements:**
-- **Spectral Efficiency:** Efficient use of amateur radio spectrum
-- **Phase Continuity:** Minimal adjacent channel interference
-- **Demodulator Compatibility:** Feasible implementation in SDR
-- **Performance:** Suitable for amateur     radio channel conditions
+**Value:** in hex, `0x02B8DB` (24 bits), and in binary `0000 0010 1011 1000 1101 1011`
 
-**Required Modulation:**
-- Minimum Shift Keying (MSK) for phase continuity and spectral efficiency
+**Properties:**
+- Peak-to-Sidelobe Ratio (PSLR): 8:1
+- Balanced 0/1 count for DC neutrality
+- Selected via exhaustive search for optimal autocorrelation
+- Transmitted MSB-first
 
-### 8.3 Frame Synchronization
+**Correlation:**
+- Soft correlation used for detection
+- Hunting threshold: ~70-80% of peak correlation
+- Locked threshold: ~40-50% of peak (flywheel mode)
 
-**Protocol Requirements:**
-- **Preamble:** "Lighthouse Signal" pattern for receiver acquisition
-- **Sync Words:** Frame boundary identification. This helps receivers readjust their clocks every frame, so that the difference between sender and local clocks doesn't cause temporal drift and receiver failure.
-- **End of Transmission:** Clean transmission termination. We know we're done with the transmission. 
-- **Interleaving:** Spreads burst errors across frame boundaries for better error correction. Executed with a quadratic permutation polynomial f(x) = 63x + 128x² (mod 2048)
-- **Randomizing:** XOR with pseudo-random sequence to break up bit patterns and flatten signal spectrum. 
+---
 
-XOR with this decimal data: 163 129 92 196 201 8 14 83 204 161 251 41 158 79 22 224 151 78 43 87 18 167 63 194 77 107 15 8 48 70 17 86 13 26 19 231 80 151 97 243 190 227 153 176 100 57 34 44 240 9 225 134 207 115 89 194 92 142 227 215 63 112 212 39 194 224 129 146 218 252 202 90 128 66 131 21 15 162 158 21 156 139 219 164 70 28 16 159 179 71 108 94 21 18 31 173 56 61 3 186 144 141 190 211 101 35 50 184 171 16 98 126 198 38 124 19 201 101 61 21 21 237 53 244 87 245 88 17 157 142 232 52 201 89 248 214 182 55 4 54 137 28 218 233 86 120 1 80 124 67 175 233 146 68 237 17 160 242 132 244 70 135 233 55 211 36 112 224 180 127 156 20 62 7 216 4 141 31 150 159 191 80 234 200 26
+## 8.3 Processing Order (Transmit)
 
-This sequence whitens the 1480-bit Opulent Voice frames (185 bytes × 8 bits = 1480 bits).  
+```
+Input Data Frame (134 bytes)
+        │
+┌───────────────────┐
+│   RANDOMIZE       │  XOR with CCSDS LFSR
+└───────────────────┘
+        │
+┌───────────────────┐
+│   FEC ENCODE      │  K=7 Convolutional (rate 1/2)
+│ 134 to 268 bytes  │  
+└───────────────────┘
+        │
+┌───────────────────┐
+│   INTERLEAVE      │  67×32 bit matrix
+│ (burst protect)   │  
+└───────────────────┘
+        │
+┌───────────────────┐
+│   SYNC WORD       │  Prepend 0x02B8DB
+│   INSERTION       │  
+└───────────────────┘
+        │
+   MSK Modulation
+```
 
-#### Implementation Example: Locutus Modem
+---
 
-ORI's Locutus modem implements MSK modulation targeting PLUTO SDR hardware. (TBD) Uses Golay codes for 12-byte header protection and 1/2 rate convolutional codes for payload. (TBD) Provides preamble, sync frames, and end-of-transmission signaling. Includes interleaving and whitening for improved transmission characteristics.
+## 8.4 CCSDS LFSR Randomizer
+
+**Purpose:** Randomize data before FEC to eliminate spectral spurs from repetitive patterns, and increase the number of transitions, which is important in minimum shift key modulation. 
+
+**Standard:** CCSDS (Consultative Committee for Space Data Systems)
+
+**Polynomial:** x^8 + x^7 + x^5 + x^3 + 1
+
+**Seed:** 0xFF (all ones), reset at the start of each frame
+
+**Period:** 255 bits
+
+**Application:**
+
+Randomization sequence is applied to the 134-byte input frame BEFORE convolutional encoding. Each byte is XORed with 8 consecutive LFSR output bits. The LFSR is clocked 8 times per byte (once per bit). On receive, the same operation is applied AFTER Viterbi decoding to recover original data.
+
+**Linear Feedback Shift Register Operation:**
+```
+For each clock cycle:
+  output_bit = state[7]  (MSB is output)
+  feedback = state[7] xor state[6] xor state[4] xor state[2]
+  state = (state << 1) | feedback
+```
+
+**Bit Ordering:** The LFSR outputs MSB-first. For byte-level XOR, generate 8 output bits (clocking the LFSR each time), then XOR with the data byte.
+
+---
+
+## 8.5 Convolutional Encoder (FEC)
+
+**Standard:** NASA/CCSDS (also used in 802.11)
+
+**Parameters:**
+| Parameter | Value |
+|-----------|-------|
+| Constraint Length | K = 7 (64-state trellis) |
+| Code Rate | 1/2 (each input bit results in 2 output bits) |
+| Input Bits | 1072 (134 bytes) |
+| Output Bits | 2144 (268 bytes) |
+| Coding Gain | ~7 dB (soft Viterbi) at BER=10^-5 |
+
+**Generator Polynomials (NASA/Voyager Standard):**
+
+| Polynomial | Octal | Binary | Description |
+|------------|-------|--------|-------------|
+| G1 | 171 | 1111001 | First output |
+| G2 | 133 | 1011011 | Second output |
+
+This is the well-known NASA convolutional code used in the Voyager missions and many other space and terrestrial communication systems. It is also used in IEEE 802.11.
+
+**Output Order:** For each input bit, output G1 then G2.
+
+**Termination:** No tail bits are added. The trellis is left unterminated in the reference implementation. Decoders should handle the unterminated trellis appropriately (e.g., traceback from best final state rather than assuming all-zeros final state, or go ahead and terminate the trellis).
+
+---
+
+## 8.6 Interleaver
+
+**Type:** Block interleaver (row-column) at bit level
+
+**Dimensions:** 67 rows × 32 columns = 2144 bits
+
+**Write Order:** Row-major (fill rows sequentially)
+
+**Read Order:** Column-major (read columns sequentially)
+
+**Effect:** Consecutive input bits are separated by 67 bit positions in the output. This spreads burst errors across multiple constraint lengths of the convolutional code, enabling the Viterbi decoder to correct them.
+
+**Address Mapping:**
+For input bit position `p` (0 to 2143):
+```
+row = p ÷ 32
+col = p mod 32
+output_position = (col × 67) + row
+```
+
+**Example:** Input bits 0, 1, 2, 3... appear at output positions 0, 67, 134, 201...
+
+---
+
+## 8.7 Complete Transmit Frame
+
+The sync word is prepended to each encoded frame before modulation.
+
+```
+┌──────────────┬─────────────────────────────────────┐
+│  Sync Word   │        Encoded Payload              │
+│   24 bits    │         2144 bits                   │
+│   0x02B8DB   │   (randomized + FEC + interleaved)  │
+└──────────────┴─────────────────────────────────────┘
+     3 bytes              268 bytes
+              Total: 271 bytes per frame
+```
+
+**Transmission Order:** Sync word is transmitted first (MSB-first), followed by the encoded payload.
+
+---
+
+## 8.8 Receive Processing Order
+
+```
+   MSK Demodulation
+        │
+┌───────────────────┐
+│   SYNC DETECT     │  Soft correlation on 0x02B8DB
+│                   │  
+└───────────────────┘
+        │
+┌───────────────────┐
+│   DEINTERLEAVE    │  Reverse 67×32 matrix
+│                   │  
+└───────────────────┘
+        │
+┌───────────────────┐
+│   FEC DECODE      │  Soft Viterbi K=7
+│   268→134 bytes   │  
+└───────────────────┘
+        │
+┌───────────────────┐
+│   DERANDOMIZE     │  XOR with CCSDS LFSR
+│   (Post-FEC)      │  
+└───────────────────┘
+        │
+Output Data (134 bytes)
+```
+
+---
+
+## 8.9 Soft Decision Decoding
+
+Soft-decision Viterbi decoding is strongly recommended for improved performance. The use of soft decisions provides approximately 2-3 dB coding gain over hard-decision decoding.
+
+**Implementation Note:** The degree of soft quantization (number of bits per soft sample) is an implementation choice. More resolution may improve performance slightly but is not required for interoperability. The HDL reference implementation uses 3-bit quantization.
 
 ---
 
@@ -543,8 +694,8 @@ Keeping open for KB5MU contributions
 - **Voice:** 16 kbps + protocol overhead (approximately 20 kbps total)
 - **Text:** Minimal bandwidth (burst transmission as needed)
 - **Control:** Very low bandwidth for system management
-- **Data:** Variable bandwidth (background priority, yield to voice)
-- **RF:** Complex baseband at 27,100 symbols/second carries 2 bits per symbol. The result is 54,200 bps. 1.5x the bit rate, typical for unfiltered MSK, results in an 80 kHz RF bandwidth. 
+- **Data:** Variable bandwidth (background priority, yield to voice, text, and control)
+- **RF:** Complex baseband at 27,100 symbols/second carries 2 bits per symbol. The result is 54,200 bps. 1.5x the bit rate, typical for unfiltered MSK, results in an 81.3 kHz RF bandwidth.
 
 **Latency Tolerance:**
 - **Voice:** <200 ms for good user experience
@@ -556,12 +707,11 @@ Keeping open for KB5MU contributions
 
 **Protocol Requirements:**
 - **Forward Error Correction:** Sufficient coding for target bit error rate performance.
-- **Graceful Degradation:** Maintain basic functionality under poor conditions.
 - **Burst Error Protection:** Interleaving required for fast fading channel resilience.
 
-#### Implementation Example: Interlocutor + Locutus
+#### Implementation Example: Interlocutor + Dialogus + Locutus
 
-Achieves target audio quality using 16 kbps OPUS encoding with 40ms frames. Network overhead approximately 25% (134-byte frames carrying 80-byte OPUS payload). Golay + convolutional forward error correction provides robust error correction.
+Achieves target audio quality using 16 kbps OPUS encoding with 40ms frames. Network overhead approximately 25% (134-byte frames carrying 80-byte OPUS payload). Convolutional forward error correction provides robust error correction. Soft decoding of forward error correction and soft decoding for synchronization word search and verification delivers preformance goals. 
 
 ---
 
@@ -572,123 +722,42 @@ Achieves target audio quality using 16 kbps OPUS encoding with 40ms frames. Netw
 The Open Research Institute provides a complete reference implementation split across two main components:
 
 **Interlocutor (Human-Radio Interface):**
-- **Platform:** Raspberry Pi with Python implementation
+- **Platform:** Raspberry Pi, Linux, MacOS Python implementation
 - **Function:** User interface, audio processing, frame creation
-- **Features:** Web GUI, CLI interface, priority queuing, COBS encoding
-- **Integration:** Creates 134-byte OPV frames for transmission to modem.
+- **Features:** Web GUI, CLI interface, priority queuing, hardware interrupt frame timing
+- **Integration:** Creates 134-byte OPV frames for transmission to modem
 
 https://github.com/OpenResearchInstitute/interlocutor
 
+**Dialogus (Processor Side of Modem):**
+- **Platform:** ARM Zynq PS implementation
+- **Function:** Frame delivery from network interface to modem, modem configuration
+- **Features:** Modem interface, communications channel statistics
+- **Integration:** Delivers 134-byte OPV frames to and from modem
+
+https://github.com/OpenResearchInstitute/Dialogus
+
 **Locutus (Modem Layer):**
-- **Platform:** PLUTO SDR with FPGA implementation
+- **Platform:** Libre SDR FPGA implementation
 - **Function:** Physical layer processing and RF transmission
-- **Features:** MSK modulation, FEC, interleaving, synchronization
-- **Integration:** Processes OPV frames from Interlocutor
+- **Features:** MSK modulation, randomization, FEC, interleaving, synchronization
+- **Integration:** Processes OPV frames from Interlocutor, delivered through Dialogus
 
 https://github.com/OpenResearchInstitute/pluto_msk
 
 ### 10.2 Interlocutor Implementation Details
 
-**Key Software Components:**
-- `OpulentVoiceProtocolWithIP`: Core frame creation and processing
-- `StationIdentifier`: Base-40 callsign encoding/decoding
-- `RTPAudioFrameBuilder`: RTP header generation for voice streams
-- `MessagePriorityQueue`: Voice-first priority queuing system
-- `COBSEncoder`: Frame boundary detection encoding
-- `NetworkTransmitter`: UDP transmission to modem
-
 **Frame Processing Pipeline:**
-1. Audio: PyAudio → OPUS → RTP → UDP → IP → COBS → OPV Frame
-2. Text: UTF-8 → UDP → IP → COBS → OPV Frame (with fragmentation)
-3. Control: ASCII → UDP → IP → COBS → OPV Frame
-4. All frames: 134 bytes total (12-byte header + 122-byte payload)
+1. Audio: PyAudio to OPUS to RTP to UDP to IP to COBS to OPV Frame
+2. Text: UTF-8 to UDP to IP to COBS to OPV Frame (with fragmentation)
+3. Control: ASCII to UDP to IP to COBS to OPV Frame
+4. Data: binary data to UDP to IP to COBS to OPV Frame
+   
+All frames: 134 bytes total (12-byte header + 122-byte payload)
 
 **Audio Callback Architecture:**
-- 40ms PyAudio callback drives all timing
-- Voice transmission bypasses all queues (immediate)
-- Other message types processed when voice queue empty
-- PTT-aware buffering for seamless operation
 
-### 10.3 Integration and Testing
-
-**Interoperability Validation:**
-- Frame format compliance testing
-- Audio quality measurement (16 kbps OPUS)
-- Priority behavior verification
-- Network performance assessment
-
-**Development Tools:**
-- COBS encoder/decoder test suite
-- Frame validation utilities
-- Audio quality measurement tools
-- Network simulation capabilities
-
-**Future Extensions:**
-- Additional SDR platform support (via Locutus variants)
-- Alternative hardware implementations
-- Performance optimization for different use cases
-- Enhanced authentication mechanisms
-
-## 11. Future Protocol Evolution
-
-### 11.1 Planned Enhancements
-
-**Audio Quality Improvements:**
-- Higher bitrate options (32 kbps) for additional fidelity
-- Adaptive bitrate (Opus VBR used instead of CBR). Based on voice characteristics such as lots of gaps between words and syllables, we can take advantage of the additional space for moving data more quickly through the system.
-- Enhanced audio preprocessing options
-
-**Protocol Extensions:**
-- Version negotiation mechanisms
-- Backward compatibility frameworks
-- Advanced error correction algorithms
-- Mesh networking capabilities
-
-### 11.2 Application Domains
-
-**Satellite Communications:**
-- Native uplink protocol for amateur satellites
-- Doppler shift compensation integration
-- Orbital mechanics-aware scheduling
-
-**Emergency Communications:**
-- Priority messaging for disaster response
-- Gateway integration with traditional modes
-- Interoperability with served agency systems
-
-**Experimental Applications:**
-- Software-defined radio research platform
-- Educational protocol development
-- Amateur radio experimentation framework
-
----
-
-## 12. Regulatory Compliance
-
-### 12.1 Amateur Radio Regulations
-
-**Technical Compliance:**
-- Open protocol specification
-- Station identification in every transmission
-- Bandwidth appropriate for global amateur allocations
-- Complete technical documentation publicly available
-
-**International Compatibility:**
-- ITU Region compliance
-- IARU band plan compatibility
-- National regulatory variation support
-
-### 12.2 Spectrum Efficiency
-
-**Bandwidth Optimization:**
-- Efficient digital modulation (MSK)
-- Superior spectral efficiency vs. analog modes
-- Minimal adjacent channel interference
-
-**Interference Mitigation:**
-- Clean modulation characteristics
-- Access control for harmful interference reduction
-- Shared spectrum operation design
+40ms PyAudio callback drives all timing. Voice transmission bypasses all queues. Voice transmission is immediately sent. Other message types processed when voice queue is empty. PTT-aware buffering for seamless operation.
 
 ---
 
@@ -703,7 +772,7 @@ OPV Header:   [12 bytes]
   Token:      0xBBAADD (3 bytes)
   Reserved:   0x000000 (3 bytes)
 Payload:      [122 bytes]
-  COBS data:  IP(120) + RTP(12) + OPUS(80) encoded
+  COBS data:  IP() + RTP(12) + OPUS(80) encoded
 Total:        134 bytes
 ```
 
@@ -740,28 +809,30 @@ Base-40 calculation: 32×40⁴ + 1×40³ + 10×40² + 11×40¹ + 12×40⁰
 | STATION_ID | `STATION_ID:<call>` | None | Station identification |
 | KEEPALIVE | `KEEPALIVE:<time>` | `KEEPALIVE` | Connection maintenance |
 
-### Appendix D: Implementation Compliance Checklist (!!! needs work)
+### Appendix D: Implementation Compliance Checklist
 
 **Mandatory Protocol Features:**
 - [ ] 12-byte OPV header format
 - [ ] Base-40 station identifier encoding
-- [ ] Voice priority over all other traffic
+- [ ] Voice priority over control, then text, then data
+- [ ] COBS frame boundary detection
+- [ ] IP/UDP encapsulation
+- [ ] Forward error correction as specified
 - [ ] OPUS codec support (16 kbps minimum)
+- [ ] RTP headers for audio support
 - [ ] UTF-8 text message support
-- [ ] Basic control message handling
 
 **Recommended Features:**
-- [ ] RTP headers for voice streams
-- [ ] COBS or equivalent frame boundary detection
-- [ ] IP/UDP encapsulation
-- [ ] Forward error correction
+- [ ] Soft decoding of forward error correction
+- [ ] Correlation of synchronization word
 - [ ] Authentication framework support
+- [ ] LoTW certificate integration
+- [ ] Basic control message handling for push to talk
 
 **Optional Features:**
 - [ ] Web-based configuration interface
 - [ ] Multiple audio device support
 - [ ] Network reconnection logic
-- [ ] LoTW certificate integration
 
 ---
 
@@ -773,4 +844,4 @@ Base-40 calculation: 32×40⁴ + 1×40³ + 10×40² + 11×40¹ + 12×40⁰
 
 ---
 
-*Opulent Voice Protocol Specification - Open Research Institute - 2025*
+*Opulent Voice Protocol Specification - Open Research Institute - 2026*
