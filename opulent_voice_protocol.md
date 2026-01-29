@@ -787,18 +787,7 @@ Payload:      [122 bytes]
 Total:        134 bytes
 ```
 
-### Appendix B: Complete Base-40 Encoding Table
-
-| Value | Char | Value | Char | Value | Char | Value | Char |
-|-------|------|-------|------|-------|------|-------|------|
-| 0-9 | 0-9 | 10-35 | A-Z | 36 | / | 37 | - |
-| 38 | (space) | 39 | (unused) | | | | |
-
-**Encoding Example:**
-`W1ABC` → W(32) + 1(1) + A(10) + B(11) + C(12)
-Base-40 calculation: 32×40⁴ + 1×40³ + 10×40² + 11×40¹ + 12×40⁰
-
-### Appendix C: Standard Control Messages
+### Appendix B: Standard Control Messages
 
 | Message | Format | Response | Purpose |
 |---------|--------|----------|---------|
@@ -809,7 +798,7 @@ Base-40 calculation: 32×40⁴ + 1×40³ + 10×40² + 11×40¹ + 12×40⁰
 | STATION_ID | `STATION_ID:<call>` | None | Station identification |
 | KEEPALIVE | `KEEPALIVE:<time>` | `KEEPALIVE` | Connection maintenance |
 
-### Appendix D: Implementation Compliance Checklist
+### Appendix C: Implementation Compliance Checklist
 
 **Mandatory Protocol Features:**
 - [ ] 12-byte OPV header format
