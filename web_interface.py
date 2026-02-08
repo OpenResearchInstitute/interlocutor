@@ -7,9 +7,11 @@ import asyncio
 import json
 import logging
 import ipaddress
+
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Set, Optional, Any
+
 import threading
 import time
 
@@ -18,13 +20,14 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+
 import uvicorn
 import re
 import mimetypes
 
 from config_manager import OpulentVoiceConfig
 from radio_protocol import DebugConfig
-
+from interlocutor_commands import dispatcher as command_dispatcher
 
 class EnhancedRadioWebInterface:
 	"""Enhanced bridge between web GUI and radio system with voice, control, and chat integration"""
@@ -323,16 +326,46 @@ class EnhancedRadioWebInterface:
 
 
 
-
-
-
-
 	async def handle_send_text_message(self, data: Dict):
 		"""Handle text message from GUI - Enhanced with proper message flow"""
 		message = data.get('message', '').strip()
 		if not message:
 			return
-	
+
+		# ── Slash-command dispatch ──────────────────────────────
+		# Check for commands BEFORE creating message records or
+		# sending to chat_manager. Commands are local-only.
+		cmd_result = command_dispatcher.dispatch(message)
+		if cmd_result is not None:
+			# Build a system message for the chat display
+			if cmd_result.is_error:
+				content = f"⚠️ {cmd_result.error}"
+			else:
+				content = cmd_result.summary
+
+			command_message = {
+				"type": "command_result",
+				"direction": "system",
+				"content": content,
+				"command": cmd_result.command,
+				"details": cmd_result.details if not cmd_result.is_error else {},
+				"is_error": cmd_result.is_error,
+				"timestamp": datetime.now().isoformat(),
+				"from": "Interlocutor",
+				"message_id": f"cmd_{int(time.time() * 1000)}"
+			}
+
+			# Add to history so it persists across reconnects
+			self.message_history.append(command_message)
+
+			# Broadcast to all connected web clients
+			await self.broadcast_to_all({
+				"type": "command_result",
+				"data": command_message
+			})
+			return  # Do NOT send to chat_manager / radio
+		# ── End command dispatch ────────────────────────────────
+
 		try:
 			# Create message record immediately
 			message_data = {

@@ -625,6 +625,37 @@ body {
 	background: #f57c00;
 }
 
+
+
+
+/* Command result messages — visually distinct from chat */
+.message.command-result {
+    background-color: var(--bg-secondary, #2a2a3e);
+    border-left: 3px solid var(--accent-color, #7c6fe0);
+    margin: 4px 20%;
+    font-family: 'Atkinson Hyperlegible', sans-serif;
+}
+
+.message.command-result .message-content {
+    font-family: 'Atkinson Hyperlegible Mono', monospace;
+    white-space: pre-wrap;
+}
+
+.message.command-result .command-error {
+    color: var(--error-color, #ff6b6b);
+}
+
+.message.command-result .message-from {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+
+
+
+
+
+
 /* Configuration Management Consolidated Styles */
 .config-management-consolidated {
 	background: rgba(255, 255, 255, 0.08);

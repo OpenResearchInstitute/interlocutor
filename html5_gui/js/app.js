@@ -131,6 +131,12 @@ function loadMessageHistory(messages) {
 	
 	// Add all messages from history
 	messages.forEach(messageData => {
+		// Handle command results from history
+		if (messageData.type === 'command_result') {
+			handleCommandResult(messageData);
+			return;
+		}
+
 		let direction = 'incoming';
 		let from = messageData.from;
 		
@@ -221,12 +227,15 @@ function sendMessage() {
 	
 	if (ws && ws.readyState === WebSocket.OPEN) {
 		const timestamp = new Date().toISOString();
-		displayOutgoingMessage(message, timestamp);
+		// Don't display slash-commands as outgoing chat — the server
+		// will send back a command_result that renders properly
+		if (!message.startsWith('/')) { 
+			displayOutgoingMessage(message, timestamp);
+		}
 		
 		sendWebSocketMessage('send_text_message', { message });
 		messageInput.value = '';
 		messageInput.style.height = 'auto';
-		
 		addLogEntry(`Sent message: ${message.substring(0, 50)}...`, 'info');
 	} else {
 		showNotification('Cannot send message: not connected', 'error');
@@ -386,6 +395,65 @@ function announceToScreenReader(message) {
 		}, 1000);
 	}
 }
+
+
+
+
+// Command result display (dice rolls, etc.)
+function handleCommandResult(data) {
+    const messageHistory = document.getElementById('message-history');
+
+    const messageEl = document.createElement('div');
+    messageEl.className = 'message system command-result';
+    messageEl.setAttribute('role', 'log');
+    messageEl.setAttribute('aria-live', 'polite');
+
+    const contentEl = document.createElement('div');
+    contentEl.className = 'message-content';
+
+    if (data.is_error) {
+        contentEl.classList.add('command-error');
+        contentEl.textContent = data.content;
+    } else {
+        contentEl.textContent = data.content;
+
+        // If this is a dice roll, we could add rich rendering here
+        // using data.details (rolls array, total, etc.)
+        if (data.command === 'roll' && data.details) {
+            // Future: animated dice, highlighted crits, etc.
+        }
+    }
+
+    messageEl.appendChild(contentEl);
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'message-meta';
+
+    const fromEl = document.createElement('span');
+    fromEl.className = 'message-from';
+    fromEl.textContent = data.from || 'Interlocutor';
+    metaEl.appendChild(fromEl);
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'message-time';
+    const date = new Date(data.timestamp);
+    timeEl.textContent = date.toLocaleTimeString();
+    metaEl.appendChild(timeEl);
+
+    messageEl.appendChild(metaEl);
+    messageHistory.appendChild(messageEl);
+    scrollToBottom(messageHistory);
+
+    announceToScreenReader(`Command result: ${data.content}`);
+    addLogEntry(`Command /${data.command}: ${data.content.substring(0, 50)}`, 'info');
+}
+
+
+
+
+
+
+
 
 
 // Uptime counter with time formatting

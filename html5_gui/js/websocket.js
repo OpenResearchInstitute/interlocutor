@@ -261,7 +261,11 @@ function handleWebSocketMessage(message) {
 			console.log('   Audio data:', message.data);
 			handleAudioPlaybackData(message.data);
 			break;
-			
+
+		case 'command_result':
+			handleCommandResult(message.data);
+			break;
+
 		case 'reception_stats':
 			updateReceptionStats(message.data);
 			break;
