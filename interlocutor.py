@@ -10,6 +10,7 @@ GPIO PTT Audio, Terminal Chat, Control Messages, and Config Files
 - Operator and Audio Device Configuration files in YAML
 - Atkinson Hyperlegible font
 - Audio transcription
+- Specialized command dictionary (dice roller, etc)
 
 Text Input → ChatManagerAudioDriven → AudioDrivenFrameManager.queue_text_message() → Simple Queue()
 Voice Input → audio_callback → AudioDrivenFrameManager.process_voice_and_transmit() → Direct transmission
@@ -142,6 +143,8 @@ from radio_protocol import (
 
 from enhanced_receiver import integrate_enhanced_receiver
 
+from interlocutor_commands import dispatcher as command_dispatcher
+
 # global variable for GUI
 web_interface_instance = None
 
@@ -252,11 +255,31 @@ class TerminalChatInterface:
 							print("🗑️  No buffered messages to clear")
 						self._show_prompt()
 						continue
+
+					if message.lower() == '/help' or message.lower() == 'help':
+						print("\nAvailable commands:")
+						for name, help_text in command_dispatcher.list_commands():
+							print(f"  {help_text}")
+						print("  status — Show chat statistics")
+						print("  clear  — Clear buffered messages")
+						print("  quit   — Exit chat interface")
+						print()
+						self._show_prompt()
+						continue
 					
 					if message:
-						# Handle the message through chat manager
-						result = self.chat_manager.handle_message_input(message)
-						self._display_result(result)
+						# Check for slash-commands first
+						cmd_result = command_dispatcher.dispatch(message)
+						if cmd_result is not None:
+							# Command recognized — display locally, don't transmit
+							if cmd_result.is_error:
+								print(f"  ⚠️  {cmd_result.error}")
+							else:
+								print(f"  {cmd_result.summary}")
+						else:
+							# Normal chat — send through radio pipeline
+							result = self.chat_manager.handle_message_input(message)
+							self._display_result(result)
 					
 					# Show prompt again
 					self._show_prompt()
