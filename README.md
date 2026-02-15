@@ -6,6 +6,212 @@
 Please see our Operator's Manual at https://github.com/OpenResearchInstitute/interlocutor/blob/main/interlocutor_manual.md
 
 ---
+
+### Debugging the Interlocutor Command System - February 2026 Documentation
+
+We added a "simple" feature to Interlocutor's web interface and spent more time fighting the browser than writing the feature. Here is our debugging war story from the Opulent Voice Protocol project.
+
+A companion article in this newsletter describes the new slash-command system for Interlocutor. This is an extensible architecture that lets operators type /roll d20 in the chat window and see dice results locally instead of transmitting the raw text over the air. The design is clean, the test suite passes, and the CLI works perfectly.
+
+The web interface, however, had other plans!
+
+What followed was a debugging session that touched every layer of the stack. Python async handlers, JavaScript message routing, browser rendering, and (most painfully for me) browser caching. Each bug had a clear symptom, a non-obvious cause, and a fix that taught us all something about the assumptions hiding in our code.
+
+So here is the story of those four bugs!
+
+#### Bug 1: The Eager Blue Bubble
+
+Symptom
+
+Type /roll d6 in the web interface. A blue outgoing message bubble appears on the right side of the chat, showing the raw text /roll d6, as if it were a normal chat message being sent over the radio. No dice result appears. It's supposed to be in the middle and a difference color, due to a special CSS case for commands. Commands are neither sent messages or received messages, therefore they are in the center of the message area and are visually distinct with a different color. 
+
+After refreshing the browser, the blue bubble disappears and the correct dice result appears instead, centered and properly styled! Well, that isn't going to work. 
+
+The Investigation
+
+The fact that refresh fixed the display turned out to be the key clue. It meant the server was doing its job correctly. It was dispatching the command, generating the result, and storing it in message history. The problem was in how the browser rendered the initial interaction, right after the operator pressed return at the end of the command. 
+
+Here's the original sendMessage() function in app.js:
+
+function sendMessage() {
+    const messageInput = document.getElementById('message-input');
+    const message = messageInput.value.trim();
+
+    if (!message) return;
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        const timestamp = new Date().toISOString();
+        displayOutgoingMessage(message, timestamp);   // ← THE CULPRIT
+
+        sendWebSocketMessage('send_text_message', { message });
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+    }
+}
+
+See line 224? displayOutgoingMessage(message, timestamp) fires immediately, before the WebSocket message even leaves the browser. The function creates a blue right-aligned bubble and appends it to the chat history. So far so good. Then the message travels to the server, where the command dispatcher intercepts it and sends back a command_result. But, by then, the user is already looking at a blue bubble containing /roll d6.
+
+This is an optimistic UI pattern. This is the kind you see in iMessage or Slack, where sent messages appear instantly without waiting for server confirmation. It's the right design for normal chat messages, where the server is just a relay. But slash-commands aren't normal chat. They need to be processed by the server before the UI knows what to display.
+
+The Fix
+
+A one-line gate:
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        const timestamp = new Date().toISOString();
+        // Don't display slash-commands as outgoing chat — the server
+        // will send back a command_result that renders properly
+        if (!message.startsWith('/')) {
+            displayOutgoingMessage(message, timestamp);
+        }
+
+        sendWebSocketMessage('send_text_message', { message });
+
+Normal chat still gets the instant blue bubble. Slash-commands wait for the server's command_result response and render through the proper handler. The UI now reflects the actual data flow, which is almost always the best way to do it. 
+
+The Lesson
+
+Optimistic UI is a performance optimization with semantic consequences. When you render before processing, you're saying that you already know what the result looks like. For relay-style operations like send text or display text, this assumption holds. For operations that transform input like parse command, execute, or return structured result, it doesn't. The display strategy needs to match the processing model. 
+
+#### Bug 2: The Silent Tagged Template Literal
+
+Symptom
+
+After adding the slash-command gate to sendMessage(), the web interface stops working entirely. Whoops! The page loads, but no WebSocket connection is established. The server logs show HTTP 200 for the page and JavaScript files, but no WebSocket upgrade requests. The browser appears completely dead! Doh.
+
+The Investigation
+
+Opening Safari's Web Inspector, the console showed:
+
+SyntaxError: Unexpected token ';'. Expected ')' to end a compound expression.
+    (anonymous function) (app.js:234)
+
+Line 234 wasn't anywhere near our edit. It was this line, which had existed in the codebase before we touched anything:
+
+        addLogEntry`Sent message: ${message.substring(0, 50)}...`, 'info');
+
+Spot the problem? I didn't, at first. There's a missing ( between addLogEntry and the backtick. The correct call should be:
+
+        addLogEntry(`Sent message: ${message.substring(0, 50)}...`, 'info');
+
+Here's where it gets interesting. This line had been working before our edit. It had worked all along no problem. But, how?
+
+In JavaScript, functionName followed by a template literal (backtick string) is valid syntax. It's called a tagged template literal. It calls the function with the template parts as arguments. Why do we have tagged template literals in our code? Spoiler alert. We don't! 
+
+JavaScript didn't complain because addLogEntry`...`  is coincidentally valid syntax. It's a tagged template literal call. The language feature exists so you can do things like sanitizing HTML (html\<p>${userInput}</p>`) or building SQL queries with automatic escaping. Libraries like styled-components and GraphQL's gql` tag use them heavily.
+
+But nobody chose to use one here. The typo just happened to land in the exact one spot where a missing parenthesis produces a different valid program instead of a syntax error.  It was an accidental bug hiding in plain sight.
+
+So addLogEntry\Sent message: ...`` was being parsed as a tagged template call, which would produce garbage results but wouldn't throw an error.
+
+The , 'info'); after the closing backtick was previously being parsed as part of a larger expression that happened to be syntactically valid in context. But our edit to sendMessage() changed the surrounding code structure just enough that the JavaScript parser could no longer make sense of the stray , 'info'). And, Safari, unlike Chrome, refused to be lenient about it.
+
+One missing parenthesis, silently wrong for who knows how long, suddenly became fatal because we edited a nearby line.
+
+The Fix
+
+Add the (:
+
+        addLogEntry(`Sent message: ${message.substring(0, 50)}...`, 'info');
+
+The Lesson
+
+Tagged template literals can be a silent trap. A missing ( before a backtick doesn't produce a syntax error. It produces a different valid program. The bug was latent in the codebase, asymptomatic until a nearby change shifted the parser's interpretation of the surrounding code. This is the kind of thing a linter catches instantly, and it's a good argument for running one.
+
+#### Bug 3: Safari's Immortal Cache
+
+Symptom
+
+After fixing the tagged template literal, we save app.js, restart the server, and reload the browser. The same error appears! We use Safari's "Empty Caches" command (Develop menu, select Empty Caches). Same error. We hard-refresh with Cmd+Shift+R. Same error. The server logs show 304 Not Modified for app.js. The browser isn't even requesting the new file. Ugh.
+
+The Investigation
+
+FastAPI's StaticFiles serves JavaScript files with default cache headers that tell the browser to cache aggressively. Safari honors this enthusiastically. The "Empty Caches" command clears the disk cache, but Safari also holds cached resources in memory for any open tabs or windows. As long as a Safari window exists, even if you've navigated away from the page, the in-memory cache can survive a disk cache clear. 
+
+We verified this by checking the server logs. After "Empty Caches" and reload, the server never received a request for app.js at all. Safari was serving the old file from memory without even asking the server if it had changed. In production, this is useful. In development, it can be confusing and result in a wasted time and effort.
+
+The Fix
+
+Quit Safari completely. Cmd+Q, not just closing the window, and then relaunch. On the fresh launch, Safari requested all files from the server (status 200), got the corrected app.js, and the WebSocket connection established immediately. This could be seen in Interlocutor's terminal output. 
+
+For future development, we can consider three approaches. First, adding Cache-Control: no-cache headers via middleware. Second, appending cache-buster query strings to script tags (app.js?v=2). Third, using content-hashed filenames. All are legitimate. For an actively-developed project without a build system, the full-browser-quit approach during development is the simplest, and proper cache headers can be added when the project matures.
+
+The Lesson
+
+Browser caching is not a single mechanism. Disk cache, memory cache, service worker cache, and HTTP cache negotiation are all separate systems that interact in browser-specific ways. "Clear the cache" can mean different things depending on which layer you're clearing. When changes to static files seem to have no effect, verify at the network level (server logs or browser network tab) that the new file is actually being requested, not just that the old cache has been "cleared."
+
+#### Bug 4: The Split-Personality Refresh
+
+Symptom
+
+With the cache issue resolved, slash-commands now work in the web interface. Yay! Type /roll d6 and a properly styled command result appears, centered in the chat with a dark background and dice emoji. Type /roll fireball damage and a red error message appears, also centered. It looks great.
+
+Then hit refresh.
+
+The same messages reload from history, but now they're displayed as incoming messages. They are eft-aligned, light background, wrong styling. The live rendering and the history rendering are producing completely different visual output for the same data. Blech. 
+
+The Investigation
+
+Interlocutor's web interface loads message history on every WebSocket connection and this includes reconnects and page refreshes. The loadMessageHistory() function in app.js iterates over all stored messages and dutifully renders each one:
+
+function loadMessageHistory(messages) {
+    messages.forEach(messageData => {
+        let direction = 'incoming';
+        let from = messageData.from;
+
+        if (messageData.from === currentStation ||
+            messageData.direction === 'outgoing') {
+            direction = 'outgoing';
+            from = 'You';
+        }
+
+        const message = createMessageElement(
+            messageData.content, direction, from, messageData.timestamp
+        );
+        messageHistory.appendChild(message);
+    });
+}
+
+This function knows about two types of messages: incoming and outgoing. A command result has direction: "system"and from: "Interlocutor" — which doesn't match the outgoing check, so it falls through to the default direction = 'incoming'. The function dutifully renders it as a left-aligned incoming message. It's just doing what it's told. 
+
+Meanwhile, live command results arrive as WebSocket messages with type: "command_result", which routes to handleCommandResult(). This is a completely separate rendering path that produces the centered, dark-styled output.
+
+Same data, two rendering paths, two visual results. The message type field was present in the stored data but loadMessageHistory() never checked it.
+
+The Fix
+
+Add a type check at the top of the history loop:
+
+    messages.forEach(messageData => {
+        // Handle command results from history
+        if (messageData.type === 'command_result') {
+            handleCommandResult(messageData);
+            return;
+        }
+
+        let direction = 'incoming';
+        // ... existing code continues ...
+
+Now history-loaded command results route through the same handleCommandResult() function as live ones. Same code path, same visual output, regardless of whether you're seeing the result live or after a refresh.
+
+The Lesson
+
+When you add a new message type to a system that stores and replays messages, there are always two rendering paths: the live path and the history path. If you only add handling to the live path, the system appears to work, but only until someone refreshes. This is a specific instance of a more general principle. Any system that persists data and reconstructs UI from it must handle every data type in both the write path and the read path. Miss one and you get a split personality. And that is what happened here. 
+
+#### The Meta-Lesson
+
+All four bugs share a common thread. Interlocutor had multiple paths to the same destination, and we only modified some of them!
+
+The blue bubble existed because sendMessage() had an immediate rendering path and a server-response rendering path, and we only added command handling to the server path. The tagged template literal survived because JavaScript had two valid parsings of the same token sequence, and we only intended one. The cache persisted because Safari had a memory cache and a disk cache, and we only cleared the disk. The split-personality refresh existed because the UI had a live rendering path and a history rendering path, and we only added command handling to the live path.
+
+In each case, the fix was pretty small.  Conditional check, a parenthesis, a browser restart, a type guard. The debugging time came from discovering which path we'd missed. The lesson isn't about any particular technology and had nothing to do with the functionality implemented with this code commit. It's about the discipline of asking "What are all the ways this data can reach this code?" and making sure every path handles every case.
+
+For a radio system where reliability matters, that discipline is well worth cultivating. 
+
+The Interlocutor command system is open source and available in the Interlocutor repository on GitHub (https://github.com/OpenResearchInstitute/interlocutor/). This new interlocutor_command module includes comprehensive documentation, has a demo program to show how it works, 43 tests in a mini-test suite, and an integration.md guide that now includes a Troubleshooting section born directly from these four bugs.
+
+
+---
 ### 15 August 2025 Documentation
 
 File Responsibilities after the Big Breakup. One monolithic index.html is not the modern way to do things. 
