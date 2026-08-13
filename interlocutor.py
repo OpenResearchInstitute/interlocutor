@@ -94,6 +94,8 @@ import random
 import sounddevice
 from dataclasses import dataclass
 
+from runtime_environment import isolated_environment_type
+
 from config_manager import (
 	OpulentVoiceConfig, 
 	ConfigurationManager, 
@@ -148,10 +150,11 @@ from interlocutor_commands import dispatcher as command_dispatcher
 # global variable for GUI
 web_interface_instance = None
 
-# check for virtual environment
-if not (hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix)):
-	print("You need to run this code in a virtual environment:")
-	print("	 source /LED_test/bin/activate")
+# Check for an isolated Python environment.  Conda keeps sys.prefix equal to
+# sys.base_prefix, so the CPython venv check alone is not sufficient.
+if isolated_environment_type() is None:
+	print("You need to run this code in an isolated Python environment.")
+	print("Activate a venv/virtualenv or Conda environment before continuing.")
 	sys.exit(1)
 
 try: 
