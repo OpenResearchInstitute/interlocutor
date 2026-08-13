@@ -629,8 +629,10 @@ class ConfigurationManager:
 		# Protocol settings
 		if hasattr(args, 'target_type') and args.target_type is not None:
 			self.config.protocol.target_type = args.target_type
+			self.config.network.target_type = args.target_type
 		if hasattr(args, 'keepalive_interval') and args.keepalive_interval is not None:
 			self.config.protocol.keepalive_interval = args.keepalive_interval
+			self.config.network.keepalive_interval = args.keepalive_interval
 
 		# GPIO settings
 		if hasattr(args, 'ptt_pin') and args.ptt_pin is not None:
@@ -1267,9 +1269,11 @@ Configuration:
 	# Protocol settings
 	protocol_group = parser.add_argument_group('Protocol Settings')
 	protocol_group.add_argument(
-		'--target-type',
+		'--target-type', '--target-mode',
+		dest='target_type',
 		choices=['computer', 'modem'],
-		help='Target type: computer (LAN/Internet) or modem (SDR/Radio)'
+		help='Target type: computer (LAN/Internet) or modem (SDR/Radio); '
+			'--target-mode is accepted as a compatibility alias'
 	)
 	protocol_group.add_argument(
 		'--keepalive-interval',

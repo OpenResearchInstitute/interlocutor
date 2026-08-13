@@ -1293,6 +1293,8 @@ class EnhancedRadioWebInterface:
 						'target_port': self.config.network.target_port,
 						'listen_port': self.config.network.listen_port,
 						'encap_mode': self.config.network.encap_mode,
+						'target_type': self.config.network.target_type,
+						'keepalive_interval': self.config.network.keepalive_interval,
 						'voice_port': getattr(self.config.network, 'voice_port', 57373),
 						'text_port': getattr(self.config.network, 'text_port', 57374),
 						'control_port': getattr(self.config.network, 'control_port', 57375),
@@ -1427,6 +1429,12 @@ class EnhancedRadioWebInterface:
 					self.config.network.listen_port = int(network['listen_port'])
 				if 'encap_mode' in network:
 					self.config.network.encap_mode = network['encap_mode']
+				if 'target_type' in network:
+					self.config.network.target_type = network['target_type']
+					self.config.protocol.target_type = network['target_type']
+				if 'keepalive_interval' in network:
+					self.config.network.keepalive_interval = float(network['keepalive_interval'])
+					self.config.protocol.keepalive_interval = float(network['keepalive_interval'])
 				if 'voice_port' in network:
 					self.config.network.voice_port = int(network['voice_port'])
 				if 'text_port' in network:
@@ -1457,8 +1465,10 @@ class EnhancedRadioWebInterface:
 				protocol = data['protocol']
 				if 'target_type' in protocol:
 					self.config.protocol.target_type = protocol['target_type']
+					self.config.network.target_type = protocol['target_type']
 				if 'keepalive_interval' in protocol:
 					self.config.protocol.keepalive_interval = float(protocol['keepalive_interval'])
+					self.config.network.keepalive_interval = float(protocol['keepalive_interval'])
 				if 'continuous_stream' in protocol:
 					self.config.protocol.continuous_stream = bool(protocol['continuous_stream'])
 				updated_sections.append('protocol')
@@ -2170,6 +2180,12 @@ class EnhancedRadioWebInterface:
 				temp_config.network.listen_port = int(network['listen_port'])
 			if 'encap_mode' in network:
 				temp_config.network.encap_mode = network['encap_mode']
+			if 'target_type' in network:
+				temp_config.network.target_type = network['target_type']
+				temp_config.protocol.target_type = network['target_type']
+			if 'keepalive_interval' in network:
+				temp_config.network.keepalive_interval = float(network['keepalive_interval'])
+				temp_config.protocol.keepalive_interval = float(network['keepalive_interval'])
 		
 		if 'gpio' in form_config:
 			gpio = form_config['gpio']
@@ -2182,8 +2198,10 @@ class EnhancedRadioWebInterface:
 			protocol = form_config['protocol']
 			if 'target_type' in protocol:
 				temp_config.protocol.target_type = protocol['target_type']
+				temp_config.network.target_type = protocol['target_type']
 			if 'keepalive_interval' in protocol:
 				temp_config.protocol.keepalive_interval = float(protocol['keepalive_interval'])
+				temp_config.network.keepalive_interval = float(protocol['keepalive_interval'])
 		
 		if 'debug' in form_config:
 			debug = form_config['debug']
